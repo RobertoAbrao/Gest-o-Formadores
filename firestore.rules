@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,7 +8,9 @@ service cloud.firestore {
     // This requires a 'usuarios' collection where document IDs are user UIDs
     // and each document has a 'perfil' field set to 'administrador'.
     function isAdmin() {
-      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+      // Check if the user is signed in and then check their profile.
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
              get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
 
@@ -18,14 +21,13 @@ service cloud.firestore {
 
     // Rules for 'usuarios' collection
     match /usuarios/{userId} {
-      // Allow reading own profile, or any profile if admin
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // Allow admins to create new users
-      allow create: if isAdmin();
-      // Allow user to update their own data (but not their role), or admin to update anything
-      allow update: if (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil) || isAdmin();
-      // Allow admins to delete users
-      allow delete: if isAdmin();
+      // Admins can read any user profile. Regular users can only read their own.
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      
+      // Only Admins can create, update, or delete user profiles.
+      // A regular user cannot change their own profile directly through rules, 
+      // this must be handled by specific logic if needed.
+      allow write: if isAdmin();
     }
 
     // Rules for 'formadores' collection
@@ -33,7 +35,7 @@ service cloud.firestore {
         // Any signed-in user can read the list of trainers
         allow read: if isSignedIn();
         // Only admins can create, update, or delete trainers
-        allow create, update, delete: if isAdmin();
+        allow write: if isAdmin();
     }
 
     // Rules for 'materiais' collection
@@ -41,7 +43,7 @@ service cloud.firestore {
         // Any signed-in user can read materials
         allow read: if isSignedIn();
         // Only admins can create, update, or delete materials
-        allow create, update, delete: if isAdmin();
+        allow write: if isAdmin();
     }
   }
 }
