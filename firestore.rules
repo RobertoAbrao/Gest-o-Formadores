@@ -2,42 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if a user is an administrator.
+
     function isAdmin() {
+      // Verifica se o UID do requisitante corresponde a um usuário com perfil de administrador.
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
 
-    // Helper function to check if the user is authenticated.
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Users can read/update their own profile. Admins can manage all user profiles.
     match /usuarios/{userId} {
+      // Leitura: Permitida se for o próprio usuário ou se for um admin.
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      // Allow admins to create new users. The user being created is not yet authenticated, so we check the requestor's role.
-      allow create: if isAdmin();
-      allow update: if (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil) || isAdmin();
-      allow delete: if isAdmin();
+      // Escrita (Criar, Atualizar, Deletar): Permitida apenas para administradores.
+      // Isso simplifica as regras e garante que apenas admins gerenciem usuários.
+      allow write: if isAdmin();
     }
 
-    // Administrators have full access to formadores data.
-    // Authenticated users (formadores) can only read.
     match /formadores/{formadorId} {
+      // Leitura: Permitida para qualquer usuário autenticado.
       allow read: if isSignedIn();
+      // Escrita (Criar, Atualizar, Deletar): Permitida apenas para administradores.
+      allow write: if isAdmin();
+    }
+
+    match /materiais/{materialId} {
+      // Leitura: Permitida para qualquer usuário autenticado.
+      allow read: if isSignedIn();
+      // Escrita (Criar, Atualizar, Deletar): Permitida apenas para administradores.
       allow write: if isAdmin();
     }
     
-    // Administrators have full access to materiais data.
-    // Authenticated users (formadores) can only read.
-    match /materiais/{materialId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    // Fallback rule: deny all other access.
-    // This is important for security.
-    match /{path=**} {
+    // Regra de segurança para negar qualquer acesso não definido explicitamente.
+    // Esta regra não é estritamente necessária com as regras acima, mas é uma boa prática.
+    match /{document=**} {
       allow read, write: if false;
     }
   }
