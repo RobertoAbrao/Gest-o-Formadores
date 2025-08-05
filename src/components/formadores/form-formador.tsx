@@ -23,7 +23,7 @@ import { auth, db } from '@/lib/firebase';
 import type { Formador } from '@/lib/types';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Textarea } from '../ui/textarea';
+import { ComboboxMunicipios } from './combobox-municipios';
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -31,7 +31,7 @@ const formSchema = z.object({
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
   cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
-  municipiosResponsaveis: z.string().min(1, { message: 'Informe ao menos um município.'}),
+  municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -48,8 +48,6 @@ async function createFormador(data: FormValues) {
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
 
-    const municipios = data.municipiosResponsaveis.split(',').map(m => m.trim());
-
     // 2. Create user profile in 'usuarios' collection
     await setDoc(doc(db, 'usuarios', user.uid), {
         nome: data.nomeCompleto,
@@ -63,19 +61,18 @@ async function createFormador(data: FormValues) {
         email: data.email,
         cpf: data.cpf,
         telefone: data.telefone,
-        municipiosResponsaveis: municipios,
+        municipiosResponsaveis: data.municipiosResponsaveis,
     });
 }
 
 async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'email'>) {
-    const municipios = data.municipiosResponsaveis.split(',').map(m => m.trim());
     
     // Update 'formadores' collection
     await updateDoc(doc(db, 'formadores', id), {
         nomeCompleto: data.nomeCompleto,
         cpf: data.cpf,
         telefone: data.telefone,
-        municipiosResponsaveis: municipios,
+        municipiosResponsaveis: data.municipiosResponsaveis,
     });
     
     // Update 'usuarios' collection
@@ -99,7 +96,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       password: '',
       cpf: formador?.cpf || '',
       telefone: formador?.telefone || '',
-      municipiosResponsaveis: formador?.municipiosResponsaveis.join(', ') || '',
+      municipiosResponsaveis: formador?.municipiosResponsaveis || [],
     },
   });
 
@@ -215,11 +212,12 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
           control={form.control}
           name="municipiosResponsaveis"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="flex flex-col">
               <FormLabel>Municípios Responsáveis</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Ex: São Paulo, Rio de Janeiro, Salvador" {...field} />
-              </FormControl>
+                <ComboboxMunicipios
+                    selected={field.value}
+                    onChange={field.onChange}
+                />
               <FormMessage />
             </FormItem>
           )}
