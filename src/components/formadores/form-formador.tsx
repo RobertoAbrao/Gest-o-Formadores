@@ -1,0 +1,234 @@
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { auth, db } from '@/lib/firebase';
+import type { Formador } from '@/lib/types';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { Textarea } from '../ui/textarea';
+
+const formSchema = z.object({
+  nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
+  email: z.string().email({ message: 'Por favor, insira um email válido.' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
+  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos.' }),
+  telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
+  municipiosResponsaveis: z.string().min(1, { message: 'Informe ao menos um município.'}),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface FormFormadorProps {
+    formador?: Formador | null;
+    onSuccess: () => void;
+}
+
+async function createFormador(data: FormValues) {
+    if(!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
+
+    // 1. Create user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const user = userCredential.user;
+
+    const municipios = data.municipiosResponsaveis.split(',').map(m => m.trim());
+
+    // 2. Create user profile in 'usuarios' collection
+    await setDoc(doc(db, 'usuarios', user.uid), {
+        nome: data.nomeCompleto,
+        email: data.email,
+        perfil: 'formador',
+    });
+
+    // 3. Create trainer details in 'formadores' collection
+    await setDoc(doc(db, 'formadores', user.uid), {
+        nomeCompleto: data.nomeCompleto,
+        email: data.email,
+        cpf: data.cpf,
+        telefone: data.telefone,
+        municipiosResponsaveis: municipios,
+    });
+}
+
+async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'email'>) {
+    const municipios = data.municipiosResponsaveis.split(',').map(m => m.trim());
+    
+    // Update 'formadores' collection
+    await updateDoc(doc(db, 'formadores', id), {
+        nomeCompleto: data.nomeCompleto,
+        cpf: data.cpf,
+        telefone: data.telefone,
+        municipiosResponsaveis: municipios,
+    });
+    
+    // Update 'usuarios' collection
+    await updateDoc(doc(db, 'usuarios', id), {
+      nome: data.nomeCompleto,
+    });
+}
+
+
+export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const isEditMode = !!formador;
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      nomeCompleto: formador?.nomeCompleto || '',
+      email: formador?.email || '',
+      password: '',
+      cpf: formador?.cpf || '',
+      telefone: formador?.telefone || '',
+      municipiosResponsaveis: formador?.municipiosResponsaveis.join(', ') || '',
+    },
+  });
+
+  async function onSubmit(values: FormValues) {
+    setLoading(true);
+    try {
+        if(isEditMode && formador) {
+            const { password, email, ...updateData } = values;
+            await updateFormador(formador.id, updateData);
+            toast({
+                title: 'Sucesso!',
+                description: 'Formador atualizado com sucesso.',
+            });
+        } else {
+            await createFormador(values);
+            toast({
+                title: 'Sucesso!',
+                description: 'Formador criado com sucesso.',
+            });
+        }
+        onSuccess();
+    } catch (error: any) {
+      console.error(error);
+      let errorMessage = "Ocorreu um erro desconhecido.";
+      if(error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este email já está em uso por outra conta.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao salvar formador',
+        description: errorMessage,
+      });
+    } finally {
+        setLoading(false);
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="nomeCompleto"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome Completo</FormLabel>
+              <FormControl>
+                <Input placeholder="Nome do Formador" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="email@exemplo.com" {...field} disabled={isEditMode} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {!isEditMode && (
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Senha</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Crie uma senha forte" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="cpf"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>CPF</FormLabel>
+                <FormControl>
+                    <Input placeholder="00000000000" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="telefone"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Telefone</FormLabel>
+                <FormControl>
+                    <Input placeholder="(00) 00000-0000" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+        <FormField
+          control={form.control}
+          name="municipiosResponsaveis"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Municípios Responsáveis</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Ex: São Paulo, Rio de Janeiro, Salvador" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Criar Formador')}
+        </Button>
+      </form>
+    </Form>
+  );
+}

@@ -17,44 +17,70 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { useEffect, useState, useCallback } from 'react';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { FormFormador } from '@/components/formadores/form-formador';
 
 export default function FormadoresPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedFormador, setSelectedFormador] = useState<Formador | null>(null);
+
+  const fetchFormadores = useCallback(async () => {
+    setLoading(true);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'formadores'));
+      const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+      setFormadores(formadoresData);
+    } catch (error) {
+      console.error("Error fetching formadores:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (user && user.perfil !== 'administrador') {
       router.replace('/materiais');
-    }
-  }, [user, router]);
-
-  useEffect(() => {
-    if (user?.perfil === 'administrador') {
-      const fetchFormadores = async () => {
-        setLoading(true);
-        try {
-          const querySnapshot = await getDocs(collection(db, 'formadores'));
-          const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
-          setFormadores(formadoresData);
-        } catch (error) {
-          console.error("Error fetching formadores:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+    } else if (user?.perfil === 'administrador') {
       fetchFormadores();
     }
-  }, [user]);
+  }, [user, router, fetchFormadores]);
   
+  const handleSuccess = () => {
+    fetchFormadores();
+    setIsDialogOpen(false);
+    setSelectedFormador(null);
+  }
+  
+  const handleDelete = async (formadorId: string) => {
+    if(!confirm('Tem certeza que deseja excluir este formador? Esta ação não pode ser desfeita.')) return;
+    try {
+        // Here you might want to delete the user from Firebase Auth as well
+        // This requires admin privileges and is best done from a backend environment
+        // For now, we will just delete the Firestore document.
+        await deleteDoc(doc(db, "formadores", formadorId));
+        await deleteDoc(doc(db, "usuarios", formadorId)); // Also remove from users collection
+        fetchFormadores();
+    } catch (error) {
+        console.error("Error deleting formador: ", error);
+    }
+  }
+
+  const openEditDialog = (formador: Formador) => {
+    setSelectedFormador(formador);
+    setIsDialogOpen(true);
+  }
+
   if (!user || user.perfil !== 'administrador') {
     return null;
   }
@@ -74,10 +100,26 @@ export default function FormadoresPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gerenciar Formadores</h1>
             <p className="text-muted-foreground">Adicione, edite e remova formadores do sistema.</p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Novo Formador
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) setSelectedFormador(null);
+        }}>
+          <DialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Novo Formador
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{selectedFormador ? 'Editar Formador' : 'Novo Formador'}</DialogTitle>
+              <DialogDescription>
+                {selectedFormador ? 'Altere os dados do formador.' : 'Preencha os dados para cadastrar um novo formador.'}
+              </DialogDescription>
+            </DialogHeader>
+            <FormFormador formador={selectedFormador} onSuccess={handleSuccess} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="relative">
@@ -116,11 +158,11 @@ export default function FormadoresPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEditDialog(formador)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                      <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(formador.id)}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Excluir
                       </DropdownMenuItem>
