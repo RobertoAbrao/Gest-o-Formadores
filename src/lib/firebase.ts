@@ -1,29 +1,21 @@
-// This is a placeholder for your Firebase configuration.
-// In a real application, you would replace the placeholder values
-// with your actual Firebase project configuration.
-
 // Import the functions you need from the SDKs you need
-// import { initializeApp } from "firebase/app";
-// import { getAuth } from "firebase/auth";
-// import { getFirestore } from "firebase/firestore";
-// import { getStorage } from "firebase/storage";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyD8zReB4NvFBgd5WRmNS3aN0g4Z5InEsaE",
+  authDomain: "editora-lt-65cd6.firebaseapp.com",
+  projectId: "editora-lt-65cd6",
+  storageBucket: "editora-lt-65cd6.firebasestorage.app",
+  messagingSenderId: "1061643794269",
+  appId: "1:1061643794269:web:e7a14060a3c9ec3b825ab4",
+  measurementId: "G-KJ13TS306C"
 };
 
 // Initialize Firebase
-// const app = initializeApp(firebaseConfig);
-// export const auth = getAuth(app);
-// export const db = getFirestore(app);
-// export const storage = getStorage(app);
-
-// Mock exports for demonstration purposes
-export const auth = {};
-export const db = {};
-export const storage = {};
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);

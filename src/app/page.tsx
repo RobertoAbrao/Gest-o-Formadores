@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, KeyRound, Building, UserCog, Loader2 } from 'lucide-react';
 
@@ -15,41 +15,59 @@ import AppLogo from '@/components/AppLogo';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { user, login, assignRole } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('formador');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: FormEvent) => {
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
+
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        if (email === '' || password === '') {
-          throw new Error('Por favor, preencha todos os campos.');
-        }
-
-        login(email, password, role);
-
-        toast({
-          title: 'Login bem-sucedido!',
-          description: 'Redirecionando para o painel.',
-        });
-        router.push('/dashboard');
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido.';
+    if (email === '' || password === '') {
         toast({
           variant: 'destructive',
-          title: 'Erro no Login',
-          description: errorMessage,
+          title: 'Erro de Validação',
+          description: 'Por favor, preencha todos os campos.',
         });
-        setLoading(false);
-      }
-    }, 1000);
+        return;
+    }
+      
+    setLoading(true);
+    
+    // Assign role before logging in so the auth provider can pick it up
+    assignRole(role);
+
+    try {
+      await login(email, password);
+      
+      toast({
+        title: 'Login bem-sucedido!',
+        description: 'Redirecionando para o painel.',
+      });
+
+      // The redirection will be handled by the layout or page components
+      // based on the user's role after successful login.
+      router.push('/dashboard');
+
+    } catch (error) {
+      console.error(error);
+      const errorMessage = 'As credenciais fornecidas estão incorretas. Verifique seu e-mail e senha.';
+      toast({
+        variant: 'destructive',
+        title: 'Erro no Login',
+        description: errorMessage,
+      });
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,6 +95,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     className="pl-10"
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -92,15 +111,17 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="pl-10"
+                    disabled={loading}
                   />
                 </div>
               </div>
               <div className="space-y-3">
-                <Label>Acessar como (para demonstração)</Label>
+                <Label>Acessar como</Label>
                 <RadioGroup
                   value={role}
                   onValueChange={(value: UserRole) => setRole(value)}
                   className="flex items-center space-x-4"
+                  disabled={loading}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="formador" id="formador" />
