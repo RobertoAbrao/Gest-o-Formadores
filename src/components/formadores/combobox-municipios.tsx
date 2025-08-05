@@ -91,6 +91,7 @@ export function ComboboxMunicipios({ selected, onChange }: ComboboxMunicipiosPro
     if (!selected.includes(municipioNome)) {
         onChange([...selected, municipioNome]);
     }
+    setOpen(false);
   };
   
   const handleRemove = (municipioNome: string) => {
