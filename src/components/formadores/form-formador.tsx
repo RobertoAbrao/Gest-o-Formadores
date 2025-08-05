@@ -56,6 +56,14 @@ const formatCPF = (cpf: string) => {
     return cpf;
 }
 
+const formatTelefone = (telefone: string) => {
+    telefone = telefone.replace(/\D/g, '');
+    telefone = telefone.replace(/^(\d{2})(\d)/g, '($1) $2');
+    telefone = telefone.replace(/(\d)(\d{4})$/, '$1-$2');
+    return telefone;
+}
+
+
 async function createFormador(data: FormValues) {
     if(!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
     
@@ -75,6 +83,7 @@ async function createFormador(data: FormValues) {
     const formadorData = {
         ...formData,
         cpf: formData.cpf.replace(/\D/g, ''), // Save only digits
+        telefone: formData.telefone.replace(/\D/g, ''), // Save only digits
     };
     await setDoc(doc(db, 'formadores', user.uid), formadorData);
 }
@@ -83,6 +92,7 @@ async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'e
     const updateData = {
         ...data,
         cpf: data.cpf.replace(/\D/g, ''), // Save only digits
+        telefone: data.telefone.replace(/\D/g, ''), // Save only digits
     };
 
     // Update 'formadores' collection
@@ -110,7 +120,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       email: formador?.email || '',
       password: '',
       cpf: formador?.cpf ? formatCPF(formador.cpf) : '',
-      telefone: formador?.telefone || '',
+      telefone: formador?.telefone ? formatTelefone(formador.telefone) : '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
       banco: formador?.banco || '',
       agencia: formador?.agencia || '',
@@ -228,7 +238,15 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
                 <FormItem>
                 <FormLabel>Telefone</FormLabel>
                 <FormControl>
-                    <Input placeholder="(00) 00000-0000" {...field} />
+                    <Input 
+                        placeholder="(00) 00000-0000" 
+                        {...field}
+                        onChange={(e) => {
+                            const formatted = formatTelefone(e.target.value);
+                            field.onChange(formatted);
+                        }}
+                        maxLength={15}
+                    />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -321,4 +339,3 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     </Form>
   );
 }
-
