@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -31,7 +32,7 @@ const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
   email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
-  cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos.' }),
+  cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
   municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
   banco: z.string().optional(),
@@ -47,30 +48,46 @@ interface FormFormadorProps {
     onSuccess: () => void;
 }
 
+const formatCPF = (cpf: string) => {
+    cpf = cpf.replace(/\D/g, '');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return cpf;
+}
+
 async function createFormador(data: FormValues) {
     if(!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
-
+    
     // 1. Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const user = userCredential.user;
-
+    
     // 2. Create user profile in 'usuarios' collection
     await setDoc(doc(db, 'usuarios', user.uid), {
         nome: data.nomeCompleto,
         email: data.email,
         perfil: 'formador',
     });
-
+    
     // 3. Create trainer details in 'formadores' collection
-    const { password, ...formadorData } = data;
+    const { password, ...formData } = data;
+    const formadorData = {
+        ...formData,
+        cpf: formData.cpf.replace(/\D/g, ''), // Save only digits
+    };
     await setDoc(doc(db, 'formadores', user.uid), formadorData);
 }
 
 async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'email'>) {
-    
+    const updateData = {
+        ...data,
+        cpf: data.cpf.replace(/\D/g, ''), // Save only digits
+    };
+
     // Update 'formadores' collection
     await updateDoc(doc(db, 'formadores', id), {
-        ...data,
+        ...updateData,
     });
     
     // Update 'usuarios' collection
@@ -92,7 +109,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       nomeCompleto: formador?.nomeCompleto || '',
       email: formador?.email || '',
       password: '',
-      cpf: formador?.cpf || '',
+      cpf: formador?.cpf ? formatCPF(formador.cpf) : '',
       telefone: formador?.telefone || '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
       banco: formador?.banco || '',
@@ -190,7 +207,15 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
                 <FormItem>
                 <FormLabel>CPF</FormLabel>
                 <FormControl>
-                    <Input placeholder="00000000000" {...field} />
+                    <Input 
+                        placeholder="000.000.000-00" 
+                        {...field}
+                        onChange={(e) => {
+                            const formatted = formatCPF(e.target.value);
+                            field.onChange(formatted);
+                        }}
+                        maxLength={14}
+                    />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
@@ -296,3 +321,4 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     </Form>
   );
 }
+
