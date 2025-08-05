@@ -9,6 +9,10 @@ export interface Formador {
   cpf: string;
   telefone: string;
   municipiosResponsaveis: string[];
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  pix?: string;
 }
 
 export interface Material {

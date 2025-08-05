@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,6 +25,7 @@ import type { Formador } from '@/lib/types';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ComboboxMunicipios } from './combobox-municipios';
+import { Separator } from '../ui/separator';
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -32,6 +34,10 @@ const formSchema = z.object({
   cpf: z.string().length(11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
   municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
+  banco: z.string().optional(),
+  agencia: z.string().optional(),
+  conta: z.string().optional(),
+  pix: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,23 +62,15 @@ async function createFormador(data: FormValues) {
     });
 
     // 3. Create trainer details in 'formadores' collection
-    await setDoc(doc(db, 'formadores', user.uid), {
-        nomeCompleto: data.nomeCompleto,
-        email: data.email,
-        cpf: data.cpf,
-        telefone: data.telefone,
-        municipiosResponsaveis: data.municipiosResponsaveis,
-    });
+    const { password, ...formadorData } = data;
+    await setDoc(doc(db, 'formadores', user.uid), formadorData);
 }
 
 async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'email'>) {
     
     // Update 'formadores' collection
     await updateDoc(doc(db, 'formadores', id), {
-        nomeCompleto: data.nomeCompleto,
-        cpf: data.cpf,
-        telefone: data.telefone,
-        municipiosResponsaveis: data.municipiosResponsaveis,
+        ...data,
     });
     
     // Update 'usuarios' collection
@@ -97,6 +95,10 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       cpf: formador?.cpf || '',
       telefone: formador?.telefone || '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
+      banco: formador?.banco || '',
+      agencia: formador?.agencia || '',
+      conta: formador?.conta || '',
+      pix: formador?.pix || '',
     },
   });
 
@@ -222,6 +224,70 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             </FormItem>
           )}
         />
+
+        <div className='space-y-2'>
+            <Separator />
+            <div>
+                <h3 className='text-sm font-medium'>Dados Bancários (Opcional)</h3>
+                <p className='text-sm text-muted-foreground'>Informações para pagamento.</p>
+            </div>
+        </div>
+
+        <FormField
+          control={form.control}
+          name="banco"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Banco</FormLabel>
+              <FormControl>
+                <Input placeholder="Nome ou número do banco" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="agencia"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Agência</FormLabel>
+                <FormControl>
+                    <Input placeholder="0000" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="conta"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Conta com dígito</FormLabel>
+                <FormControl>
+                    <Input placeholder="00000-0" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+         <FormField
+          control={form.control}
+          name="pix"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Chave PIX</FormLabel>
+              <FormControl>
+                <Input placeholder="Email, CPF, telefone, etc." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Criar Formador')}
