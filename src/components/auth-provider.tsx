@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        // User is signed in, let's fetch their profile from Firestore.
         const userDocRef = doc(db, 'usuarios', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
@@ -28,12 +29,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          // Set user details from Firestore document
           role = userData.perfil || 'formador';
           nome = userData.nome || firebaseUser.displayName || (role === 'administrador' ? 'Admin' : 'Formador');
         } else {
-            // Fallback for when user doc doesn't exist yet
-            const tempRole = (localStorage.getItem('userRole') as UserRole) || 'formador';
-            role = tempRole;
+            // This case might happen briefly during user creation
+            // Or if the user document is missing.
+            // We can rely on a temporary role stored during login.
+            const tempRole = (localStorage.getItem('userRole') as UserRole) | null;
+            if (tempRole) {
+                role = tempRole;
+            }
+            // Use display name or a generic name if not available
             nome = firebaseUser.displayName || (role === 'administrador' ? 'Admin' : 'Formador');
         }
 
@@ -45,18 +52,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
       } else {
+        // User is signed out
         setUser(null);
         localStorage.removeItem('userRole');
       }
       setLoading(false);
     });
 
+    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<UserCredential> => {
     setLoading(true);
-    // The onAuthStateChanged listener will handle setting the user state.
+    // The onAuthStateChanged listener above will handle fetching user data and setting the state.
     return signInWithEmailAndPassword(auth, email, password);
   };
 
@@ -66,11 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const assignRole = (role: UserRole) => {
-    // This is now primarily a fallback for the login page,
-    // as the authoritative role comes from Firestore.
+    // This function is now used to temporarily store the selected role
+    // during the login process, so onAuthStateChanged can pick it up if needed.
     localStorage.setItem('userRole', role);
   };
   
+  // Display a loading indicator while checking auth state
   if (loading) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">

@@ -73,7 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="w-full flex-1">
             {/* Can add a search bar here if needed */}
           </div>
-          <UserMenu user={user} onLogout={handleLogout} />
+          <UserMenu user={user} onLogout={handleLogout} router={router}/>
         </header>
         <main className="flex-1 p-4 sm:px-6 sm:py-0 md:gap-8 bg-background">{children}</main>
       </div>
@@ -157,8 +157,9 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
   );
 };
 
-const UserMenu = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
+const UserMenu = ({ user, onLogout, router }: { user: any, onLogout: () => void, router: any }) => {
     const getInitials = (name: string) => {
+        if (!name) return 'U';
         return name.split(' ').map(n => n[0]).join('').toUpperCase();
     }
   return (
@@ -166,7 +167,7 @@ const UserMenu = ({ user, onLogout }: { user: any, onLogout: () => void }) => {
       <DropdownMenuTrigger asChild>
         <Button variant="secondary" size="icon" className="rounded-full">
           <Avatar>
-            <AvatarImage src={`https://placehold.co/40x40.png`} alt={user.nome} />
+            <AvatarImage src={undefined} alt={user.nome || 'User'} />
             <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
           </Avatar>
           <span className="sr-only">Toggle user menu</span>
