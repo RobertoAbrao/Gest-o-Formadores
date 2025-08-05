@@ -1,15 +1,23 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, BookCopy, MapPin, Loader2 } from 'lucide-react';
+import { collection, getCountFromServer } from 'firebase/firestore';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState([
+    { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-blue-500' },
+    { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
+    { title: 'Municípios Cobertos', value: '0', icon: MapPin, color: 'text-orange-500' },
+  ]);
+  const [loading, setLoading] = useState(true);
 
   // Redirect trainers to their material list
   useEffect(() => {
@@ -18,19 +26,41 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
-  if (!user || user.perfil !== 'administrador') {
+  useEffect(() => {
+    if (user?.perfil === 'administrador') {
+      const fetchStats = async () => {
+        try {
+          const formadoresCol = collection(db, 'formadores');
+          const materiaisCol = collection(db, 'materiais');
+          
+          const [formadoresSnapshot, materiaisSnapshot] = await Promise.all([
+            getCountFromServer(formadoresCol),
+            getCountFromServer(materiaisCol),
+          ]);
+          
+          setStats([
+            { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-blue-500' },
+            { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
+            { title: 'Municípios Cobertos', value: '15', icon: MapPin, color: 'text-orange-500' }, // Mocked for now
+          ]);
+        } catch (error) {
+          console.error("Error fetching stats:", error);
+          // Handle error, e.g., show a toast message
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchStats();
+    }
+  }, [user]);
+
+  if (!user || user.perfil !== 'administrador' || loading) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
-
-  const stats = [
-    { title: 'Formadores Ativos', value: '42', icon: Users, color: 'text-blue-500' },
-    { title: 'Materiais Disponíveis', value: '128', icon: BookCopy, color: 'text-green-500' },
-    { title: 'Municípios Cobertos', value: '15', icon: MapPin, color: 'text-orange-500' },
-  ];
 
   return (
     <div className="flex flex-col gap-8 py-6">

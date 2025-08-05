@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word';
 
 export interface Formador {
@@ -14,6 +16,6 @@ export interface Material {
   titulo: string;
   descricao: string;
   tipoMaterial: MaterialType;
-  dataUpload: string;
+  dataUpload: Timestamp;
   urlArquivo?: string;
 }

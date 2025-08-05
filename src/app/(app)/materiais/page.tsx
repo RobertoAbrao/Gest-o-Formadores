@@ -16,17 +16,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2 } from 'lucide-react';
 import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-
-const mockMateriais: Material[] = [
-  { id: '1', titulo: 'Guia de Planejamento de Aulas', descricao: 'Um guia completo para estruturar aulas eficazes.', tipoMaterial: 'PDF', dataUpload: '2023-10-26' },
-  { id: '2', titulo: 'Webinar sobre Inclusão', descricao: 'Gravação do webinar sobre práticas de inclusão em sala de aula.', tipoMaterial: 'Vídeo', dataUpload: '2023-10-25', urlArquivo: '#' },
-  { id: '3', titulo: 'Ferramentas Digitais para Educação', descricao: 'Link para uma curadoria de ferramentas online.', tipoMaterial: 'Link Externo', dataUpload: '2023-10-24', urlArquivo: '#' },
-  { id: '4', titulo: 'Modelo de Plano de Aula', descricao: 'Documento Word editável para criar planos de aula.', tipoMaterial: 'Documento Word', dataUpload: '2023-10-23' },
-  { id: '5', titulo: 'Apostila de Matemática Básica', descricao: 'Material de apoio em PDF para nivelamento.', tipoMaterial: 'PDF', dataUpload: '2023-10-22' },
-];
+import { useEffect, useState } from 'react';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const typeIcons: Record<MaterialType, React.ElementType> = {
   'PDF': FileText,
@@ -46,6 +41,33 @@ const typeColors: Record<MaterialType, string> = {
 export default function MateriaisPage() {
   const { user } = useAuth();
   const isAdmin = user?.perfil === 'administrador';
+  const [materiais, setMateriais] = useState<Material[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMateriais = async () => {
+      setLoading(true);
+      try {
+        const q = query(collection(db, 'materiais'), orderBy('dataUpload', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const materiaisData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Material));
+        setMateriais(materiaisData);
+      } catch (error) {
+        console.error("Error fetching materials:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMateriais();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
@@ -76,7 +98,7 @@ export default function MateriaisPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockMateriais.map((material) => {
+            {materiais.map((material) => {
               const Icon = typeIcons[material.tipoMaterial];
               return (
                 <TableRow key={material.id}>
@@ -88,7 +110,9 @@ export default function MateriaisPage() {
                       {material.tipoMaterial}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{new Date(material.dataUpload).toLocaleDateString()}</TableCell>
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
+                    {material.dataUpload.toDate().toLocaleDateString()}
+                  </TableCell>
                   <TableCell className="text-right">
                     {isAdmin ? (
                       <DropdownMenu>
@@ -107,9 +131,11 @@ export default function MateriaisPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
-                      <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Acessar
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={material.urlArquivo} target="_blank" rel="noopener noreferrer">
+                          <Download className="mr-2 h-4 w-4" />
+                          Acessar
+                        </a>
                       </Button>
                     )}
                   </TableCell>

@@ -2,13 +2,14 @@
 
 import { AuthContext, type User, type UserRole } from '@/hooks/use-auth';
 import { useState, type ReactNode, useEffect } from 'react';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
   type User as FirebaseUser,
 } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -16,17 +17,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // NOTE: In a real app, the role would be fetched from a database (like Firestore)
-        // based on the user's UID. Here we keep it in localStorage for simplicity.
-        const role = (localStorage.getItem('userRole') as UserRole) || 'formador';
+        const userDocRef = doc(db, 'usuarios', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        let role: UserRole = 'formador'; // Default role
+        let nome: string = 'Usuário';
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          role = userData.perfil || 'formador';
+          nome = userData.nome || firebaseUser.displayName || (role === 'administrador' ? 'Admin' : 'Formador');
+        } else {
+            // Fallback for when user doc doesn't exist yet
+            const tempRole = (localStorage.getItem('userRole') as UserRole) || 'formador';
+            role = tempRole;
+            nome = firebaseUser.displayName || (role === 'administrador' ? 'Admin' : 'Formador');
+        }
+
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          nome: firebaseUser.displayName || (role === 'administrador' ? 'Admin' : 'Formador'),
+          nome: nome,
           perfil: role,
         });
+
       } else {
         setUser(null);
         localStorage.removeItem('userRole');
@@ -49,13 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const assignRole = (role: UserRole) => {
-    if (user) {
-      setUser({ ...user, perfil: role });
-      localStorage.setItem('userRole', role);
-    } else {
-      // If user is not logged in yet, store role for when they do.
-      localStorage.setItem('userRole', role);
-    }
+    // This is now primarily a fallback for the login page,
+    // as the authoritative role comes from Firestore.
+    localStorage.setItem('userRole', role);
   };
   
   if (loading) {

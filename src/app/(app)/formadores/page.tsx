@@ -17,33 +17,56 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-
-const mockFormadores: Formador[] = [
-  { id: '1', nomeCompleto: 'Ana Silva', email: 'ana.silva@example.com', cpf: '111.222.333-44', telefone: '(11) 98765-4321', municipiosResponsaveis: ['São Paulo', 'Guarulhos'] },
-  { id: '2', nomeCompleto: 'Bruno Costa', email: 'bruno.costa@example.com', cpf: '222.333.444-55', telefone: '(21) 91234-5678', municipiosResponsaveis: ['Rio de Janeiro'] },
-  { id: '3', nomeCompleto: 'Carla Dias', email: 'carla.dias@example.com', cpf: '333.444.555-66', telefone: '(31) 95555-8888', municipiosResponsaveis: ['Belo Horizonte', 'Contagem', 'Betim'] },
-  { id: '4', nomeCompleto: 'Daniel Santos', email: 'daniel.santos@example.com', cpf: '444.555.666-77', telefone: '(51) 94321-8765', municipiosResponsaveis: ['Porto Alegre'] },
-];
+import { useEffect, useState } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function FormadoresPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const [formadores, setFormadores] = useState<Formador[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user && user.perfil !== 'administrador') {
       router.replace('/materiais');
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (user?.perfil === 'administrador') {
+      const fetchFormadores = async () => {
+        setLoading(true);
+        try {
+          const querySnapshot = await getDocs(collection(db, 'formadores'));
+          const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+          setFormadores(formadoresData);
+        } catch (error) {
+          console.error("Error fetching formadores:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchFormadores();
+    }
+  }, [user]);
   
   if (!user || user.perfil !== 'administrador') {
-    return null; // or a loading/access denied component
+    return null;
   }
   
+  if (loading) {
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
       <div className="flex items-center justify-between">
@@ -73,7 +96,7 @@ export default function FormadoresPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockFormadores.map((formador) => (
+            {formadores.map((formador) => (
               <TableRow key={formador.id}>
                 <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
