@@ -8,10 +8,8 @@ service cloud.firestore {
     // This requires a 'usuarios' collection where document IDs are user UIDs
     // and each document has a 'perfil' field set to 'administrador'.
     function isAdmin() {
-      // Check if the user is signed in and then check their profile.
-      return request.auth != null && 
-             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
+      // Check if the user making the request has an 'administrador' profile.
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
 
     // Helper function to check if the user is authenticated.
@@ -21,28 +19,35 @@ service cloud.firestore {
 
     // Rules for 'usuarios' collection
     match /usuarios/{userId} {
-      // Admins can read any user profile. Regular users can only read their own.
+      // READ: An admin can read any user's profile. A regular user can only read their own.
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       
-      // Only Admins can create, update, or delete user profiles.
-      // A regular user cannot change their own profile directly through rules, 
-      // this must be handled by specific logic if needed.
-      allow write: if isAdmin();
+      // CREATE: Only an administrator can create a new user document.
+      allow create: if isAdmin();
+      
+      // UPDATE: An admin can update any user. A regular user can only update their own data,
+      // and cannot change their own 'perfil'.
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil);
+      
+      // DELETE: Only an admin can delete a user document.
+      allow delete: if isAdmin();
     }
 
     // Rules for 'formadores' collection
     match /formadores/{formadorId} {
-        // Any signed-in user can read the list of trainers
+        // READ: Any signed-in user can view the list of trainers.
         allow read: if isSignedIn();
-        // Only admins can create, update, or delete trainers
+        
+        // WRITE (CREATE, UPDATE, DELETE): Only administrators can manage trainer records.
         allow write: if isAdmin();
     }
 
     // Rules for 'materiais' collection
     match /materiais/{materialId} {
-        // Any signed-in user can read materials
+        // READ: Any signed-in user can view materials.
         allow read: if isSignedIn();
-        // Only admins can create, update, or delete materials
+        
+        // WRITE (CREATE, UPDATE, DELETE): Only administrators can manage materials.
         allow write: if isAdmin();
     }
   }
