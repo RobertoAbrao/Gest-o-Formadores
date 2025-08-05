@@ -26,6 +26,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormFormador } from '@/components/formadores/form-formador';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function FormadoresPage() {
   const { user } = useAuth();
@@ -110,14 +111,18 @@ export default function FormadoresPage() {
               Novo Formador
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{selectedFormador ? 'Editar Formador' : 'Novo Formador'}</DialogTitle>
               <DialogDescription>
                 {selectedFormador ? 'Altere os dados do formador.' : 'Preencha os dados para cadastrar um novo formador.'}
               </DialogDescription>
             </DialogHeader>
-            <FormFormador formador={selectedFormador} onSuccess={handleSuccess} />
+            <ScrollArea className='max-h-[80vh]'>
+                <div className='p-4'>
+                    <FormFormador formador={selectedFormador} onSuccess={handleSuccess} />
+                </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>

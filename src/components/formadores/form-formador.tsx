@@ -182,7 +182,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             )}
           />
         )}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
             control={form.control}
             name="cpf"
@@ -225,7 +225,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
           )}
         />
 
-        <div className='space-y-2'>
+        <div className='space-y-2 pt-4'>
             <Separator />
             <div>
                 <h3 className='text-sm font-medium'>Dados Bancários (Opcional)</h3>
@@ -246,7 +246,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
             control={form.control}
             name="agencia"
@@ -289,7 +289,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
         />
 
 
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full !mt-6" disabled={loading}>
           {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Criar Formador')}
         </Button>
       </form>
