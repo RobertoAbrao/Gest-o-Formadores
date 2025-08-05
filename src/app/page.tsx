@@ -3,6 +3,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, KeyRound, Building, UserCog, Loader2 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,10 +13,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type UserRole } from '@/hooks/use-auth';
 import AppLogo from '@/components/AppLogo';
+import { db } from '@/lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, assignRole } = useAuth();
+  const { user, login, assignRole, logout } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,30 +45,56 @@ export default function LoginPage() {
       
     setLoading(true);
     
-    // Assign role before logging in so the auth provider can pick it up
-    assignRole(role);
-
     try {
-      await login(email, password);
+      // First, just sign in the user to get their credentials
+      const userCredential = await login(email, password);
+      const loggedInUser = userCredential.user;
+
+      // Now, check their profile from Firestore
+      const userDocRef = doc(db, 'usuarios', loggedInUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error("Seu usuário não foi configurado corretamente. Contate o suporte.");
+      }
+
+      const userData = userDoc.data();
+      const userProfile = userData.perfil as UserRole;
+
+      // Compare the selected role with the one from Firestore
+      if (userProfile !== role) {
+        // If roles don't match, logout immediately and show error
+        await logout(); 
+        throw new Error(`Você não tem permissão para acessar como ${role}.`);
+      }
+      
+      // If roles match, assign the role to the provider and redirect
+      assignRole(role);
       
       toast({
         title: 'Login bem-sucedido!',
         description: 'Redirecionando para o painel.',
       });
-
-      // The redirection will be handled by the layout or page components
-      // based on the user's role after successful login.
+      
       router.push('/dashboard');
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      const errorMessage = 'As credenciais fornecidas estão incorretas. Verifique seu e-mail e senha.';
+      // Determine the error message
+      let errorMessage = 'Ocorreu um erro desconhecido.';
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        errorMessage = 'As credenciais fornecidas estão incorretas. Verifique seu e-mail e senha.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Erro no Login',
         description: errorMessage,
       });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
+import type { UserCredential } from 'firebase/auth';
 
 export type UserRole = 'administrador' | 'formador';
 
@@ -14,7 +15,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<UserCredential>;
   logout: () => Promise<void>;
   assignRole: (role: UserRole) => void;
 }
@@ -22,7 +23,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  login: async () => {},
+  login: async () => { throw new Error('Login function not implemented'); },
   logout: async () => {},
   assignRole: () => {},
 });

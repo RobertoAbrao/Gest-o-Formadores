@@ -8,6 +8,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   type User as FirebaseUser,
+  type UserCredential,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -53,10 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserCredential> => {
     setLoading(true);
-    await signInWithEmailAndPassword(auth, email, password);
     // The onAuthStateChanged listener will handle setting the user state.
+    return signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
