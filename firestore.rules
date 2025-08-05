@@ -1,11 +1,14 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // Helper function to check if a user is an administrator.
+    // This requires a 'usuarios' collection where document IDs are user UIDs
+    // and each document has a 'perfil' field set to 'administrador'.
     function isAdmin() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
 
     // Helper function to check if the user is authenticated.
@@ -13,29 +16,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Users can read their own profile.
-    // Admins can create new users and manage all users.
-    // Users can update their own profile, but cannot change their role.
+    // Rules for 'usuarios' collection
     match /usuarios/{userId} {
+      // Allow reading own profile, or any profile if admin
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow create, delete: if isAdmin();
+      // Allow admins to create new users
+      allow create: if isAdmin();
+      // Allow user to update their own data (but not their role), or admin to update anything
       allow update: if (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil) || isAdmin();
+      // Allow admins to delete users
+      allow delete: if isAdmin();
     }
 
-    // All authenticated users can read materials and formadores.
-    // Only administrators can create, update, or delete them.
+    // Rules for 'formadores' collection
     match /formadores/{formadorId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin(); // write includes create, update, delete
+        // Any signed-in user can read the list of trainers
+        allow read: if isSignedIn();
+        // Only admins can create, update, or delete trainers
+        allow create, update, delete: if isAdmin();
     }
 
+    // Rules for 'materiais' collection
     match /materiais/{materialId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin(); // write includes create, update, delete
+        // Any signed-in user can read materials
+        allow read: if isSignedIn();
+        // Only admins can create, update, or delete materials
+        allow create, update, delete: if isAdmin();
     }
-
-    // Explicitly deny access to any other collections.
-    // This is good practice but not strictly necessary if all paths are covered above.
-    // Removing the overly restrictive /{document=**} that was likely causing issues.
   }
 }
