@@ -43,7 +43,7 @@ const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-forma
 
 const formatDate = (timestamp: Timestamp | null | undefined) => {
     if (!timestamp) return 'N/A';
-    return timestamp.toDate().toLocaleDateString();
+    return timestamp.toDate().toLocaleDateString('pt-BR');
 }
 
 
@@ -148,20 +148,22 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       await updateDoc(formacaoRef, { status: newStatus });
       setFormacao(prev => prev ? { ...prev, status: newStatus } : null);
       toast({ title: "Sucesso", description: `Status alterado para ${newStatus}.` });
+      return true; // Indicate success
     } catch (error) {
        console.error("Erro ao alterar status:", error);
        toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+       return false; // Indicate failure
     }
   }
 
   const handleArchive = async () => {
     if (!formacao || !window.confirm('Tem certeza que deseja arquivar esta formação?')) return;
-    try {
-        await handleStatusChange('arquivado');
+    
+    const success = await handleStatusChange('arquivado');
+    if (success) {
         toast({ title: "Sucesso", description: "Formação arquivada." });
         onClose();
-    } catch (error) {
-        console.error("Erro ao arquivar:", error);
+    } else {
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
     }
   }

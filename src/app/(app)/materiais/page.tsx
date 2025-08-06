@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -174,7 +175,7 @@ export default function MateriaisPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {material.dataUpload.toDate().toLocaleDateString()}
+                    {material.dataUpload.toDate().toLocaleDateString('pt-BR')}
                   </TableCell>
                   <TableCell className="text-right">
                     {isAdmin ? (

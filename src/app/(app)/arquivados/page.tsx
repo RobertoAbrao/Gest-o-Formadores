@@ -62,7 +62,7 @@ export default function ArquivadosPage() {
 
   const formatDate = (timestamp: Timestamp | null) => {
     if (!timestamp) return 'N/A';
-    return timestamp.toDate().toLocaleDateString();
+    return timestamp.toDate().toLocaleDateString('pt-BR');
   }
 
   if (loading) {
@@ -138,4 +138,3 @@ export default function ArquivadosPage() {
     </div>
   );
 }
-

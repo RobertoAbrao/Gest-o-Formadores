@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -124,7 +125,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                         )}
                         >
                         {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "PPP", { locale: ptBR })
                         ) : (
                             <span>Selecione uma data</span>
                         )}
@@ -138,6 +139,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                         selected={field.value}
                         onSelect={field.onChange}
                         initialFocus
+                        locale={ptBR}
                     />
                     </PopoverContent>
                 </Popover>

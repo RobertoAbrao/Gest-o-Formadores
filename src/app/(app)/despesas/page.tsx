@@ -51,6 +51,8 @@ export default function DespesasPage() {
       );
       const querySnapshot = await getDocs(q);
       const despesasData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Despesa));
+      // Sort by date client-side
+      despesasData.sort((a, b) => b.data.toMillis() - a.data.toMillis());
       setDespesas(despesasData);
     } catch (error) {
       console.error("Error fetching expenses:", error);
@@ -155,7 +157,7 @@ export default function DespesasPage() {
                 </TableRow>
             ) : despesas.map((despesa) => (
                 <TableRow key={despesa.id}>
-                  <TableCell className="font-medium">{despesa.data.toDate().toLocaleDateString()}</TableCell>
+                  <TableCell className="font-medium">{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
                   <TableCell>{despesa.tipo}</TableCell>
                   <TableCell className="hidden lg:table-cell text-muted-foreground">{despesa.descricao}</TableCell>
                   <TableCell className="font-medium">{formatCurrency(despesa.valor)}</TableCell>

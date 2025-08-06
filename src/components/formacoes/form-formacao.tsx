@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
+import { ptBR } from 'date-fns/locale';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -339,7 +340,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                             )}
                             >
                             {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "PPP", { locale: ptBR })
                             ) : (
                                 <span>Selecione uma data</span>
                             )}
@@ -353,6 +354,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
+                            locale={ptBR}
                         />
                         </PopoverContent>
                     </Popover>
@@ -377,7 +379,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                             )}
                             >
                             {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "PPP", { locale: ptBR })
                             ) : (
                                 <span>Selecione uma data</span>
                             )}
@@ -391,6 +393,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
+                            locale={ptBR}
                         />
                         </PopoverContent>
                     </Popover>
