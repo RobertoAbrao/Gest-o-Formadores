@@ -173,6 +173,15 @@ export default function QuadroPage() {
     }
   };
 
+  const handleDetailDialogChange = (open: boolean) => {
+    setIsDetailDialogOpen(open);
+    if (!open) {
+      setSelectedFormacao(null);
+      // Refetch data when closing the dialog to see status changes
+      fetchAndCategorizeFormacoes();
+    }
+  };
+
 
   if (loading) {
     return (
@@ -222,10 +231,7 @@ export default function QuadroPage() {
           </DialogContent>
         </Dialog>
         
-        <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
-            setIsDetailDialogOpen(open);
-            if (!open) setSelectedFormacao(null);
-          }}>
+        <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
             <DialogContent className="sm:max-w-2xl">
                 {selectedFormacao && (
                   <>

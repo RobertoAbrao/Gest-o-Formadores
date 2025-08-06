@@ -13,7 +13,7 @@ import {
   arrayRemove,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -21,12 +21,12 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface DetalhesFormacaoProps {
   formacaoId: string;
 }
 
-// Helper function to convert a file to a Base64 data URL
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -35,6 +35,8 @@ const fileToDataURL = (file: File): Promise<string> => {
     reader.onerror = error => reject(error);
   });
 };
+
+const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
 
 
 export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
@@ -48,7 +50,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
-    setLoading(true);
     try {
         const formacaoRef = doc(db, 'formacoes', formacaoId);
         const formacaoSnap = await getDoc(formacaoRef);
@@ -74,6 +75,8 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
             const materiaisSnap = await getDocs(q);
             const materiaisData = materiaisSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Material));
             setMateriais(materiaisData);
+        } else {
+            setMateriais([]);
         }
     } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
@@ -94,18 +97,13 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
     setUploading(true);
     try {
       const dataUrl = await fileToDataURL(file);
-
       const novoAnexo: Anexo = { nome: file.name, url: dataUrl };
-
       const formacaoRef = doc(db, 'formacoes', formacao.id);
       await updateDoc(formacaoRef, {
         anexos: arrayUnion(novoAnexo)
       });
-      
       toast({ title: "Sucesso", description: "Anexo enviado." });
-      
       await fetchData();
-
     } catch (error) {
       console.error("Erro no upload do arquivo:", error);
       toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
@@ -133,6 +131,19 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir o anexo." });
     }
   };
+
+  const handleStatusChange = async (newStatus: FormadorStatus) => {
+    if (!formacao) return;
+    try {
+      const formacaoRef = doc(db, 'formacoes', formacao.id);
+      await updateDoc(formacaoRef, { status: newStatus });
+      setFormacao(prev => prev ? { ...prev, status: newStatus } : null);
+      toast({ title: "Sucesso", description: `Status alterado para ${newStatus}.` });
+    } catch (error) {
+       console.error("Erro ao alterar status:", error);
+       toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+    }
+  }
 
   if (loading) {
     return (
@@ -169,11 +180,22 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
                         <p className="font-medium">{formacao.municipio}</p>
                     </div>
                 </div>
-                 <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                 <div className="flex items-start gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
                     <div>
                         <p className="text-sm text-muted-foreground">Status</p>
-                        <Badge variant="outline">{formacao.status}</Badge>
+                        <Select onValueChange={handleStatusChange} value={formacao.status}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Alterar status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map(option => (
+                                    <SelectItem key={option} value={option}>
+                                        {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </div>
