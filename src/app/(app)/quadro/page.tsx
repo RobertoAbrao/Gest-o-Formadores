@@ -3,13 +3,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { PlusCircle, User, Tag, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import type { Formacao } from '@/lib/types';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import type { Formacao, FormadorStatus } from '@/lib/types';
+import { collection, getDocs, doc, updateDoc, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
@@ -17,14 +16,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ColumnData = {
   title: string;
-  items: Formacao[]; // Changed from Formador to Formacao
+  items: Formacao[];
 };
 
 type Columns = {
   [key: string]: ColumnData;
 };
 
-// The board will now manage Formacao objects, and starts empty.
 const initialColumns: Columns = {
   'preparacao': {
     title: 'Preparação',
@@ -49,15 +47,43 @@ export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false); // Kept for future async operations
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // No longer fetching data on load. The board starts empty.
+  const fetchAndCategorizeFormacoes = useCallback(async () => {
+    setLoading(true);
+    try {
+        const querySnapshot = await getDocs(query(collection(db, 'formacoes'), orderBy('titulo')));
+        const formacoesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
+        
+        const newColumns = { ...initialColumns };
+        // Reset items array for each column to avoid duplicates on re-fetch
+        Object.keys(newColumns).forEach(key => {
+            newColumns[key] = { ...newColumns[key], items: [] };
+        });
+
+        formacoesData.forEach(formacao => {
+            const status = formacao.status || 'preparacao';
+            if (newColumns[status]) {
+                newColumns[status].items.push(formacao);
+            } else {
+                newColumns['preparacao'].items.push(formacao); // Default to preparacao
+            }
+        });
+        
+        setColumns(newColumns);
+    } catch (error) {
+        console.error("Error fetching formations:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar as formações.' });
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
-    // This ensures the component is only rendered on the client, preventing hydration errors with dnd.
     setIsClient(true);
-    setLoading(false); // Set loading to false as we are not fetching data anymore.
-  }, []);
+    fetchAndCategorizeFormacoes();
+  }, [fetchAndCategorizeFormacoes]);
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -70,14 +96,15 @@ export default function QuadroPage() {
         return;
     }
     
-    // This logic now needs to be adapted for Formacao objects when they are added.
-    // For now, it will work with any items moved between columns.
     const sourceColumn = columns[sourceColumnId];
     const destColumn = columns[destColumnId];
     const sourceItems = [...sourceColumn.items];
     const destItems = (sourceColumnId === destColumnId) ? sourceItems : [...destColumn.items];
     const [movedItem] = sourceItems.splice(source.index, 1);
-    destItems.splice(destination.index, 0, movedItem);
+    
+    // Update the status of the moved item
+    const updatedItem = { ...movedItem, status: destColumnId as FormadorStatus };
+    destItems.splice(destination.index, 0, updatedItem);
 
     const newColumnsState = {
         ...columns,
@@ -92,24 +119,21 @@ export default function QuadroPage() {
     };
     setColumns(newColumnsState);
 
-    // TODO: Persist change to Firestore for the Formacao object
     try {
-      // const formacaoRef = doc(db, 'formacoes', draggableId);
-      // await updateDoc(formacaoRef, { status: destColumnId });
-      toast({ title: 'Status Atualizado (Localmente)', description: `O status de "${movedItem.titulo}" foi atualizado.`});
+      const formacaoRef = doc(db, 'formacoes', draggableId);
+      await updateDoc(formacaoRef, { status: destColumnId });
+      toast({ title: 'Status Atualizado!', description: `O status de "${movedItem.titulo}" foi salvo.`});
     } catch (error) {
       console.error("Error updating status:", error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar a alteração.'});
-      // Revert UI change on error
-      // In a real scenario, you'd fetch the original state again.
+      // Revert UI change on error by re-fetching
+      fetchAndCategorizeFormacoes();
     }
   };
 
   const handleSuccess = () => {
     setIsDialogOpen(false);
-    // TODO: Re-fetch formations or update state as needed.
-    // For now, we just close the dialog.
-    toast({ title: "Formulário Fechado", description: "A lógica para adicionar a nova formação ao quadro será implementada."})
+    fetchAndCategorizeFormacoes(); // Re-fetch formations to show the new one.
   }
   
   if (loading || !isClient) {
@@ -176,11 +200,9 @@ export default function QuadroPage() {
                                                     <Card>
                                                         <CardContent className="p-4 space-y-3">
                                                             <p className="text-sm font-semibold flex items-center gap-2">
-                                                                {/* This will be the Formacao title */}
                                                                 {formacao.titulo}
                                                             </p>
                                                              <p className="text-xs text-muted-foreground">
-                                                                {/* This will be the Formacao description */}
                                                                 {formacao.descricao}
                                                             </p>
                                                         </CardContent>
@@ -190,7 +212,7 @@ export default function QuadroPage() {
                                         </Draggable>
                                     ))}
                                     {provided.placeholder}
-                                    {column.items.length === 0 && provided.placeholder && (
+                                    {column.items.length === 0 && !provided.placeholder && (
                                         <div className="text-center text-sm text-muted-foreground py-4">
                                             Arraste itens para esta coluna.
                                         </div>

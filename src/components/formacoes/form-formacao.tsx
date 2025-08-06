@@ -4,6 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { collection, addDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
+import { db } from '@/lib/firebase';
 
 const formSchema = z.object({
   titulo: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
@@ -47,11 +49,18 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-        // TODO: Implement Firestore logic to save the new formation
-        console.log(values);
+        await addDoc(collection(db, "formacoes"), {
+            ...values,
+            status: 'preparacao', // Default status
+            // The other fields will be added later
+            dataInicio: null,
+            dataFim: null,
+            formadoresIds: [],
+            materiaisIds: [],
+        });
         toast({
-            title: 'Funcionalidade em desenvolvimento!',
-            description: 'A criação de novas formações será implementada em breve.',
+            title: 'Sucesso!',
+            description: 'A nova formação foi criada na coluna "Preparação".',
         });
         onSuccess();
     } catch (error: any) {

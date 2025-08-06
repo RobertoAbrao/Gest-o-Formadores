@@ -30,8 +30,9 @@ export interface Formacao {
   id: string;
   titulo: string;
   descricao: string;
-  dataInicio: Timestamp;
-  dataFim: Timestamp;
+  status: FormadorStatus;
+  dataInicio: Timestamp | null;
+  dataFim: Timestamp | null;
   formadoresIds: string[];
   materiaisIds: string[];
 }
