@@ -227,7 +227,15 @@ export default function QuadroPage() {
             if (!open) setSelectedFormacao(null);
           }}>
             <DialogContent className="sm:max-w-2xl">
-                {selectedFormacao && <DetalhesFormacao formacaoId={selectedFormacao.id} />}
+                {selectedFormacao && (
+                  <>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
+                        <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
+                    </DialogHeader>
+                    <DetalhesFormacao formacaoId={selectedFormacao.id} />
+                  </>
+                )}
             </DialogContent>
         </Dialog>
 

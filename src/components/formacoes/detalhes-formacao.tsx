@@ -2,11 +2,6 @@
 'use client';
 
 import {
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   doc,
   getDoc,
   getDocs,
@@ -131,12 +126,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   }
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle className="text-2xl">{formacao.titulo}</DialogTitle>
-        <DialogDescription>{formacao.descricao}</DialogDescription>
-      </DialogHeader>
-      <ScrollArea className="max-h-[70vh]">
+    <ScrollArea className="max-h-[70vh]">
         <div className="space-y-6 p-4">
           <div className="space-y-4">
             <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
@@ -227,6 +217,5 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
           </div>
         </div>
       </ScrollArea>
-    </>
   );
 }
