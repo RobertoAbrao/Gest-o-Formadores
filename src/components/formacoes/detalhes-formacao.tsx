@@ -14,15 +14,19 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2, Archive } from 'lucide-react';
+import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+
 
 interface DetalhesFormacaoProps {
   formacaoId: string;
@@ -46,6 +50,10 @@ const formatDate = (timestamp: Timestamp | null | undefined) => {
     return timestamp.toDate().toLocaleDateString('pt-BR');
 }
 
+const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+};
+
 
 export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
@@ -53,6 +61,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [formador, setFormador] = useState<Formador | null>(null);
   const [materiais, setMateriais] = useState<Material[]>([]);
+  const [despesas, setDespesas] = useState<Despesa[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -71,8 +80,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         setFormacao(formacaoData);
 
+        let formadorId: string | null = null;
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const formadorRef = doc(db, 'formadores', formacaoData.formadoresIds[0]);
+            formadorId = formacaoData.formadoresIds[0];
+            const formadorRef = doc(db, 'formadores', formadorId);
             const formadorSnap = await getDoc(formadorRef);
             if (formadorSnap.exists()) {
                 setFormador({ id: formadorSnap.id, ...formadorSnap.data() } as Formador);
@@ -87,6 +98,23 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         } else {
             setMateriais([]);
         }
+        
+        // Fetch expenses
+        if (formadorId && formacaoData.dataInicio && formacaoData.dataFim) {
+            const qDespesas = query(collection(db, 'despesas'), 
+                where('formadorId', '==', formadorId),
+                where('data', '>=', formacaoData.dataInicio),
+                where('data', '<=', formacaoData.dataFim)
+            );
+            const despesasSnap = await getDocs(qDespesas);
+            const despesasData = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+            despesasData.sort((a, b) => a.data.toMillis() - b.data.toMillis());
+            setDespesas(despesasData);
+        } else {
+            setDespesas([]);
+        }
+
+
     } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os detalhes da formação." });
@@ -179,159 +207,223 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   if (!formacao) {
     return <div className="p-8">Formação não encontrada.</div>;
   }
+  
+  const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
 
   return (
     <ScrollArea className="max-h-[70vh]">
-        <div className="space-y-6 p-4">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
-            <Separator />
-            <div className="grid gap-4 md:grid-cols-2">
-                {formador && (
-                    <div className="flex items-center gap-3">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                            <p className="text-sm text-muted-foreground">Formador</p>
-                            <p className="font-medium">{formador.nomeCompleto}</p>
+        <Tabs defaultValue="info" className="p-4">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="info">Informações Gerais</TabsTrigger>
+                <TabsTrigger value="despesas">
+                    Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
+                </TabsTrigger>
+            </TabsList>
+            <TabsContent value="info">
+                <div className="space-y-6 pt-4">
+                    <div className="space-y-4">
+                        <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
+                        <Separator />
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {formador && (
+                                <div className="flex items-center gap-3">
+                                    <User className="h-5 w-5 text-muted-foreground" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Formador</p>
+                                        <p className="font-medium">{formador.nomeCompleto}</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3">
+                                <MapPin className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Município</p>
+                                    <p className="font-medium">{formacao.municipio}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Data Início</p>
+                                    <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Data Fim</p>
+                                    <p className="font-medium">{formatDate(formacao.dataFim)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    {isArchived ? (
+                                        <Badge variant="secondary">Arquivado</Badge>
+                                    ) : (
+                                        <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue placeholder="Alterar status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {statusOptions.map(option => (
+                                                    <SelectItem key={option} value={option}>
+                                                        {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                )}
-                 <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Município</p>
-                        <p className="font-medium">{formacao.municipio}</p>
-                    </div>
-                </div>
-                 <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Data Início</p>
-                        <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
-                    </div>
-                </div>
-                 <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Data Fim</p>
-                        <p className="font-medium">{formatDate(formacao.dataFim)}</p>
-                    </div>
-                </div>
-                 <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Status</p>
-                        {isArchived ? (
-                             <Badge variant="secondary">Arquivado</Badge>
-                        ) : (
-                            <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Alterar status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {statusOptions.map(option => (
-                                        <SelectItem key={option} value={option}>
-                                            {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    </div>
-                </div>
-            </div>
-          </div>
-          
-          {materiais.length > 0 && (
-            <div className='space-y-4'>
-                <h4 className="font-semibold text-lg">Materiais de Apoio</h4>
-                <Separator />
-                <ul className="list-disc space-y-2 pl-5">
-                    {materiais.map(material => (
-                        <li key={material.id}>
-                            <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                {material.titulo}
-                            </a>
-                             <span className='text-xs text-muted-foreground ml-2'>({material.tipoMaterial})</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
-          )}
+                    
+                    {materiais.length > 0 && (
+                        <div className='space-y-4'>
+                            <h4 className="font-semibold text-lg">Materiais de Apoio</h4>
+                            <Separator />
+                            <ul className="list-disc space-y-2 pl-5">
+                                {materiais.map(material => (
+                                    <li key={material.id}>
+                                        <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            {material.titulo}
+                                        </a>
+                                        <span className='text-xs text-muted-foreground ml-2'>({material.tipoMaterial})</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
 
-          <div className="space-y-4">
-             <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-lg">Anexos e Atas</h4>
-                 {!isArchived && (
-                    <>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileUpload}
-                            className="hidden"
-                            disabled={uploading}
-                        />
-                        <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                            {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
-                            Enviar Arquivo
-                        </Button>
-                    </>
-                 )}
-             </div>
-             <Separator />
-             {(!formacao.anexos || formacao.anexos.length === 0) ? (
-                <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                    <p>
-                        <Paperclip className="h-6 w-6 mx-auto mb-2"/>
-                        Nenhum anexo encontrado.
-                    </p>
-                </div>
-             ) : (
-                <div className="space-y-2">
-                    {formacao.anexos.map((anexo, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors group">
-                           <a 
-                                href={anexo.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                download={anexo.nome}
-                                className="flex items-center flex-1 truncate"
-                            >
-                                <File className="h-5 w-5 mr-3 text-primary" />
-                                <span className="truncate text-sm">{anexo.nome}</span>
-                            </a>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-lg">Anexos e Atas</h4>
                             {!isArchived && (
-                                <Button 
-                                    size="icon" 
-                                    variant="ghost" 
-                                    className="h-7 w-7 opacity-50 group-hover:opacity-100"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        handleDeleteAnexo(anexo);
-                                    }}
-                                >
-                                    <Trash2 className="h-4 w-4 text-destructive"/>
-                                </Button>
+                                <>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        disabled={uploading}
+                                    />
+                                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                                        {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
+                                        Enviar Arquivo
+                                    </Button>
+                                </>
                             )}
                         </div>
-                    ))}
+                        <Separator />
+                        {(!formacao.anexos || formacao.anexos.length === 0) ? (
+                            <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                                <p>
+                                    <Paperclip className="h-6 w-6 mx-auto mb-2"/>
+                                    Nenhum anexo encontrado.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {formacao.anexos.map((anexo, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors group">
+                                    <a 
+                                            href={anexo.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            download={anexo.nome}
+                                            className="flex items-center flex-1 truncate"
+                                        >
+                                            <FileIcon className="h-5 w-5 mr-3 text-primary" />
+                                            <span className="truncate text-sm">{anexo.nome}</span>
+                                        </a>
+                                        {!isArchived && (
+                                            <Button 
+                                                size="icon" 
+                                                variant="ghost" 
+                                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    e.preventDefault();
+                                                    handleDeleteAnexo(anexo);
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {!isArchived && formacao.status === 'concluido' && (
+                        <div className="space-y-4 pt-4 border-t">
+                            <h4 className="font-semibold text-lg">Ações</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Esta formação foi concluída. Você pode arquivá-la para removê-la do quadro principal.
+                            </p>
+                            <Button variant="outline" onClick={handleArchive}>
+                                <Archive className="mr-2 h-4 w-4" />
+                                Arquivar Formação
+                            </Button>
+                        </div>
+                    )}
                 </div>
-             )}
-          </div>
-          {!isArchived && formacao.status === 'concluido' && (
-            <div className="space-y-4 pt-4 border-t">
-                <h4 className="font-semibold text-lg">Ações</h4>
-                <p className="text-sm text-muted-foreground">
-                    Esta formação foi concluída. Você pode arquivá-la para removê-la do quadro principal.
-                </p>
-                <Button variant="outline" onClick={handleArchive}>
-                    <Archive className="mr-2 h-4 w-4" />
-                    Arquivar Formação
-                </Button>
-            </div>
-          )}
-        </div>
+            </TabsContent>
+            <TabsContent value="despesas">
+                 <div className="space-y-6 pt-4">
+                    <div className="flex justify-between items-center">
+                         <h4 className="font-semibold text-lg">Relatório de Despesas</h4>
+                         <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Total</p>
+                             <p className="text-xl font-bold text-primary">{formatCurrency(totalDespesas)}</p>
+                         </div>
+                    </div>
+                    <Separator />
+                     {despesas.length === 0 ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                            <p>
+                                <DollarSign className="h-6 w-6 mx-auto mb-2"/>
+                                Nenhuma despesa encontrada para esta formação.
+                            </p>
+                        </div>
+                     ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Data</TableHead>
+                                        <TableHead>Tipo</TableHead>
+                                        <TableHead>Descrição</TableHead>
+                                        <TableHead className="text-right">Valor</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {despesas.map(despesa => (
+                                        <TableRow key={despesa.id}>
+                                            <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                            <TableCell><Badge variant="outline">{despesa.tipo}</Badge></TableCell>
+                                            <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
+                                            <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                         </div>
+                     )}
+                     { !formacao.dataInicio || !formacao.dataFim && (
+                         <Alert variant="default">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Datas não definidas</AlertTitle>
+                            <AlertDescription>
+                                Para visualizar as despesas, defina as datas de início e fim da formação.
+                            </AlertDescription>
+                        </Alert>
+                     )}
+                 </div>
+            </TabsContent>
+        </Tabs>
       </ScrollArea>
   );
 }
