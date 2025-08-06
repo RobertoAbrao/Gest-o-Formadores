@@ -37,7 +37,13 @@ const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
-  valor: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Valor inválido" }).transform(val => parseFloat(val)).refine(val => val > 0, { message: 'O valor deve ser maior que zero.' }),
+  valor: z
+    .string()
+    .refine((val) => val && val.trim() !== '', { message: 'O valor é obrigatório.' })
+    .transform((val) => (val ? val.replace(/\./g, '').replace(',', '.') : '0'))
+    .refine((val) => !isNaN(parseFloat(val)), { message: 'Valor inválido.' })
+    .transform((val) => parseFloat(val))
+    .refine((val) => val > 0, { message: 'O valor deve ser maior que zero.' }),
   comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
 });
 
@@ -66,7 +72,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
       data: toDate(despesa?.data) || new Date(),
       tipo: despesa?.tipo,
       descricao: despesa?.descricao || '',
-      valor: despesa?.valor || 0,
+      valor: despesa?.valor || undefined,
       comprovanteUrl: despesa?.comprovanteUrl || '',
     },
   });
@@ -180,7 +186,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
               <FormControl>
                  <CurrencyInput
                     id="valor"
-                    name="valor"
+                    name={field.name}
                     placeholder="R$ 0,00"
                     defaultValue={field.value}
                     decimalsLimit={2}
