@@ -7,8 +7,6 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
 
 import { Button } from '@/components/ui/button';
 import {
@@ -24,9 +22,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { Despesa, TipoDespesa } from '@/lib/types';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Loader2, CalendarIcon, UploadCloud, File as FileIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Calendar } from '../ui/calendar';
@@ -35,7 +33,7 @@ import { cn } from '@/lib/utils';
 
 const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB, to be safe with Firestore document limits
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
@@ -43,13 +41,13 @@ const formSchema = z.object({
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
   valor: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
+    (a) => parseFloat(String(a).replace(",", ".")),
     z.number({invalid_type_error: "O valor é obrigatório."})
     .positive({ message: 'O valor deve ser maior que zero.' })
   ),
   comprovante: z
     .custom<FileList>()
-    .refine((files) => files === undefined || files.length === 0 || files?.[0]?.size <= MAX_FILE_SIZE, `O tamanho máximo do arquivo é 5MB.`)
+    .refine((files) => files === undefined || files.length === 0 || files?.[0]?.size <= MAX_FILE_SIZE, `O tamanho máximo do arquivo é 1MB.`)
     .refine((files) => files === undefined || files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type), "Apenas arquivos .jpg, .jpeg, .png e .webp são aceitos.")
     .optional(),
   comprovanteUrl: z.string().optional(),
@@ -63,6 +61,15 @@ interface FormDespesaProps {
     onSuccess: () => void;
 }
 
+const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+};
+
 export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -70,7 +77,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
 
   const isEditMode = !!despesa;
   
-  const comprovanteRef = React.useRef<HTMLInputElement>(null);
+  const comprovanteRef = useRef<HTMLInputElement>(null);
 
   const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
     return timestamp ? timestamp.toDate() : undefined;
@@ -102,10 +109,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
         const file = values.comprovante?.[0];
 
         if (file) {
-            const filePath = `comprovantes/${user.uid}/${Date.now()}_${file.name}`;
-            const storageRef = ref(storage, filePath);
-            const uploadResult = await uploadBytes(storageRef, file);
-            fileUrl = await getDownloadURL(uploadResult.ref);
+            fileUrl = await fileToDataURL(file);
         }
 
         const dataToSave = {
@@ -131,7 +135,9 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar despesa',
-        description: 'Ocorreu um erro ao salvar. Tente novamente.',
+        description: error.message.includes('permission-denied') 
+            ? 'Você não tem permissão para salvar esta despesa.'
+            : 'Ocorreu um erro ao salvar. Verifique os dados e tente novamente.',
       });
     } finally {
         setLoading(false);
@@ -209,7 +215,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             <FormItem>
               <FormLabel>Valor (R$)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="Ex: 50.99" {...field} value={field.value || ''} />
+                <Input type="number" step="0.01" placeholder="Ex: 50,99" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -267,7 +273,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                        </a>
                     </div>
                 )}
-                <FormDescription>Envie a foto do seu comprovante. (Máx 5MB)</FormDescription>
+                <FormDescription>Envie a foto do seu comprovante. (Máx 1MB)</FormDescription>
                 <FormMessage />
                 </FormItem>
             )}
