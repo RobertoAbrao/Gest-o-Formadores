@@ -25,3 +25,13 @@ export interface Material {
   dataUpload: Timestamp;
   url: string; // URL para acesso (download, link externo, vídeo)
 }
+
+export interface Formacao {
+  id: string;
+  titulo: string;
+  descricao: string;
+  dataInicio: Timestamp;
+  dataFim: Timestamp;
+  formadoresIds: string[];
+  materiaisIds: string[];
+}

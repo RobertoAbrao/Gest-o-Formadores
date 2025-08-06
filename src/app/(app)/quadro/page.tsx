@@ -7,10 +7,13 @@ import { PlusCircle, User, Tag, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import type { Formador } from '@/lib/types';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { FormFormacao } from '@/components/formacoes/form-formacao';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ColumnData = {
   title: string;
@@ -46,6 +49,7 @@ export default function QuadroPage() {
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchAndCategorizeFormadores = useCallback(async () => {
     setLoading(true);
@@ -123,6 +127,11 @@ export default function QuadroPage() {
       fetchAndCategorizeFormadores(); // Re-fetch to revert optimistic update on fail
     }
   };
+
+  const handleSuccess = () => {
+    setIsDialogOpen(false);
+    // Here you would re-fetch the formations, but we don't have them yet.
+  }
   
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
@@ -131,10 +140,27 @@ export default function QuadroPage() {
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
                 <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
             </div>
-            <Button disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Criar uma Formação
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Criar uma Formação
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Nova Formação</DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados para criar uma nova formação.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className='max-h-[80vh]'>
+                    <div className='p-4'>
+                        <FormFormacao onSuccess={handleSuccess} />
+                    </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
         </div>
         {loading && (
              <div className="flex h-[50vh] w-full items-center justify-center">
