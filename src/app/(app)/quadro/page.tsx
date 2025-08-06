@@ -1,110 +1,131 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { PlusCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { User, Tag } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import type { Formador } from '@/lib/types';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
-type Task = {
-  id: string;
-  content: string;
-};
-
-type Column = {
-  id: string;
+type ColumnData = {
   title: string;
-  tasks: Task[];
+  items: Formador[];
 };
 
 type Columns = {
-  [key: string]: Column;
+  [key: string]: ColumnData;
 };
 
 const initialColumns: Columns = {
-  'todo': {
-    id: 'todo',
-    title: 'A Fazer',
-    tasks: [
-      { id: 'task-1', content: 'Revisar material de Português' },
-      { id: 'task-2', content: 'Agendar reunião com formadores de matemática' },
-    ],
+  'nao-iniciado': {
+    title: 'Não Iniciado',
+    items: [],
   },
-  'inProgress': {
-    id: 'inProgress',
-    title: 'Em Andamento',
-    tasks: [
-        { id: 'task-3', content: 'Desenvolver novo módulo de Ciências' },
-    ],
+  'em-formacao': {
+    title: 'Em Formação',
+    items: [],
   },
-  'done': {
-    id: 'done',
-    title: 'Concluído',
-    tasks: [
-        { id: 'task-4', content: 'Finalizar relatório do primeiro semestre' },
-    ],
+  'ativo': {
+    title: 'Ativo',
+    items: [],
+  },
+  'inativo': {
+    title: 'Inativo',
+    items: [],
   },
 };
+
 
 export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
+
+  const fetchAndCategorizeFormadores = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'formadores'));
+      const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+      
+      const newColumns = JSON.parse(JSON.stringify(initialColumns));
+
+      formadoresData.forEach(formador => {
+        const status = formador.status || 'ativo'; // Default to 'ativo' if status is not set
+        if (newColumns[status]) {
+          newColumns[status].items.push(formador);
+        } else {
+            // If formador has an unknown status, add them to a default column
+            newColumns['ativo'].items.push(formador);
+        }
+      });
+
+      setColumns(newColumns);
+
+    } catch (error) {
+      console.error("Error fetching formadores:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os formadores.'});
+    }
+  }, [toast]);
 
   useEffect(() => {
+    fetchAndCategorizeFormadores();
     setIsClient(true);
-  }, []);
+  }, [fetchAndCategorizeFormadores]);
 
-  const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
+  const onDragEnd = async (result: DropResult) => {
+    const { source, destination, draggableId } = result;
     if (!destination) return;
 
-    if (source.droppableId === destination.droppableId) {
-      // Moving within the same column
-      const column = columns[source.droppableId];
-      const newTasks = Array.from(column.tasks);
-      const [removed] = newTasks.splice(source.index, 1);
-      newTasks.splice(destination.index, 0, removed);
+    const sourceColumnId = source.droppableId;
+    const destColumnId = destination.droppableId;
+    
+    // Optimistic UI Update
+    const sourceColumn = columns[sourceColumnId];
+    const destColumn = columns[destColumnId];
+    const sourceItems = [...sourceColumn.items];
+    const destItems = (sourceColumnId === destColumnId) ? sourceItems : [...destColumn.items];
+    const [movedItem] = sourceItems.splice(source.index, 1);
+    destItems.splice(destination.index, 0, movedItem);
 
-      setColumns({
+    const newColumnsState = {
         ...columns,
-        [source.droppableId]: {
-          ...column,
-          tasks: newTasks,
+        [sourceColumnId]: {
+            ...sourceColumn,
+            items: sourceItems,
         },
-      });
-    } else {
-      // Moving to a different column
-      const sourceColumn = columns[source.droppableId];
-      const destColumn = columns[destination.droppableId];
-      const sourceTasks = Array.from(sourceColumn.tasks);
-      const destTasks = Array.from(destColumn.tasks);
-      const [removed] = sourceTasks.splice(source.index, 1);
-      destTasks.splice(destination.index, 0, removed);
+        [destColumnId]: {
+            ...destColumn,
+            items: destItems,
+        },
+    };
+    setColumns(newColumnsState);
 
-      setColumns({
-        ...columns,
-        [source.droppableId]: {
-          ...sourceColumn,
-          tasks: sourceTasks,
-        },
-        [destination.droppableId]: {
-          ...destColumn,
-          tasks: destTasks,
-        },
-      });
+    // Update Firestore
+    try {
+      const formadorRef = doc(db, 'formadores', draggableId);
+      await updateDoc(formadorRef, { status: destColumnId });
+      toast({ title: 'Sucesso!', description: `Status de ${movedItem.nomeCompleto} atualizado para "${columns[destColumnId].title}".`});
+    } catch (error) {
+      console.error("Error updating formador status:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status do formador.'});
+      // Revert UI change on error
+      fetchAndCategorizeFormadores();
     }
   };
+  
 
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Quadro de Tarefas</h1>
-            <p className="text-muted-foreground">Organize e acompanhe o fluxo de trabalho.</p>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
+            <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
         </div>
         {isClient ? (
             <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
                     {Object.entries(columns).map(([columnId, column]) => (
                         <Droppable key={columnId} droppableId={columnId}>
                             {(provided, snapshot) => (
@@ -114,14 +135,11 @@ export default function QuadroPage() {
                                     className={`flex flex-col gap-4 p-4 rounded-lg h-full bg-muted/50 ${snapshot.isDraggingOver ? 'bg-primary/10' : ''}`}
                                 >
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-lg font-semibold font-headline">{column.title}</h2>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
+                                        <h2 className="text-lg font-semibold font-headline">{column.title} <span className='text-sm font-light text-muted-foreground'>({column.items.length})</span></h2>
                                     </div>
-                                    <div className="flex flex-col gap-4">
-                                        {column.tasks.map((task, index) => (
-                                            <Draggable key={task.id} draggableId={task.id} index={index}>
+                                    <div className="flex flex-col gap-4 min-h-[200px]">
+                                        {column.items.map((formador, index) => (
+                                            <Draggable key={formador.id} draggableId={formador.id} index={index}>
                                                 {(provided, snapshot) => (
                                                     <div
                                                         ref={provided.innerRef}
@@ -130,8 +148,22 @@ export default function QuadroPage() {
                                                         className={`shadow-md hover:shadow-lg transition-shadow rounded-lg ${snapshot.isDragging ? 'ring-2 ring-primary' : ''}`}
                                                     >
                                                         <Card>
-                                                            <CardContent className="p-4">
-                                                                <p className="text-sm">{task.content}</p>
+                                                            <CardContent className="p-4 space-y-3">
+                                                                <p className="text-sm font-semibold flex items-center gap-2">
+                                                                    <User className='h-4 w-4 text-primary'/>
+                                                                    {formador.nomeCompleto}
+                                                                </p>
+                                                                <div className='flex flex-wrap gap-1'>
+                                                                    {formador.municipiosResponsaveis.slice(0, 3).map(m => (
+                                                                        <Badge key={m} variant="secondary" className='text-xs'>
+                                                                            <Tag className='h-3 w-3 mr-1'/>
+                                                                            {m}
+                                                                        </Badge>
+                                                                    ))}
+                                                                    {formador.municipiosResponsaveis.length > 3 && (
+                                                                        <Badge variant="outline">...</Badge>
+                                                                    )}
+                                                                </div>
                                                             </CardContent>
                                                         </Card>
                                                     </div>
