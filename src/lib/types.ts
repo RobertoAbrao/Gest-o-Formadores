@@ -1,7 +1,10 @@
+
 import { Timestamp } from 'firebase/firestore';
 
 export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word';
 export type FormadorStatus = 'preparacao' | 'em-formacao' | 'pos-formacao' | 'concluido' | 'arquivado';
+export type TipoDespesa = 'Alimentação' | 'Transporte' | 'Hospedagem' | 'Material Didático' | 'Outros';
+
 
 export interface Formador {
   id: string;
@@ -46,4 +49,12 @@ export interface Formacao {
   anexos?: Anexo[]; 
 }
 
-    
+export interface Despesa {
+    id: string;
+    formadorId: string;
+    data: Timestamp;
+    tipo: TipoDespesa;
+    descricao: string;
+    valor: number;
+    comprovanteUrl?: string; // URL para o comprovante
+}

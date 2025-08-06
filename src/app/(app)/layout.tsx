@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -12,6 +13,7 @@ import {
   PanelLeft,
   KanbanSquare,
   Archive,
+  DollarSign,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -60,6 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ]
       : [
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
+          { href: '/despesas', label: 'Relatório de Despesas', icon: DollarSign },
           { href: '/perfil', label: 'Meu Perfil', icon: UserIcon },
         ];
 
