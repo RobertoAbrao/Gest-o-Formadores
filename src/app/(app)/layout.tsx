@@ -10,7 +10,6 @@ import {
   LogOut,
   Loader2,
   PanelLeft,
-  ClipboardCheck,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -54,7 +53,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { href: '/formadores', label: 'Formadores', icon: Users },
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
-          { href: '/quadro', label: 'Quadro', icon: ClipboardCheck },
         ]
       : [
           { href: '/materiais', label: 'Materiais', icon: BookCopy },

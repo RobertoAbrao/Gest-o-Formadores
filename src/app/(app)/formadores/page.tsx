@@ -23,7 +23,7 @@ import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2 } from 'luc
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormFormador } from '@/components/formadores/form-formador';
@@ -38,6 +38,7 @@ export default function FormadoresPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFormador, setSelectedFormador] = useState<Formador | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchFormadores = useCallback(async () => {
     setLoading(true);
@@ -68,8 +69,9 @@ export default function FormadoresPage() {
   }
   
   const handleDelete = async (formadorId: string) => {
-    // This function now proceeds without a browser confirmation dialog.
-    // The action is initiated from a specific user menu, which is sufficient confirmation.
+    if (!window.confirm('Tem certeza que deseja excluir este formador? Esta ação não pode ser desfeita.')) {
+        return;
+    }
     try {
         await deleteDoc(doc(db, "formadores", formadorId));
         await deleteDoc(doc(db, "usuarios", formadorId));
@@ -85,6 +87,14 @@ export default function FormadoresPage() {
     setSelectedFormador(formador);
     setIsDialogOpen(true);
   }
+
+  const filteredFormadores = useMemo(() => {
+    if (!searchTerm) return formadores;
+    return formadores.filter(f => 
+        f.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        f.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [formadores, searchTerm]);
 
   if (!user || user.perfil !== 'administrador') {
     return (
@@ -137,7 +147,12 @@ export default function FormadoresPage() {
 
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar formador por nome ou email..." className="pl-8" />
+        <Input 
+          placeholder="Buscar formador por nome ou email..." 
+          className="pl-8"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
       <div className="border rounded-lg overflow-hidden">
@@ -151,7 +166,7 @@ export default function FormadoresPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formadores.map((formador) => (
+            {filteredFormadores.map((formador) => (
               <TableRow key={formador.id}>
                 <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
