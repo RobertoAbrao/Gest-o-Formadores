@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip, Eye } from 'lucide-react';
 import type { Despesa, TipoDespesa } from '@/lib/types';
@@ -165,6 +165,9 @@ export default function DespesasPage() {
                 <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>{selectedDespesa ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
+                        <DialogDescription>
+                            Preencha os campos abaixo para adicionar ou editar uma despesa.
+                        </DialogDescription>
                     </DialogHeader>
                     <ScrollArea className='max-h-[80vh]'>
                         <div className='p-4'>
@@ -269,6 +272,9 @@ export default function DespesasPage() {
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>Detalhes da Despesa</DialogTitle>
+                    <DialogDescription>
+                        Visualize as informações completas da despesa.
+                    </DialogDescription>
                 </DialogHeader>
                 {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
             </DialogContent>

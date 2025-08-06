@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -137,6 +137,7 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
       <SheetContent side="left" className="flex flex-col">
         <SheetHeader>
             <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
+            <SheetDescription className="sr-only">Navegue pelas seções do aplicativo.</SheetDescription>
         </SheetHeader>
         <nav className="grid gap-2 text-lg font-medium">
           <Link href="/dashboard" className="mb-4">
