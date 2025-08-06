@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -112,45 +113,37 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
 
   const handleSelect = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds');
-    if (currentIds.includes(formadorId)) {
-        form.setValue('formadoresIds', currentIds.filter(id => id !== formadorId));
+    const isSelected = currentIds.includes(formadorId);
+    
+    let newIds: string[];
+    if (isSelected) {
+        newIds = currentIds.filter(id => id !== formadorId);
     } else {
-        form.setValue('formadoresIds', [...currentIds, formadorId]);
+        newIds = [...currentIds, formadorId];
+    }
+    form.setValue('formadoresIds', newIds);
+
+    // Auto-fill logic
+    if (newIds.length > 0) {
+        const lastSelectedId = newIds[newIds.length - 1];
+        const formador = formadores.find(f => f.id === lastSelectedId);
+        if (formador) {
+            form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
+            const desc = formador.municipiosResponsaveis.length > 0 
+                ? `Acompanhamento pedagógico para o município de ${formador.municipiosResponsaveis[0]}`
+                : 'Formador sem município responsável definido.';
+            form.setValue('descricao', desc, { shouldValidate: true });
+        }
+    } else {
+        // Clear fields if no formador is selected
+        form.setValue('titulo', '', { shouldValidate: true });
+        form.setValue('descricao', '', { shouldValidate: true });
     }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="titulo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Título da Formação</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: Formação Inicial 2024" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="descricao"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Descreva o objetivo da formação"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         
         <FormField
           control={form.control}
@@ -203,7 +196,36 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
             </FormItem>
           )}
         />
-
+        
+        <FormField
+          control={form.control}
+          name="titulo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Título da Formação</FormLabel>
+              <FormControl>
+                <Input placeholder="Ex: Formação Inicial 2024" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="descricao"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Descrição</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Descreva o objetivo da formação"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="pt-4">
           <p className="text-sm text-muted-foreground">
@@ -222,3 +244,5 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
