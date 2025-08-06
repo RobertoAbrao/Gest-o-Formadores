@@ -150,7 +150,8 @@ export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps)
   const handleArchive = async () => {
     if (!formacao || !window.confirm('Tem certeza que deseja arquivar esta formação?')) return;
     try {
-        await handleStatusChange('arquivado');
+        const formacaoRef = doc(db, 'formacoes', formacao.id);
+        await updateDoc(formacaoRef, { status: 'arquivado' });
         toast({ title: "Sucesso", description: "Formação arquivada." });
         onClose();
     } catch (error) {
