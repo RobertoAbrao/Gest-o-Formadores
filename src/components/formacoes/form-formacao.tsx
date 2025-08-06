@@ -204,8 +204,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const handleMunicipioChange = (municipio: string) => {
     form.setValue('municipio', municipio, { shouldValidate: true });
     if (!isEditMode && municipio) {
-        const uf = form.getValues('uf');
-        const title = `${municipio} - ${uf}`;
+        const title = municipio;
         const desc = `Acompanhamento pedagógico para o município de ${municipio}.`;
         form.setValue('titulo', title, { shouldValidate: true });
         form.setValue('descricao', desc, { shouldValidate: true });
