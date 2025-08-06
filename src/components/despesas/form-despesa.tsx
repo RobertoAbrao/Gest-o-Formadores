@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -36,7 +37,13 @@ const formSchema = z.object({
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
   valor: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
+    (a) => {
+        if(typeof a === 'string') {
+            const sanitized = a.replace(/\./g, '').replace(',', '.');
+            return parseFloat(sanitized)
+        }
+        return a;
+    },
     z.number({invalid_type_error: "O valor é obrigatório."})
     .positive({ message: 'O valor deve ser maior que zero.' })
   ),
@@ -180,7 +187,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             <FormItem>
               <FormLabel>Valor (R$)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="Ex: 50.99" {...field} />
+                <Input type="number" step="0.01" placeholder="Ex: 50,99" {...field} value={field.value || ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
