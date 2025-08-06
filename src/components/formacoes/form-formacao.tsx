@@ -78,28 +78,23 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   useEffect(() => {
     const fetchFormadores = async () => {
+        setLoading(true);
         try {
             const querySnapshot = await getDocs(collection(db, 'formadores'));
             const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setFormadores(formadoresData);
-
-            if (formacao && formacao.formadoresIds.length > 0) {
-              const mainFormadorId = formacao.formadoresIds[0];
-              const formador = formadoresData.find(f => f.id === mainFormadorId);
-              if (formador) {
-                setAvailableMunicipios(formador.municipiosResponsaveis || []);
-              }
-            }
         } catch (error) {
             console.error("Failed to fetch formadores", error);
+        } finally {
+            setLoading(false);
         }
     };
     fetchFormadores();
-  }, [formacao]);
+  }, []);
 
 
   useEffect(() => {
-    if (formacao) {
+    if (formacao && formadores.length > 0) {
       form.reset({
         titulo: formacao.titulo || '',
         descricao: formacao.descricao || '',
@@ -107,6 +102,11 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         municipio: formacao.municipio || '',
         materiaisIds: formacao.materiaisIds || [],
       });
+      const mainFormadorId = formacao.formadoresIds[0];
+      const formador = formadores.find(f => f.id === mainFormadorId);
+      if (formador) {
+        setAvailableMunicipios(formador.municipiosResponsaveis || []);
+      }
     } else {
         form.reset({
             titulo: '',
@@ -115,8 +115,9 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             municipio: '',
             materiaisIds: [],
         });
+        setAvailableMunicipios([]);
     }
-  }, [formacao, form]);
+  }, [formacao, form, formadores]);
 
 
   async function onSubmit(values: FormValues) {
