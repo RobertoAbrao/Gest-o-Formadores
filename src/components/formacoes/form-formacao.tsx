@@ -184,7 +184,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     const formador = formadores.find(f => f.id === formadorId);
     if (formador) {
         if (!isEditMode) {
-          form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
+          form.setValue('titulo', '', { shouldValidate: true });
           form.setValue('descricao', '', { shouldValidate: true });
         }
         form.setValue('municipio', '', { shouldValidate: true });
