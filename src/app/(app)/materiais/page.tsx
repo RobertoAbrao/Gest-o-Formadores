@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2 } from 'lucide-react';
 import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -47,7 +48,8 @@ export default function MateriaisPage() {
   const isAdmin = user?.perfil === 'administrador';
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const { toast } = useToast();
 
@@ -72,27 +74,33 @@ export default function MateriaisPage() {
 
   const handleSuccess = () => {
     fetchMateriais();
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     setSelectedMaterial(null);
   }
 
-  const handleDelete = async (material: Material) => {
-    if(!confirm('Tem certeza que deseja excluir este material? Esta ação não pode ser desfeita.')) return;
+  const handleDeleteConfirm = async () => {
+    if (!selectedMaterial) return;
     try {
-        // Delete the Firestore document
-        await deleteDoc(doc(db, "materiais", material.id));
-
+        await deleteDoc(doc(db, "materiais", selectedMaterial.id));
         toast({ title: 'Sucesso!', description: 'Material excluído com sucesso.' });
         fetchMateriais();
     } catch (error) {
         console.error("Error deleting material: ", error);
         toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir o material.' });
+    } finally {
+        setIsDeleteDialogOpen(false);
+        setSelectedMaterial(null);
     }
+  }
+  
+  const openDeleteDialog = (material: Material) => {
+    setSelectedMaterial(material);
+    setIsDeleteDialogOpen(true);
   }
 
   const openEditDialog = (material: Material) => {
     setSelectedMaterial(material);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   }
 
 
@@ -106,8 +114,8 @@ export default function MateriaisPage() {
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
+        <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
+            setIsFormDialogOpen(open);
             if (!open) setSelectedMaterial(null);
         }}>
             <div className="flex items-center justify-between">
@@ -180,7 +188,7 @@ export default function MateriaisPage() {
                           <DropdownMenuItem onClick={() => openEditDialog(material)}>
                             <Pencil className="mr-2 h-4 w-4" /> Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(material)}>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(material)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Excluir
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -200,6 +208,24 @@ export default function MateriaisPage() {
           </TableBody>
         </Table>
       </div>
+
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isso excluirá permanentemente o material
+                        dos nossos servidores.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setSelectedMaterial(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+                        Sim, excluir
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
