@@ -254,5 +254,3 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       </ScrollArea>
   );
 }
-
-    
