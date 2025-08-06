@@ -6,7 +6,6 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import CurrencyInput from 'react-currency-input-field';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,9 +35,11 @@ const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
-  valor: z
-    .number({invalid_type_error: "O valor é obrigatório."})
-    .positive({ message: 'O valor deve ser maior que zero.' }),
+  valor: z.preprocess(
+    (a) => parseFloat(z.string().parse(a)),
+    z.number({invalid_type_error: "O valor é obrigatório."})
+    .positive({ message: 'O valor deve ser maior que zero.' })
+  ),
   comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
 });
 
@@ -179,17 +180,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             <FormItem>
               <FormLabel>Valor (R$)</FormLabel>
               <FormControl>
-                 <CurrencyInput
-                    id="valor"
-                    name={field.name}
-                    placeholder="R$ 0,00"
-                    value={field.value}
-                    onValueChange={(value, name, values) => {
-                      field.onChange(values?.float);
-                    }}
-                    intlConfig={{ locale: 'pt-BR', currency: 'BRL' }}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                />
+                <Input type="number" step="0.01" placeholder="Ex: 50.99" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
