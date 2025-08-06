@@ -17,13 +17,18 @@ import { useRouter } from 'next/navigation';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adminPassword, setAdminPassword] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // User is signed in, let's fetch their profile from Firestore.
+        if(user && user.uid === firebaseUser.uid) {
+          // User data is already loaded, no need to fetch again.
+          // This prevents state updates on re-login during user creation.
+          setLoading(false);
+          return;
+        }
+
         const userDocRef = doc(db, 'usuarios', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
@@ -37,52 +42,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: firebaseUser.email,
             nome: nome,
             perfil: role,
-            adminPassword: role === 'administrador' ? adminPassword || undefined : undefined,
+            // Keep admin password from previous state if available
+            adminPassword: user?.perfil === 'administrador' ? user.adminPassword : undefined,
           };
           
           setUser(loggedInUser);
           
-          // Redirect only if the path is not the target path
           const targetPath = role === 'administrador' ? '/dashboard' : '/materiais';
-          if (window.location.pathname !== targetPath) {
+          if (window.location.pathname !== targetPath && !window.location.pathname.startsWith('/formadores')) {
              router.replace(targetPath);
           }
 
         } else {
-            // This case might happen if the user document is not created yet
-            // or if there's an error. We log them out to be safe.
             console.error("User document not found in Firestore. Logging out.");
             await signOut(auth);
             setUser(null);
         }
 
       } else {
-        // User is signed out
         setUser(null);
-        setAdminPassword(null);
       }
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [router, adminPassword]);
+  }, [router, user]);
 
   const login = async (email: string, password: string): Promise<UserCredential> => {
     setLoading(true);
-    // Store admin password temporarily if the user is an admin.
-    // This is a workaround for the client-side user creation flow.
-    const potentialAdminRef = doc(db, 'usuarios', 'placeholder'); // Temporary, this won't work to check role before login
-    // A better approach would be a cloud function `getUserRole(email)`.
-    // For now, we'll store the password and attach it to the user object if they are an admin.
-    setAdminPassword(password);
-    return signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+
+    const userDocRef = doc(db, 'usuarios', firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      if (userData.perfil === 'administrador') {
+        // Store the password in the user object ONLY for admins
+        setUser(prevUser => ({
+          ...prevUser,
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          nome: userData.nome,
+          perfil: 'administrador',
+          adminPassword: password, // <-- Here is the critical change
+        }));
+      }
+    }
+    
+    return userCredential;
   };
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    setAdminPassword(null);
     router.push('/');
   };
 
@@ -90,7 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // This function is no longer needed for the login flow.
   };
   
-  // Display a loading indicator while checking auth state
   if (loading && !user) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
