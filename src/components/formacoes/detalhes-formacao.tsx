@@ -416,16 +416,14 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                             <TableCell className="text-center">
                                                 <Button 
                                                     variant="outline" 
-                                                    size="sm" 
+                                                    size="sm"
+                                                    asChild 
                                                     disabled={!despesa.comprovanteUrl}
-                                                    onClick={() => {
-                                                        if (despesa.comprovanteUrl) {
-                                                            window.open(despesa.comprovanteUrl, '_blank');
-                                                        }
-                                                    }}
                                                 >
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Visualizar
+                                                    <a href={despesa.comprovanteUrl} target="_blank" rel="noopener noreferrer">
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Visualizar
+                                                    </a>
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
