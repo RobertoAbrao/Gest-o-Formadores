@@ -82,7 +82,11 @@ export default function QuadroPage() {
     const sourceColumnId = source.droppableId;
     const destColumnId = destination.droppableId;
     
-    // Optimistic UI Update
+    // Do not do anything if the item is dropped in the same place
+    if (sourceColumnId === destColumnId && source.index === destination.index) {
+        return;
+    }
+    
     const sourceColumn = columns[sourceColumnId];
     const destColumn = columns[destColumnId];
     const sourceItems = [...sourceColumn.items];
