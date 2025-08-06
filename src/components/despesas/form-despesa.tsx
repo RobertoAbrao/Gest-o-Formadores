@@ -93,7 +93,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             toast({ title: 'Sucesso!', description: 'Despesa atualizada com sucesso.' });
         } else {
             const newDocRef = doc(collection(db, 'despesas'));
-            await setDoc(newDocRef, dataToSave);
+            await setDoc(newDocRef, { ...dataToSave, dataCriacao: serverTimestamp() });
             toast({ title: 'Sucesso!', description: 'Despesa criada com sucesso.' });
         }
         onSuccess();
@@ -184,12 +184,11 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                     id="valor"
                     name={field.name}
                     placeholder="R$ 0,00"
-                    defaultValue={field.value}
-                    decimalsLimit={2}
-                    intlConfig={{ locale: 'pt-BR', currency: 'BRL' }}
+                    value={field.value}
                     onValueChange={(value, name, values) => {
                       field.onChange(values?.float);
                     }}
+                    intlConfig={{ locale: 'pt-BR', currency: 'BRL' }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 />
               </FormControl>
