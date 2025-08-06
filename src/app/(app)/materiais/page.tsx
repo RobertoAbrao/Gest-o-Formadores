@@ -84,8 +84,8 @@ export default function MateriaisPage() {
         await deleteDoc(doc(db, "materiais", material.id));
 
         // If there's a file associated, delete it from Storage
-        if (material.urlArquivo && (material.tipoMaterial === 'PDF' || material.tipoMaterial === 'Documento Word')) {
-            const fileRef = ref(storage, material.urlArquivo);
+        if (material.pathArquivo) {
+            const fileRef = ref(storage, material.pathArquivo);
             await deleteObject(fileRef);
         }
 
@@ -187,14 +187,14 @@ export default function MateriaisPage() {
                           <DropdownMenuItem onClick={() => openEditDialog(material)}>
                             <Pencil className="mr-2 h-4 w-4" /> Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(material)}>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(material)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Excluir
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     ) : (
                       <Button variant="outline" size="sm" asChild>
-                        <a href={material.urlArquivo} target="_blank" rel="noopener noreferrer">
+                        <a href={material.url} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-2 h-4 w-4" />
                           Acessar
                         </a>

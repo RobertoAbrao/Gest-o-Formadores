@@ -1,9 +1,9 @@
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 
 import { Button } from '@/components/ui/button';
@@ -32,20 +32,20 @@ const formSchema = z.object({
   titulo: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),
   descricao: z.string().min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   tipoMaterial: z.enum(materialTypes, { required_error: 'Selecione um tipo de material.' }),
-  urlArquivo: z.string().optional(),
+  url: z.string().min(1, { message: 'A URL é obrigatória.' }),
   arquivo: z.instanceof(File).optional(),
 }).superRefine((data, ctx) => {
-    if ((data.tipoMaterial === 'PDF' || data.tipoMaterial === 'Documento Word') && !data.arquivo && !data.urlArquivo) {
+    if ((data.tipoMaterial === 'PDF' || data.tipoMaterial === 'Documento Word') && !data.arquivo && data.url === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['arquivo'],
           message: 'Um arquivo é obrigatório para este tipo de material.',
         });
     }
-    if ((data.tipoMaterial === 'Vídeo' || data.tipoMaterial === 'Link Externo') && !data.urlArquivo) {
+    if ((data.tipoMaterial === 'Vídeo' || data.tipoMaterial === 'Link Externo') && data.url === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['urlArquivo'],
+          path: ['url'],
           message: 'A URL é obrigatória para este tipo de material.',
         });
     }
@@ -72,16 +72,17 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
       titulo: material?.titulo || '',
       descricao: material?.descricao || '',
       tipoMaterial: material?.tipoMaterial,
-      urlArquivo: material?.urlArquivo || '',
+      url: material?.url || '',
       arquivo: undefined,
     },
   });
 
   const tipoMaterial = form.watch('tipoMaterial');
 
-  const handleFileUpload = (file: File): Promise<string> => {
+  const handleFileUpload = (file: File): Promise<{ downloadURL: string, filePath: string }> => {
     return new Promise((resolve, reject) => {
-        const storageRef = ref(storage, `materiais/${Date.now()}_${file.name}`);
+        const filePath = `materiais/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, filePath);
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on('state_changed',
@@ -97,7 +98,7 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
             () => {
                 getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                     setUploadProgress(null);
-                    resolve(downloadURL);
+                    resolve({ downloadURL, filePath });
                 });
             }
         );
@@ -107,19 +108,22 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
 
   async function onSubmit(values: FormValues) {
     setLoading(true);
-    let finalUrl = values.urlArquivo || '';
+    let finalUrl = values.url || '';
+    let filePath: string | undefined = undefined;
     
     try {
-        // Handle file upload if a new file is provided
         if (values.arquivo && (values.tipoMaterial === 'PDF' || values.tipoMaterial === 'Documento Word')) {
-            finalUrl = await handleFileUpload(values.arquivo);
+            const uploadResult = await handleFileUpload(values.arquivo);
+            finalUrl = uploadResult.downloadURL;
+            filePath = uploadResult.filePath;
         }
 
-        const dataToSave = {
+        const dataToSave: Omit<Material, 'id' | 'dataUpload'> = {
             titulo: values.titulo,
             descricao: values.descricao,
             tipoMaterial: values.tipoMaterial,
-            urlArquivo: finalUrl,
+            url: finalUrl,
+            pathArquivo: filePath || material?.pathArquivo, // Mantém o path antigo se não houver novo upload
         };
 
         if(isEditMode && material) {
@@ -169,7 +173,7 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
                                 />
                             </div>
                         </FormControl>
-                        {isEditMode && material?.urlArquivo && !field.value && (
+                        {isEditMode && material?.url && !field.value && (
                             <FormDescription>
                                 Um arquivo já existe. Para substituí-lo, selecione um novo.
                             </FormDescription>
@@ -184,7 +188,7 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
              return (
                 <FormField
                     control={form.control}
-                    name="urlArquivo"
+                    name="url"
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>{tipoMaterial === 'Vídeo' ? 'URL do Vídeo (YouTube, Vimeo, etc.)' : 'URL do Link'}</FormLabel>
@@ -236,7 +240,11 @@ export function FormMaterial({ material, onSuccess }: FormMaterialProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo de Material</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={(value) => {
+                  field.onChange(value);
+                  form.setValue('url', ''); // Reseta a URL ao trocar o tipo
+                  form.setValue('arquivo', undefined);
+              }} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
