@@ -3,8 +3,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { User, Tag, Loader2 } from 'lucide-react';
+import { PlusCircle, User, Tag, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Formador } from '@/lib/types';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
@@ -29,14 +30,6 @@ const initialColumns: Columns = {
     title: 'Em Formação',
     items: [],
   },
-  'ativo': {
-    title: 'Ativo',
-    items: [],
-  },
-  'inativo': {
-    title: 'Inativo',
-    items: [],
-  },
 };
 
 
@@ -55,11 +48,9 @@ export default function QuadroPage() {
       const newColumns = JSON.parse(JSON.stringify(initialColumns));
 
       formadoresData.forEach(formador => {
-        const status = formador.status || 'ativo';
+        const status = formador.status || 'nao-iniciado';
         if (newColumns[status]) {
           newColumns[status].items.push(formador);
-        } else {
-            newColumns['ativo'].items.push(formador);
         }
       });
 
@@ -122,9 +113,15 @@ export default function QuadroPage() {
   
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
-            <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
+        <div className="flex items-center justify-between">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
+                <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
+            </div>
+            <Button disabled>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Criar uma Formação
+            </Button>
         </div>
         {loading && (
              <div className="flex h-[50vh] w-full items-center justify-center">
