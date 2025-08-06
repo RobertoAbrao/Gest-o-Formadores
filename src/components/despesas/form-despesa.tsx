@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import CurrencyInput from 'react-currency-input-field';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +37,7 @@ const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
-  valor: z.coerce.number().min(0.01, { message: 'O valor deve ser maior que zero.'}),
+  valor: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Valor inválido" }).transform(val => parseFloat(val)).refine(val => val > 0, { message: 'O valor deve ser maior que zero.' }),
   comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
 });
 
@@ -82,6 +83,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             ...values,
             formadorId: user.uid,
             data: Timestamp.fromDate(values.data),
+            valor: values.valor, // Zod transform handles conversion
         };
 
         if(isEditMode && despesa) {
@@ -176,7 +178,18 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             <FormItem>
               <FormLabel>Valor (R$)</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="0.00" {...field} />
+                 <CurrencyInput
+                    id="valor"
+                    name="valor"
+                    placeholder="R$ 0,00"
+                    defaultValue={field.value}
+                    decimalsLimit={2}
+                    onValueChange={(value) => field.onChange(value)}
+                    prefix="R$ "
+                    groupSeparator="."
+                    decimalSeparator=","
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
