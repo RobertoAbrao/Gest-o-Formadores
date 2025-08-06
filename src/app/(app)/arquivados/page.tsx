@@ -13,13 +13,17 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import type { Formacao } from '@/lib/types';
 import { useEffect, useState, useCallback } from 'react';
-import { collection, getDocs, orderBy, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 
 export default function ArquivadosPage() {
   const [formacoes, setFormacoes] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
   const { toast } = useToast();
 
   const fetchFormacoesArquivadas = useCallback(async () => {
@@ -27,7 +31,7 @@ export default function ArquivadosPage() {
     try {
       const q = query(
         collection(db, 'formacoes'),
-        where('status', '==', 'arquivado')
+        where('status', '==', 'arquivado'),
       );
       const querySnapshot = await getDocs(q);
       const formacoesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
@@ -43,6 +47,18 @@ export default function ArquivadosPage() {
   useEffect(() => {
     fetchFormacoesArquivadas();
   }, [fetchFormacoesArquivadas]);
+  
+  const handleOpenDetails = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleDetailDialogChange = (open: boolean) => {
+    setIsDetailDialogOpen(open);
+    if (!open) {
+      setSelectedFormacao(null);
+    }
+  }
 
   const formatDate = (timestamp: Timestamp | null) => {
     if (!timestamp) return 'N/A';
@@ -86,7 +102,7 @@ export default function ArquivadosPage() {
                     </TableCell>
                 </TableRow>
             ) : formacoes.map((formacao) => (
-                <TableRow key={formacao.id}>
+                <TableRow key={formacao.id} onClick={() => handleOpenDetails(formacao)} className="cursor-pointer">
                   <TableCell className="font-medium">{formacao.titulo}</TableCell>
                   <TableCell className="hidden lg:table-cell text-muted-foreground">{formacao.municipio}</TableCell>
                   <TableCell className="hidden sm:table-cell">
@@ -101,6 +117,25 @@ export default function ArquivadosPage() {
           </TableBody>
         </Table>
       </div>
+      
+      <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
+            <DialogContent className="sm:max-w-2xl">
+                {selectedFormacao && (
+                  <>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
+                        <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
+                    </DialogHeader>
+                    <DetalhesFormacao 
+                        formacaoId={selectedFormacao.id} 
+                        onClose={() => handleDetailDialogChange(false)} 
+                        isArchived={true}
+                    />
+                  </>
+                )}
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
+

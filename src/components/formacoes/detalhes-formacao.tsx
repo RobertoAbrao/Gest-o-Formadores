@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 interface DetalhesFormacaoProps {
   formacaoId: string;
   onClose: () => void;
+  isArchived?: boolean;
 }
 
 const fileToDataURL = (file: File): Promise<string> => {
@@ -40,7 +41,7 @@ const fileToDataURL = (file: File): Promise<string> => {
 const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
 
 
-export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps) {
+export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
@@ -135,7 +136,7 @@ export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps)
   };
 
   const handleStatusChange = async (newStatus: FormadorStatus) => {
-    if (!formacao) return;
+    if (!formacao || isArchived) return;
     try {
       const formacaoRef = doc(db, 'formacoes', formacao.id);
       await updateDoc(formacaoRef, { status: newStatus });
@@ -199,18 +200,22 @@ export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps)
                     <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
                     <div>
                         <p className="text-sm text-muted-foreground">Status</p>
-                        <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Alterar status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {statusOptions.map(option => (
-                                    <SelectItem key={option} value={option}>
-                                        {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        {isArchived ? (
+                             <Badge variant="secondary">Arquivado</Badge>
+                        ) : (
+                            <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Alterar status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {statusOptions.map(option => (
+                                        <SelectItem key={option} value={option}>
+                                            {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
                 </div>
             </div>
@@ -236,24 +241,28 @@ export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps)
           <div className="space-y-4">
              <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-lg">Anexos e Atas</h4>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={uploading}
-                />
-                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                    {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
-                    Enviar Arquivo
-                </Button>
+                 {!isArchived && (
+                    <>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            disabled={uploading}
+                        />
+                        <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                            {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
+                            Enviar Arquivo
+                        </Button>
+                    </>
+                 )}
              </div>
              <Separator />
              {(!formacao.anexos || formacao.anexos.length === 0) ? (
                 <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
                     <p>
                         <Paperclip className="h-6 w-6 mx-auto mb-2"/>
-                        Nenhum anexo encontrado. Use o botão acima para enviar.
+                        Nenhum anexo encontrado.
                     </p>
                 </div>
              ) : (
@@ -270,24 +279,26 @@ export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps)
                                 <File className="h-5 w-5 mr-3 text-primary" />
                                 <span className="truncate text-sm">{anexo.nome}</span>
                             </a>
-                            <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handleDeleteAnexo(anexo);
-                                }}
-                            >
-                                <Trash2 className="h-4 w-4 text-destructive"/>
-                            </Button>
+                            {!isArchived && (
+                                <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        handleDeleteAnexo(anexo);
+                                    }}
+                                >
+                                    <Trash2 className="h-4 w-4 text-destructive"/>
+                                </Button>
+                            )}
                         </div>
                     ))}
                 </div>
              )}
           </div>
-          {formacao.status === 'concluido' && (
+          {!isArchived && formacao.status === 'concluido' && (
             <div className="space-y-4 pt-4 border-t">
                 <h4 className="font-semibold text-lg">Ações</h4>
                 <p className="text-sm text-muted-foreground">
