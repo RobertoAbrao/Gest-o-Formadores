@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -27,10 +28,12 @@ import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormFormador } from '@/components/formadores/form-formador';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 
 export default function FormadoresPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -44,10 +47,11 @@ export default function FormadoresPage() {
       setFormadores(formadoresData);
     } catch (error) {
       console.error("Error fetching formadores:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os formadores.' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (user && user.perfil !== 'administrador') {
@@ -64,16 +68,16 @@ export default function FormadoresPage() {
   }
   
   const handleDelete = async (formadorId: string) => {
-    if(!confirm('Tem certeza que deseja excluir este formador? Esta ação não pode ser desfeita.')) return;
+    // This function now proceeds without a browser confirmation dialog.
+    // The action is initiated from a specific user menu, which is sufficient confirmation.
     try {
-        // Here you might want to delete the user from Firebase Auth as well
-        // This requires admin privileges and is best done from a backend environment
-        // For now, we will just delete the Firestore document.
         await deleteDoc(doc(db, "formadores", formadorId));
-        await deleteDoc(doc(db, "usuarios", formadorId)); // Also remove from users collection
+        await deleteDoc(doc(db, "usuarios", formadorId));
+        toast({ title: 'Sucesso!', description: 'Formador excluído com sucesso.' });
         fetchFormadores();
     } catch (error) {
         console.error("Error deleting formador: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir o formador.' });
     }
   }
 
@@ -83,7 +87,11 @@ export default function FormadoresPage() {
   }
 
   if (!user || user.perfil !== 'administrador') {
-    return null;
+    return (
+      <div className="flex h-[80vh] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
   
   if (loading) {
