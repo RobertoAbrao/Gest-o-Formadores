@@ -38,12 +38,18 @@ const formSchema = z.object({
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
   valor: z
-    .string()
-    .refine((val) => val && val.trim() !== '', { message: 'O valor é obrigatório.' })
-    .transform((val) => (val ? val.replace(/\./g, '').replace(',', '.') : '0'))
-    .refine((val) => !isNaN(parseFloat(val)), { message: 'Valor inválido.' })
-    .transform((val) => parseFloat(val))
-    .refine((val) => val > 0, { message: 'O valor deve ser maior que zero.' }),
+    .any()
+    .refine((val) => val !== undefined && val !== null && val !== '', { message: 'O valor é obrigatório.' })
+    .transform((val) => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+            const cleanedVal = val.replace(/\./g, '').replace(',', '.');
+            const num = parseFloat(cleanedVal);
+            return isNaN(num) ? undefined : num;
+        }
+        return undefined;
+    })
+    .refine((val) => val !== undefined && val > 0, { message: 'O valor deve ser maior que zero.' }),
   comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
 });
 
@@ -89,7 +95,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             ...values,
             formadorId: user.uid,
             data: Timestamp.fromDate(values.data),
-            valor: values.valor, // Zod transform handles conversion
+            valor: values.valor, 
         };
 
         if(isEditMode && despesa) {
