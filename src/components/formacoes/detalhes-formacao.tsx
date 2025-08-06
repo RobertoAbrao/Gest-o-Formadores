@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info } from 'lucide-react';
+import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -100,15 +100,16 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         }
         
         // Fetch expenses
-        if (formadorId && formacaoData.dataInicio && formacaoData.dataFim) {
+        if (formadorId) {
             const qDespesas = query(collection(db, 'despesas'), where('formadorId', '==', formadorId));
             const despesasSnap = await getDocs(qDespesas);
             const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
             
-            const startDate = formacaoData.dataInicio.toMillis();
-            const endDate = formacaoData.dataFim.toMillis();
+            const startDate = formacaoData.dataInicio?.toMillis();
+            const endDate = formacaoData.dataFim?.toMillis();
 
             const filteredDespesas = allDespesas.filter(d => {
+                if (!startDate || !endDate) return false;
                 const despesaDate = d.data.toMillis();
                 return despesaDate >= startDate && despesaDate <= endDate;
             });
@@ -402,6 +403,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                         <TableHead>Tipo</TableHead>
                                         <TableHead>Descrição</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
+                                        <TableHead className="w-[120px] text-center">Comprovante</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -411,6 +413,21 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                             <TableCell><Badge variant="outline">{despesa.tipo}</Badge></TableCell>
                                             <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
                                             <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                            <TableCell className="text-center">
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    disabled={!despesa.comprovanteUrl}
+                                                    onClick={() => {
+                                                        if (despesa.comprovanteUrl) {
+                                                            window.open(despesa.comprovanteUrl, '_blank');
+                                                        }
+                                                    }}
+                                                >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Visualizar
+                                                </Button>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
