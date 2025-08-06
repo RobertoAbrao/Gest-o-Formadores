@@ -47,16 +47,6 @@ const initialColumns: Columns = {
   },
 };
 
-// Wrapper to ensure Droppable is only rendered on the client side
-const DroppableWrapper = ({ children, ...props }: any) => {
-    const [isClient, setIsClient] = useState(false);
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-    return isClient ? <Droppable {...props}>{children}</Droppable> : null;
-};
-
-
 export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
@@ -116,8 +106,8 @@ export default function QuadroPage() {
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                     {Object.entries(columns).map(([columnId, column]) => (
-                        <DroppableWrapper key={columnId} droppableId={columnId}>
-                            {(provided: any, snapshot: any) => (
+                        <Droppable key={columnId} droppableId={columnId}>
+                            {(provided, snapshot) => (
                                 <div
                                     ref={provided.innerRef}
                                     {...provided.droppableProps}
@@ -134,7 +124,7 @@ export default function QuadroPage() {
                                     <div className="flex flex-col gap-4">
                                         {column.tasks.map((task, index) => (
                                             <Draggable key={task.id} draggableId={task.id} index={index}>
-                                                {(provided: any, snapshot: any) => (
+                                                {(provided, snapshot) => (
                                                     <div
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
@@ -156,7 +146,7 @@ export default function QuadroPage() {
                                     </div>
                                 </div>
                             )}
-                        </DroppableWrapper>
+                        </Droppable>
                     ))}
                 </div>
             </DragDropContext>
