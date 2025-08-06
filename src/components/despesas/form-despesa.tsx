@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import CurrencyInput, { CurrencyInputProps } from 'react-currency-input-field';
+import CurrencyInput from 'react-currency-input-field';
 
 import { Button } from '@/components/ui/button';
 import {
