@@ -22,12 +22,20 @@ type Columns = {
 };
 
 const initialColumns: Columns = {
-  'nao-iniciado': {
-    title: 'Não Iniciado',
+  'preparacao': {
+    title: 'Preparação',
     items: [],
   },
   'em-formacao': {
     title: 'Em Formação',
+    items: [],
+  },
+  'pos-formacao': {
+    title: 'Pós Formação',
+    items: [],
+  },
+  'concluido': {
+    title: 'Concluído',
     items: [],
   },
 };
@@ -48,9 +56,11 @@ export default function QuadroPage() {
       const newColumns = JSON.parse(JSON.stringify(initialColumns));
 
       formadoresData.forEach(formador => {
-        const status = formador.status || 'nao-iniciado';
+        const status = formador.status || 'preparacao'; // Default to 'preparacao'
         if (newColumns[status]) {
           newColumns[status].items.push(formador);
+        } else {
+            newColumns['preparacao'].items.push(formador); // If status is invalid, push to 'preparacao'
         }
       });
 
@@ -66,8 +76,11 @@ export default function QuadroPage() {
 
   useEffect(() => {
     fetchAndCategorizeFormadores();
-    setIsClient(true);
   }, [fetchAndCategorizeFormadores]);
+  
+  useEffect(() => {
+      setIsClient(true);
+  }, []);
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -107,7 +120,7 @@ export default function QuadroPage() {
     } catch (error) {
       console.error("Error updating formador status:", error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status do formador.'});
-      fetchAndCategorizeFormadores();
+      fetchAndCategorizeFormadores(); // Re-fetch to revert optimistic update on fail
     }
   };
   
