@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,9 +43,10 @@ interface Municipio {
 interface ComboboxMunicipiosProps {
     selected: string[];
     onChange: (selected: string[]) => void;
+    onEstadoChange: (uf: string) => void;
 }
 
-export function ComboboxMunicipios({ selected, onChange }: ComboboxMunicipiosProps) {
+export function ComboboxMunicipios({ selected, onChange, onEstadoChange }: ComboboxMunicipiosProps) {
   const [open, setOpen] = React.useState(false);
   const [estados, setEstados] = React.useState<Estado[]>([]);
   const [selectedEstado, setSelectedEstado] = React.useState<string>('');
@@ -98,11 +100,16 @@ export function ComboboxMunicipios({ selected, onChange }: ComboboxMunicipiosPro
     onChange(selected.filter((item) => item !== municipioNome));
   };
 
+  const handleEstadoSelect = (uf: string) => {
+    setSelectedEstado(uf);
+    onEstadoChange(uf);
+  }
+
 
   return (
     <div className='space-y-2'>
         <div className='flex gap-2'>
-            <Select onValueChange={setSelectedEstado} value={selectedEstado}>
+            <Select onValueChange={handleEstadoSelect} value={selectedEstado}>
                 <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Estado" />
                 </SelectTrigger>

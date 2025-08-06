@@ -283,6 +283,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
                 <ComboboxMunicipios
                     selected={field.value}
                     onChange={field.onChange}
+                    onEstadoChange={() => {}}
                 />
               <FormMessage />
             </FormItem>
