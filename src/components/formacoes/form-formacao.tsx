@@ -10,6 +10,7 @@ import {
   setDoc,
   serverTimestamp,
   getDocs,
+  updateDoc,
 } from 'firebase/firestore';
 import * as React from 'react';
 
@@ -29,11 +30,10 @@ import { db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
-import type { Formador } from '@/lib/types';
+import type { Formacao, Formador } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
-import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ComboboxMateriais } from '../materiais/combobox-materiais';
 
@@ -52,29 +52,18 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface FormFormacaoProps {
+  formacao?: Formacao | null;
   onSuccess: () => void;
 }
 
-export function FormFormacao({ onSuccess }: FormFormacaoProps) {
+export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [open, setOpen] = React.useState(false);
   const [availableMunicipios, setAvailableMunicipios] = useState<string[]>([]);
 
-
-  useEffect(() => {
-    const fetchFormadores = async () => {
-        try {
-            const querySnapshot = await getDocs(collection(db, 'formadores'));
-            const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
-            setFormadores(formadoresData);
-        } catch (error) {
-            console.error("Failed to fetch formadores", error);
-        }
-    };
-    fetchFormadores();
-  }, []);
+  const isEditMode = !!formacao;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -87,21 +76,68 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
     },
   });
 
+  useEffect(() => {
+    const fetchFormadores = async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, 'formadores'));
+            const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            setFormadores(formadoresData);
+
+            if (formacao && formacao.formadoresIds.length > 0) {
+              const mainFormadorId = formacao.formadoresIds[0];
+              const formador = formadoresData.find(f => f.id === mainFormadorId);
+              if (formador) {
+                setAvailableMunicipios(formador.municipiosResponsaveis || []);
+              }
+            }
+        } catch (error) {
+            console.error("Failed to fetch formadores", error);
+        }
+    };
+    fetchFormadores();
+  }, [formacao]);
+
+
+  useEffect(() => {
+    if (formacao) {
+      form.reset({
+        titulo: formacao.titulo || '',
+        descricao: formacao.descricao || '',
+        formadoresIds: formacao.formadoresIds || [],
+        municipio: formacao.municipio || '',
+        materiaisIds: formacao.materiaisIds || [],
+      });
+    } else {
+        form.reset({
+            titulo: '',
+            descricao: '',
+            formadoresIds: [],
+            municipio: '',
+            materiaisIds: [],
+        });
+    }
+  }, [formacao, form]);
+
+
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-      const newDocRef = doc(collection(db, 'formacoes'));
-      await setDoc(newDocRef, {
-        ...values,
-        status: 'preparacao',
-        dataInicio: null,
-        dataFim: null,
-        dataCriacao: serverTimestamp(),
-      });
-      toast({
-        title: 'Sucesso!',
-        description: 'Formação criada com sucesso.',
-      });
+      if (isEditMode && formacao) {
+         await updateDoc(doc(db, 'formacoes', formacao.id), {
+            ...values,
+         });
+         toast({ title: 'Sucesso!', description: 'Formação atualizada com sucesso.' });
+      } else {
+        const newDocRef = doc(collection(db, 'formacoes'));
+        await setDoc(newDocRef, {
+            ...values,
+            status: 'preparacao',
+            dataInicio: null,
+            dataFim: null,
+            dataCriacao: serverTimestamp(),
+        });
+        toast({ title: 'Sucesso!', description: 'Formação criada com sucesso.' });
+      }
       onSuccess();
     } catch (error: any) {
       console.error('Submit error:', error);
@@ -124,8 +160,10 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
     
     const formador = formadores.find(f => f.id === formadorId);
     if (formador) {
-        form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
-        form.setValue('descricao', '', { shouldValidate: true });
+        if (!isEditMode) {
+          form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
+          form.setValue('descricao', '', { shouldValidate: true });
+        }
         form.setValue('municipio', '', { shouldValidate: true });
         setAvailableMunicipios(formador.municipiosResponsaveis || []);
     } else {
@@ -136,8 +174,10 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
 
   const handleMunicipioChange = (municipio: string) => {
     form.setValue('municipio', municipio, { shouldValidate: true });
-     const desc = `Acompanhamento pedagógico para o município de ${municipio}`;
-    form.setValue('descricao', desc, { shouldValidate: true });
+    if (!isEditMode) {
+        const desc = `Acompanhamento pedagógico para o município de ${municipio}`;
+        form.setValue('descricao', desc, { shouldValidate: true });
+    }
   }
 
   return (
@@ -201,7 +241,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
               <FormLabel>Município</FormLabel>
                 <Select 
                     onValueChange={handleMunicipioChange} 
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={availableMunicipios.length === 0}
                 >
                     <FormControl>
@@ -275,7 +315,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
           {loading ? (
             <Loader2 className="animate-spin" />
           ) : (
-            'Criar Formação'
+            isEditMode ? 'Salvar Alterações' : 'Criar Formação'
           )}
         </Button>
       </form>

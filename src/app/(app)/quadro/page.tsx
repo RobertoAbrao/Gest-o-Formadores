@@ -7,7 +7,6 @@ import {
   doc,
   getDocs,
   query,
-  updateDoc,
 } from 'firebase/firestore';
 import {
   MoreHorizontal,
@@ -15,6 +14,7 @@ import {
   Loader2,
   Trash2,
   Paperclip,
+  Pencil,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -131,12 +131,18 @@ export default function QuadroPage() {
   const handleSuccess = () => {
     fetchAndCategorizeFormacoes();
     setIsFormDialogOpen(false);
+    setSelectedFormacao(null);
   };
   
   const openDeleteDialog = (formacao: Formacao) => {
     setSelectedFormacao(formacao);
     setIsDeleteDialogOpen(true);
   };
+
+  const openEditDialog = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsFormDialogOpen(true);
+  }
 
   const handleDeleteConfirm = async () => {
     if (!selectedFormacao) return;
@@ -175,6 +181,7 @@ export default function QuadroPage() {
           open={isFormDialogOpen}
           onOpenChange={(open) => {
             setIsFormDialogOpen(open);
+            if (!open) setSelectedFormacao(null);
           }}
         >
           <div className="flex items-center justify-between">
@@ -195,14 +202,14 @@ export default function QuadroPage() {
           </div>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Nova Formação</DialogTitle>
+              <DialogTitle>{selectedFormacao ? 'Editar Formação' : 'Nova Formação'}</DialogTitle>
               <DialogDescription>
-                Preencha os dados para criar uma nova formação.
+                {selectedFormacao ? 'Altere os dados da formação.' : 'Preencha os dados para criar uma nova formação.'}
               </DialogDescription>
             </DialogHeader>
             <ScrollArea className="max-h-[80vh]">
               <div className="p-4">
-                <FormFormacao onSuccess={handleSuccess} />
+                <FormFormacao formacao={selectedFormacao} onSuccess={handleSuccess} />
               </div>
             </ScrollArea>
           </DialogContent>
@@ -241,6 +248,10 @@ export default function QuadroPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditDialog(formacao)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Editar
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                 onClick={() => openDeleteDialog(formacao)}
