@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -8,8 +7,9 @@ service cloud.firestore {
     // This requires a 'usuarios' collection where document IDs are user UIDs
     // and each document has a 'perfil' field set to 'administrador'.
     function isAdmin() {
-      // Check if the user making the request has an 'administrador' profile.
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
+      // Check if the user making the request exists and has an 'administrador' profile.
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
 
     // Helper function to check if the user is authenticated.
