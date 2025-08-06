@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { Formacao, Formador, Material, Anexo } from '@/lib/types';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
@@ -35,7 +35,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!formacaoId) return;
     setLoading(true);
 
@@ -45,6 +45,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       if (!formacaoSnap.exists()) {
         console.error('Formação não encontrada');
         toast({ variant: "destructive", title: "Erro", description: "Formação não encontrada." });
+        setLoading(false);
         return;
       }
       const formacaoData = {
@@ -78,12 +79,12 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
     } finally {
       setLoading(false);
     }
-  }, [formacaoId, toast]);
+  };
 
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [formacaoId]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -103,7 +104,10 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       });
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
-      await fetchData(); // Re-fetch data to show the new attachment
+      
+      // Re-fetch data to show the new attachment by updating the local state
+      setFormacao(prev => prev ? { ...prev, anexos: [...(prev.anexos || []), novoAnexo] } : null);
+
     } catch (error) {
       console.error("Erro no upload do arquivo:", error);
       toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
