@@ -6,6 +6,8 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { Calendar, DollarSign, Grip, Link as LinkIcon, FileText, Utensils, Car, Building, Book } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Button } from '../ui/button';
+import { Card, CardContent } from '../ui/card';
 
 interface DetalhesDespesaProps {
   despesa: Despesa;
@@ -61,21 +63,34 @@ export function DetalhesDespesa({ despesa }: DetalhesDespesaProps) {
                 {despesa.comprovanteUrl && (
                     <div className="space-y-4 pt-4 border-t">
                         <h4 className="font-semibold text-lg">Comprovante</h4>
-                        <div className="flex items-center gap-3 p-2 border rounded-md">
-                           <LinkIcon className="h-5 w-5 text-primary" />
+                        <Card>
+                            <CardContent className='p-2'>
+                                <a 
+                                    href={despesa.comprovanteUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                >
+                                    <img 
+                                        src={despesa.comprovanteUrl} 
+                                        alt="Comprovante de despesa" 
+                                        className="rounded-md w-full max-w-sm mx-auto object-contain"
+                                    />
+                                </a>
+                            </CardContent>
+                        </Card>
+                         <Button variant="outline" asChild className='w-full'>
                             <a 
                                 href={despesa.comprovanteUrl} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="text-sm text-primary hover:underline truncate"
                             >
-                                {despesa.comprovanteUrl}
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                                Abrir em nova aba
                             </a>
-                        </div>
+                        </Button>
                     </div>
                 )}
             </div>
         </ScrollArea>
     );
 }
-

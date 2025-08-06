@@ -7,11 +7,14 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
 
 import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,16 +24,19 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import type { Despesa, TipoDespesa } from '@/lib/types';
 import { useState } from 'react';
-import { Loader2, CalendarIcon } from 'lucide-react';
+import { Loader2, CalendarIcon, UploadCloud, File as FileIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 
 const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
   data: z.date({ required_error: 'A data é obrigatória.' }),
@@ -41,7 +47,12 @@ const formSchema = z.object({
     z.number({invalid_type_error: "O valor é obrigatório."})
     .positive({ message: 'O valor deve ser maior que zero.' })
   ),
-  comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
+  comprovante: z
+    .custom<FileList>()
+    .refine((files) => files === undefined || files.length === 0 || files?.[0]?.size <= MAX_FILE_SIZE, `O tamanho máximo do arquivo é 5MB.`)
+    .refine((files) => files === undefined || files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type), "Apenas arquivos .jpg, .jpeg, .png e .webp são aceitos.")
+    .optional(),
+  comprovanteUrl: z.string().optional(),
 });
 
 
@@ -58,6 +69,8 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
   const [loading, setLoading] = useState(false);
 
   const isEditMode = !!despesa;
+  
+  const comprovanteRef = React.useRef<HTMLInputElement>(null);
 
   const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
     return timestamp ? timestamp.toDate() : undefined;
@@ -70,9 +83,12 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
       tipo: despesa?.tipo,
       descricao: despesa?.descricao || '',
       valor: despesa?.valor || undefined,
+      comprovante: undefined,
       comprovanteUrl: despesa?.comprovanteUrl || '',
     },
   });
+  
+  const selectedFile = form.watch('comprovante');
 
   async function onSubmit(values: FormValues) {
     if (!user) {
@@ -82,11 +98,23 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
     setLoading(true);
     
     try {
+        let fileUrl = values.comprovanteUrl;
+        const file = values.comprovante?.[0];
+
+        if (file) {
+            const filePath = `comprovantes/${user.uid}/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, filePath);
+            const uploadResult = await uploadBytes(storageRef, file);
+            fileUrl = await getDownloadURL(uploadResult.ref);
+        }
+
         const dataToSave = {
-            ...values,
             formadorId: user.uid,
             data: Timestamp.fromDate(values.data),
+            tipo: values.tipo,
+            descricao: values.descricao,
             valor: values.valor, 
+            comprovanteUrl: fileUrl || '',
         };
 
         if(isEditMode && despesa) {
@@ -200,19 +228,51 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             </FormItem>
           )}
         />
+        
         <FormField
             control={form.control}
-            name="comprovanteUrl"
+            name="comprovante"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>URL do Comprovante</FormLabel>
-                <FormControl>
-                    <Input placeholder="https://exemplo.com/seu-comprovante.jpg" {...field} value={field.value ?? ''} />
+                <FormLabel>Comprovante</FormLabel>
+                 <FormControl>
+                   <Input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden"
+                        ref={comprovanteRef}
+                        onChange={(e) => field.onChange(e.target.files)}
+                    />
                 </FormControl>
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => comprovanteRef.current?.click()}
+                >
+                    <UploadCloud className="mr-2 h-4 w-4" />
+                    {selectedFile && selectedFile.length > 0 ? 'Alterar arquivo' : 'Selecionar arquivo'}
+                </Button>
+                 {selectedFile && selectedFile.length > 0 && (
+                    <div className='text-sm text-muted-foreground flex items-center gap-2 pt-2'>
+                        <FileIcon className='h-4 w-4' />
+                        <span>{selectedFile[0].name}</span>
+                    </div>
+                )}
+                {isEditMode && despesa?.comprovanteUrl && !selectedFile?.length && (
+                    <div className='text-sm text-muted-foreground pt-2'>
+                       <a href={despesa.comprovanteUrl} target='_blank' rel='noopener noreferrer' className='underline flex items-center gap-2'>
+                         <FileIcon className='h-4 w-4' />
+                         <span>Ver comprovante atual</span>
+                       </a>
+                    </div>
+                )}
+                <FormDescription>Envie a foto do seu comprovante. (Máx 5MB)</FormDescription>
                 <FormMessage />
                 </FormItem>
             )}
         />
+
 
         <Button type="submit" className="w-full !mt-6" disabled={loading}>
           {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Adicionar Despesa')}
