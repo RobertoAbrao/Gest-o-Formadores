@@ -37,13 +37,7 @@ const formSchema = z.object({
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
   valor: z.preprocess(
-    (a) => {
-        if(typeof a === 'string') {
-            const sanitized = a.replace(/\./g, '').replace(',', '.');
-            return parseFloat(sanitized)
-        }
-        return a;
-    },
+    (a) => parseFloat(z.string().parse(a)),
     z.number({invalid_type_error: "O valor é obrigatório."})
     .positive({ message: 'O valor deve ser maior que zero.' })
   ),
@@ -100,7 +94,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             toast({ title: 'Sucesso!', description: 'Despesa atualizada com sucesso.' });
         } else {
             const newDocRef = doc(collection(db, 'despesas'));
-            await setDoc(newDocRef, { ...dataToSave, formadorId: user.uid, dataCriacao: serverTimestamp() });
+            await setDoc(newDocRef, { ...dataToSave, dataCriacao: serverTimestamp() });
             toast({ title: 'Sucesso!', description: 'Despesa criada com sucesso.' });
         }
         onSuccess();
