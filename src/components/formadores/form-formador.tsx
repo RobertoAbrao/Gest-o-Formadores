@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
   createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
@@ -27,6 +28,7 @@ import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ComboboxMunicipios } from './combobox-municipios';
 import { Separator } from '../ui/separator';
+import { useAuth } from '@/hooks/use-auth';
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -64,30 +66,6 @@ const formatTelefone = (telefone: string) => {
 }
 
 
-async function createFormador(data: FormValues) {
-    if(!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
-    
-    // 1. Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-    const user = userCredential.user;
-    
-    // 2. Create user profile in 'usuarios' collection
-    await setDoc(doc(db, 'usuarios', user.uid), {
-        nome: data.nomeCompleto,
-        email: data.email,
-        perfil: 'formador',
-    });
-    
-    // 3. Create trainer details in 'formadores' collection
-    const { password, ...formData } = data;
-    const formadorData = {
-        ...formData,
-        cpf: formData.cpf.replace(/\D/g, ''), // Save only digits
-        telefone: formData.telefone.replace(/\D/g, ''), // Save only digits
-    };
-    await setDoc(doc(db, 'formadores', user.uid), formadorData);
-}
-
 async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'email'>) {
     const updateData = {
         ...data,
@@ -109,6 +87,7 @@ async function updateFormador(id: string, data: Omit<FormValues, 'password' | 'e
 
 export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
   const { toast } = useToast();
+  const { user: adminUser } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const isEditMode = !!formador;
@@ -129,6 +108,46 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     },
   });
 
+  const createFormador = async (data: FormValues) => {
+    if (!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
+    if (!adminUser?.email || !adminUser?.adminPassword) {
+        throw new Error("Credenciais do administrador não estão disponíveis. Faça login novamente.");
+    }
+
+    // 1. Create user in Firebase Auth. This will log in the new user.
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const newUser = userCredential.user;
+
+    try {
+        // 2. IMPORTANT: Sign the admin back in immediately.
+        await signInWithEmailAndPassword(auth, adminUser.email, adminUser.adminPassword);
+
+        // 3. With admin re-authenticated, create user profile in 'usuarios' collection
+        await setDoc(doc(db, 'usuarios', newUser.uid), {
+            nome: data.nomeCompleto,
+            email: data.email,
+            perfil: 'formador',
+        });
+
+        // 4. Create trainer details in 'formadores' collection
+        const { password, ...formData } = data;
+        const formadorData = {
+            ...formData,
+            cpf: formData.cpf.replace(/\D/g, ''),
+            telefone: formData.telefone.replace(/\D/g, ''),
+        };
+        await setDoc(doc(db, 'formadores', newUser.uid), formadorData);
+
+    } catch (error) {
+        // If Firestore operations fail, we should ideally delete the created Auth user.
+        // This is a complex operation and requires Admin SDK, but we log it for now.
+        console.error("Failed to create Firestore documents for new user. Manual cleanup of Auth user may be needed.", error);
+        // Re-throw the error to be caught by the onSubmit handler
+        throw error;
+    }
+  }
+
+
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
@@ -148,10 +167,12 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
         }
         onSuccess();
     } catch (error: any) {
-      console.error(error);
+      console.error("Submit error:", error);
       let errorMessage = "Ocorreu um erro desconhecido.";
       if(error.code === 'auth/email-already-in-use') {
         errorMessage = 'Este email já está em uso por outra conta.';
+      } else if (error.code === 'auth/missing-password') {
+        errorMessage = 'A senha é obrigatória para criar um novo formador.';
       } else if (error.message) {
         errorMessage = error.message;
       }

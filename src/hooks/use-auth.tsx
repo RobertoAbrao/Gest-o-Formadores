@@ -10,6 +10,9 @@ export interface User {
   email: string | null;
   nome: string | null;
   perfil: UserRole;
+  // This is a temporary solution to re-login admin after creating a user.
+  // In a real-world scenario, this should be handled by a backend service.
+  adminPassword?: string; 
 }
 
 interface AuthContextType {

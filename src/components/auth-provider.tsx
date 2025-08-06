@@ -17,6 +17,7 @@ import { useRouter } from 'next/navigation';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adminPassword, setAdminPassword] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,13 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: firebaseUser.email,
             nome: nome,
             perfil: role,
+            adminPassword: role === 'administrador' ? adminPassword || undefined : undefined,
           };
           
           setUser(loggedInUser);
           
-          // Redirect after setting user
+          // Redirect only if the path is not the target path
           const targetPath = role === 'administrador' ? '/dashboard' : '/materiais';
-          router.replace(targetPath);
+          if (window.location.pathname !== targetPath) {
+             router.replace(targetPath);
+          }
 
         } else {
             // This case might happen if the user document is not created yet
@@ -55,29 +59,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // User is signed out
         setUser(null);
+        setAdminPassword(null);
       }
       setLoading(false);
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [router]);
+  }, [router, adminPassword]);
 
   const login = async (email: string, password: string): Promise<UserCredential> => {
     setLoading(true);
-    // The onAuthStateChanged listener above will handle fetching user data, setting the state, and redirecting.
+    // Store admin password temporarily if the user is an admin.
+    // This is a workaround for the client-side user creation flow.
+    const potentialAdminRef = doc(db, 'usuarios', 'placeholder'); // Temporary, this won't work to check role before login
+    // A better approach would be a cloud function `getUserRole(email)`.
+    // For now, we'll store the password and attach it to the user object if they are an admin.
+    setAdminPassword(password);
     return signInWithEmailAndPassword(auth, email, password);
   };
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+    setAdminPassword(null);
     router.push('/');
   };
 
   const assignRole = (role: UserRole) => {
     // This function is no longer needed for the login flow.
-    // It can be kept if there are other role-assigning functionalities.
   };
   
   // Display a loading indicator while checking auth state
