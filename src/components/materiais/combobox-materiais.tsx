@@ -53,9 +53,10 @@ export function ComboboxMateriais({ selected, onChange }: ComboboxMateriaisProps
   }, []);
 
   const handleSelect = (materialId: string) => {
-    if (!selected.includes(materialId)) {
-        onChange([...selected, materialId]);
-    }
+    const newSelected = selected.includes(materialId) 
+        ? selected.filter(id => id !== materialId)
+        : [...selected, materialId];
+    onChange(newSelected);
   };
   
   const handleRemove = (materialId: string) => {
