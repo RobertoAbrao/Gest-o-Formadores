@@ -12,6 +12,7 @@ import {
   arrayUnion,
   arrayRemove,
   Timestamp,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa } from '@/lib/types';
@@ -47,10 +48,16 @@ const fileToDataURL = (file: File): Promise<string> => {
 
 const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
 
-const formatDate = (timestamp: Timestamp | null | undefined) => {
+const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
     if (!timestamp) return 'N/A';
-    return timestamp.toDate().toLocaleDateString('pt-BR');
+    const defaultOptions: Intl.DateTimeFormatOptions = {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    };
+    return timestamp.toDate().toLocaleDateString('pt-BR', options || defaultOptions);
 }
+
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -82,6 +89,12 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             return;
         }
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
+
+        // Sort anexos by date
+        if (formacaoData.anexos) {
+            formacaoData.anexos.sort((a, b) => b.dataUpload.toMillis() - a.dataUpload.toMillis());
+        }
+
         setFormacao(formacaoData);
 
         let formadorId: string | null = null;
@@ -144,7 +157,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     setUploading(true);
     try {
       const dataUrl = await fileToDataURL(file);
-      const novoAnexo: Anexo = { nome: file.name, url: dataUrl };
+      const novoAnexo: Anexo = { 
+          nome: file.name, 
+          url: dataUrl,
+          dataUpload: Timestamp.now()
+        };
       const formacaoRef = doc(db, 'formacoes', formacao.id);
       await updateDoc(formacaoRef, {
         anexos: arrayUnion(novoAnexo)
@@ -314,7 +331,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-lg">Anexos e Atas</h4>
+                            <h4 className="font-semibold text-lg">Linha do Tempo de Anexos</h4>
                             {!isArchived && (
                                 <>
                                     <input
@@ -340,33 +357,42 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                 </p>
                             </div>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="relative pl-6">
+                                <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
                                 {formacao.anexos.map((anexo, index) => (
-                                    <div key={index} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors group">
-                                    <a 
-                                            href={anexo.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            download={anexo.nome}
-                                            className="flex items-center flex-1 truncate"
-                                        >
-                                            <FileIcon className="h-5 w-5 mr-3 text-primary" />
-                                            <span className="truncate text-sm">{anexo.nome}</span>
-                                        </a>
-                                        {!isArchived && (
-                                            <Button 
-                                                size="icon" 
-                                                variant="ghost" 
-                                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    e.preventDefault();
-                                                    handleDeleteAnexo(anexo);
-                                                }}
-                                            >
-                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                            </Button>
-                                        )}
+                                    <div key={index} className="relative mb-8">
+                                        <div className="absolute -left-[34px] top-1.5 h-4 w-4 rounded-full bg-primary border-4 border-background"></div>
+                                        <div className="pl-4">
+                                            <p className="text-xs text-muted-foreground">
+                                                {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                            <div className="flex items-center justify-between p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
+                                                <a 
+                                                    href={anexo.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    download={anexo.nome}
+                                                    className="flex items-center flex-1 truncate"
+                                                >
+                                                    <FileIcon className="h-5 w-5 mr-3 text-primary" />
+                                                    <span className="truncate text-sm font-medium">{anexo.nome}</span>
+                                                </a>
+                                                {!isArchived && (
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            handleDeleteAnexo(anexo);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -458,5 +484,3 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       </ScrollArea>
   );
 }
-
-    

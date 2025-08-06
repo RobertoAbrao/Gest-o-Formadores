@@ -33,6 +33,7 @@ export interface Material {
 export interface Anexo {
     nome: string;
     url: string;
+    dataUpload: Timestamp;
 }
 
 export interface Formacao {
