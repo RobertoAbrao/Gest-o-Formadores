@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db, storage } from '@/lib/firebase';
 import { Formacao, Formador, Material, Anexo } from '@/lib/types';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
@@ -35,56 +35,46 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  const fetchData = async () => {
-    if (!formacaoId) return;
-    setLoading(true);
-
-    try {
-      const formacaoRef = doc(db, 'formacoes', formacaoId);
-      const formacaoSnap = await getDoc(formacaoRef);
-      if (!formacaoSnap.exists()) {
-        console.error('Formação não encontrada');
-        toast({ variant: "destructive", title: "Erro", description: "Formação não encontrada." });
-        setLoading(false);
-        return;
-      }
-      const formacaoData = {
-        id: formacaoSnap.id,
-        ...formacaoSnap.data(),
-      } as Formacao;
-      setFormacao(formacaoData);
-
-      if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-        const formadorRef = doc(db, 'formadores', formacaoData.formadoresIds[0]);
-        const formadorSnap = await getDoc(formadorRef);
-        if (formadorSnap.exists()) {
-          setFormador({ id: formadorSnap.id, ...formadorSnap.data() } as Formador);
-        }
-      }
-
-      if (formacaoData.materiaisIds && formacaoData.materiaisIds.length > 0) {
-        const q = query(
-          collection(db, 'materiais'),
-          where('__name__', 'in', formacaoData.materiaisIds)
-        );
-        const materiaisSnap = await getDocs(q);
-        const materiaisData = materiaisSnap.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as Material)
-        );
-        setMateriais(materiaisData);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar detalhes da formação: ', error);
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os detalhes da formação." });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
   useEffect(() => {
+    const fetchData = async () => {
+        if (!formacaoId) return;
+        setLoading(true);
+        try {
+            const formacaoRef = doc(db, 'formacoes', formacaoId);
+            const formacaoSnap = await getDoc(formacaoRef);
+            if (!formacaoSnap.exists()) {
+                console.error('Formação não encontrada');
+                toast({ variant: "destructive", title: "Erro", description: "Formação não encontrada." });
+                setLoading(false);
+                return;
+            }
+            const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
+            setFormacao(formacaoData);
+
+            if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+                const formadorRef = doc(db, 'formadores', formacaoData.formadoresIds[0]);
+                const formadorSnap = await getDoc(formadorRef);
+                if (formadorSnap.exists()) {
+                    setFormador({ id: formadorSnap.id, ...formadorSnap.data() } as Formador);
+                }
+            }
+
+            if (formacaoData.materiaisIds && formacaoData.materiaisIds.length > 0) {
+                const q = query(collection(db, 'materiais'), where('__name__', 'in', formacaoData.materiaisIds));
+                const materiaisSnap = await getDocs(q);
+                const materiaisData = materiaisSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Material));
+                setMateriais(materiaisData);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar detalhes da formação: ', error);
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os detalhes da formação." });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     fetchData();
-  }, [formacaoId]);
+  }, [formacaoId, toast]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -105,7 +95,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
       
-      // Re-fetch data to show the new attachment by updating the local state
       setFormacao(prev => prev ? { ...prev, anexos: [...(prev.anexos || []), novoAnexo] } : null);
 
     } catch (error) {
