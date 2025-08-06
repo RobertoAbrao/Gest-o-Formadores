@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 
 type Task = {
   id: string;
@@ -58,8 +58,14 @@ export default function QuadroPage() {
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
 
+    // Se o item for solto fora de uma coluna, não faz nada
     if (!destination) {
       return;
+    }
+
+    // Se o item for solto na mesma posição, não faz nada
+    if (destination.droppableId === source.droppableId && destination.index === source.index) {
+        return;
     }
 
     const sourceColumn = columns[source.droppableId];
@@ -67,6 +73,7 @@ export default function QuadroPage() {
     const sourceTasks = [...sourceColumn.tasks];
     const [removed] = sourceTasks.splice(source.index, 1);
 
+    // Movendo dentro da mesma coluna
     if (source.droppableId === destination.droppableId) {
       sourceTasks.splice(destination.index, 0, removed);
       const newColumn = {
@@ -78,6 +85,7 @@ export default function QuadroPage() {
         [source.droppableId]: newColumn,
       });
     } else {
+      // Movendo para uma coluna diferente
       const destTasks = [...destColumn.tasks];
       destTasks.splice(destination.index, 0, removed);
       const newSourceColumn = {
@@ -95,14 +103,14 @@ export default function QuadroPage() {
       });
     }
   };
-
+  
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
         <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Quadro de Tarefas</h1>
             <p className="text-muted-foreground">Organize e acompanhe o fluxo de trabalho.</p>
         </div>
-        {isClient && (
+        {isClient ? (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                     {Object.entries(columns).map(([columnId, column]) => (
@@ -150,7 +158,7 @@ export default function QuadroPage() {
                     ))}
                 </div>
             </DragDropContext>
-        )}
+        ) : null}
     </div>
   );
 }
