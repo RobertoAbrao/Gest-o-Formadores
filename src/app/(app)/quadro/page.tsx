@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 
 type Task = {
   id: string;
@@ -49,112 +48,42 @@ const initialColumns: Columns = {
 
 export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  const onDragEnd = (result: DropResult) => {
-    const { source, destination } = result;
-
-    if (!destination) {
-      return;
-    }
-
-    if (destination.droppableId === source.droppableId && destination.index === source.index) {
-        return;
-    }
-
-    const sourceColumn = columns[source.droppableId];
-    const destColumn = columns[destination.droppableId];
-    const sourceTasks = [...sourceColumn.tasks];
-    const [removed] = sourceTasks.splice(source.index, 1);
-
-    if (source.droppableId === destination.droppableId) {
-      sourceTasks.splice(destination.index, 0, removed);
-      const newColumn = {
-        ...sourceColumn,
-        tasks: sourceTasks,
-      };
-      setColumns({
-        ...columns,
-        [source.droppableId]: newColumn,
-      });
-    } else {
-      const destTasks = [...destColumn.tasks];
-      destTasks.splice(destination.index, 0, removed);
-      const newSourceColumn = {
-        ...sourceColumn,
-        tasks: sourceTasks,
-      };
-      const newDestColumn = {
-        ...destColumn,
-        tasks: destTasks,
-      };
-      setColumns({
-        ...columns,
-        [source.droppableId]: newSourceColumn,
-        [destination.droppableId]: newDestColumn,
-      });
-    }
-  };
-  
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
         <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Quadro de Tarefas</h1>
             <p className="text-muted-foreground">Organize e acompanhe o fluxo de trabalho.</p>
         </div>
-        {isClient ? (
-            <DragDropContext onDragEnd={onDragEnd}>
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-                    {Object.entries(columns).map(([columnId, column]) => (
-                        <Droppable key={columnId} droppableId={columnId}>
-                            {(provided, snapshot) => (
-                                <div
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                    className={`flex flex-col gap-4 p-4 rounded-lg h-full transition-colors ${
-                                        snapshot.isDraggingOver ? 'bg-accent' : 'bg-muted/50'
-                                    }`}
-                                >
-                                    <div className="flex justify-between items-center">
-                                        <h2 className="text-lg font-semibold font-headline">{column.title}</h2>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <div className="flex flex-col gap-4">
-                                        {column.tasks.map((task, index) => (
-                                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                                                {(provided, snapshot) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                        className={`shadow-md hover:shadow-lg transition-shadow rounded-lg ${
-                                                            snapshot.isDragging ? 'ring-2 ring-primary' : ''
-                                                        }`}
-                                                    >
-                                                        <Card>
-                                                            <CardContent className="p-4">
-                                                                <p className="text-sm">{task.content}</p>
-                                                            </CardContent>
-                                                        </Card>
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                </div>
-                            )}
-                        </Droppable>
-                    ))}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {Object.entries(columns).map(([columnId, column]) => (
+                <div
+                    key={columnId}
+                    className="flex flex-col gap-4 p-4 rounded-lg h-full bg-muted/50"
+                >
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold font-headline">{column.title}</h2>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <PlusCircle className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                        {column.tasks.map((task, index) => (
+                             <div
+                                key={task.id}
+                                className="shadow-md hover:shadow-lg transition-shadow rounded-lg"
+                            >
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <p className="text-sm">{task.content}</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </DragDropContext>
-        ) : null}
+            ))}
+        </div>
     </div>
   );
 }
