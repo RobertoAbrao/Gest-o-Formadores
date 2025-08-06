@@ -22,7 +22,7 @@ import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign } from 
 import type { Despesa } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback } from 'react';
-import { collection, getDocs, orderBy, query, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, getDocs, query, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDespesa } from '@/components/despesas/form-despesa';
 import { useToast } from '@/hooks/use-toast';
@@ -48,7 +48,6 @@ export default function DespesasPage() {
       const q = query(
         collection(db, 'despesas'),
         where('formadorId', '==', user.uid),
-        orderBy('data', 'desc')
       );
       const querySnapshot = await getDocs(q);
       const despesasData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Despesa));
