@@ -58,12 +58,10 @@ export default function QuadroPage() {
   const onDragEnd = (result: DropResult) => {
     const { source, destination } = result;
 
-    // Se o item for solto fora de uma coluna, não faz nada
     if (!destination) {
       return;
     }
 
-    // Se o item for solto na mesma posição, não faz nada
     if (destination.droppableId === source.droppableId && destination.index === source.index) {
         return;
     }
@@ -73,7 +71,6 @@ export default function QuadroPage() {
     const sourceTasks = [...sourceColumn.tasks];
     const [removed] = sourceTasks.splice(source.index, 1);
 
-    // Movendo dentro da mesma coluna
     if (source.droppableId === destination.droppableId) {
       sourceTasks.splice(destination.index, 0, removed);
       const newColumn = {
@@ -85,7 +82,6 @@ export default function QuadroPage() {
         [source.droppableId]: newColumn,
       });
     } else {
-      // Movendo para uma coluna diferente
       const destTasks = [...destColumn.tasks];
       destTasks.splice(destination.index, 0, removed);
       const newSourceColumn = {
