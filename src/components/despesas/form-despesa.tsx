@@ -100,7 +100,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             toast({ title: 'Sucesso!', description: 'Despesa atualizada com sucesso.' });
         } else {
             const newDocRef = doc(collection(db, 'despesas'));
-            await setDoc(newDocRef, { ...dataToSave, dataCriacao: serverTimestamp() });
+            await setDoc(newDocRef, { ...dataToSave, formadorId: user.uid, dataCriacao: serverTimestamp() });
             toast({ title: 'Sucesso!', description: 'Despesa criada com sucesso.' });
         }
         onSuccess();
@@ -187,7 +187,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
             <FormItem>
               <FormLabel>Valor (R$)</FormLabel>
               <FormControl>
-                <Input type="number" step="0.01" placeholder="Ex: 50,99" {...field} value={field.value || ''} />
+                <Input type="number" step="0.01" placeholder="Ex: 50.99" {...field} value={field.value || ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -213,7 +213,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                 <FormItem>
                 <FormLabel>URL do Comprovante</FormLabel>
                 <FormControl>
-                    <Input placeholder="https://exemplo.com/seu-comprovante.jpg" {...field} />
+                    <Input placeholder="https://exemplo.com/seu-comprovante.jpg" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>
