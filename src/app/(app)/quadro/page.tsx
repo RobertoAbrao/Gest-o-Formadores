@@ -7,6 +7,7 @@ import {
   doc,
   getDocs,
   query,
+  where,
 } from 'firebase/firestore';
 import {
   MoreHorizontal,
@@ -68,6 +69,7 @@ const columnTitles: { [key in FormadorStatus]: string } = {
   'em-formacao': 'Em Formação',
   'pos-formacao': 'Pós Formação',
   concluido: 'Concluído',
+  arquivado: 'Arquivado',
 };
 
 const initialColumns: Columns = {
@@ -75,6 +77,7 @@ const initialColumns: Columns = {
   'em-formacao': { title: 'Em Formação', formacoes: [] },
   'pos-formacao': { title: 'Pós Formação', formacoes: [] },
   concluido: { title: 'Concluído', formacoes: [] },
+  arquivado: { title: 'Arquivado', formacoes: [] },
 };
 
 export default function QuadroPage() {
@@ -91,7 +94,7 @@ export default function QuadroPage() {
   const fetchAndCategorizeFormacoes = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'formacoes'));
+      const q = query(collection(db, 'formacoes'), where('status', '!=', 'arquivado'));
       const querySnapshot = await getDocs(q);
       const formacoesData = querySnapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Formacao)
@@ -102,15 +105,14 @@ export default function QuadroPage() {
         'em-formacao': { title: 'Em Formação', formacoes: [] },
         'pos-formacao': { title: 'Pós Formação', formacoes: [] },
         concluido: { title: 'Concluído', formacoes: [] },
+        arquivado: { title: 'Arquivado', formacoes: [] },
       };
 
 
       formacoesData.forEach((formacao) => {
         const status = formacao.status || 'preparacao';
-        if (newColumns[status]) {
+        if (newColumns[status] && status !== 'arquivado') {
           newColumns[status].formacoes.push(formacao);
-        } else {
-          newColumns['preparacao'].formacoes.push(formacao);
         }
       });
       setColumns(newColumns);
@@ -239,14 +241,17 @@ export default function QuadroPage() {
                         <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
                         <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
                     </DialogHeader>
-                    <DetalhesFormacao formacaoId={selectedFormacao.id} />
+                    <DetalhesFormacao 
+                        formacaoId={selectedFormacao.id} 
+                        onClose={() => handleDetailDialogChange(false)} 
+                    />
                   </>
                 )}
             </DialogContent>
         </Dialog>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-          {Object.entries(columns).map(([columnId, column]) => (
+          {Object.entries(columns).filter(([columnId]) => columnId !== 'arquivado').map(([columnId, column]) => (
             <div key={columnId}>
               <Card className="bg-muted/50">
                 <CardHeader className="p-4 border-b">

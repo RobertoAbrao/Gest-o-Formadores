@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word';
-export type FormadorStatus = 'preparacao' | 'em-formacao' | 'pos-formacao' | 'concluido';
+export type FormadorStatus = 'preparacao' | 'em-formacao' | 'pos-formacao' | 'concluido' | 'arquivado';
 
 export interface Formador {
   id: string;
@@ -32,7 +32,7 @@ export interface Anexo {
 }
 
 export interface Formacao {
-  id: string;
+  id:string;
   titulo: string;
   descricao: string;
   status: FormadorStatus;

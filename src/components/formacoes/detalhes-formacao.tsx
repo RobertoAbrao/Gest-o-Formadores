@@ -15,7 +15,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
+import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2, Archive } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 interface DetalhesFormacaoProps {
   formacaoId: string;
+  onClose: () => void;
 }
 
 const fileToDataURL = (file: File): Promise<string> => {
@@ -39,7 +40,7 @@ const fileToDataURL = (file: File): Promise<string> => {
 const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
 
 
-export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
+export function DetalhesFormacao({ formacaoId, onClose }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
@@ -50,6 +51,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
+    setLoading(true);
     try {
         const formacaoRef = doc(db, 'formacoes', formacaoId);
         const formacaoSnap = await getDoc(formacaoRef);
@@ -145,6 +147,18 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
     }
   }
 
+  const handleArchive = async () => {
+    if (!formacao || !window.confirm('Tem certeza que deseja arquivar esta formação?')) return;
+    try {
+        await handleStatusChange('arquivado');
+        toast({ title: "Sucesso", description: "Formação arquivada." });
+        onClose();
+    } catch (error) {
+        console.error("Erro ao arquivar:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8 min-h-[400px]">
@@ -184,7 +198,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
                     <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
                     <div>
                         <p className="text-sm text-muted-foreground">Status</p>
-                        <Select onValueChange={handleStatusChange} value={formacao.status}>
+                        <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
                             <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Alterar status" />
                             </SelectTrigger>
@@ -272,6 +286,18 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
                 </div>
              )}
           </div>
+          {formacao.status === 'concluido' && (
+            <div className="space-y-4 pt-4 border-t">
+                <h4 className="font-semibold text-lg">Ações</h4>
+                <p className="text-sm text-muted-foreground">
+                    Esta formação foi concluída. Você pode arquivá-la para removê-la do quadro principal.
+                </p>
+                <Button variant="outline" onClick={handleArchive}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Arquivar Formação
+                </Button>
+            </div>
+          )}
         </div>
       </ScrollArea>
   );
