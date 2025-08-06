@@ -35,6 +35,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ComboboxMateriais } from '../materiais/combobox-materiais';
 
 const formSchema = z.object({
   titulo: z
@@ -45,6 +46,7 @@ const formSchema = z.object({
     .min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
+  materiaisIds: z.array(z.string()).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -81,6 +83,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
       descricao: '',
       formadoresIds: [],
       municipio: '',
+      materiaisIds: [],
     },
   });
 
@@ -93,7 +96,6 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
         status: 'preparacao',
         dataInicio: null,
         dataFim: null,
-        materiaisIds: [],
         dataCriacao: serverTimestamp(),
       });
       toast({
@@ -117,21 +119,19 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
 
   const handleSelect = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds');
-    // For simplicity, let's stick to a single selection for now to auto-fill
     const newIds = [formadorId];
     form.setValue('formadoresIds', newIds, { shouldValidate: true });
     
     const formador = formadores.find(f => f.id === formadorId);
     if (formador) {
         form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
-        // Clear description and municipality for re-selection
         form.setValue('descricao', '', { shouldValidate: true });
         form.setValue('municipio', '', { shouldValidate: true });
         setAvailableMunicipios(formador.municipiosResponsaveis || []);
     } else {
          setAvailableMunicipios([]);
     }
-    setOpen(false); // Close popover after selection
+    setOpen(false);
   }
 
   const handleMunicipioChange = (municipio: string) => {
@@ -250,9 +250,24 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="materiaisIds"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Materiais de Apoio</FormLabel>
+              <ComboboxMateriais
+                selected={field.value ?? []}
+                onChange={field.onChange}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="pt-4">
           <p className="text-sm text-muted-foreground">
-            Em breve: seleção de materiais e agendamento de datas.
+            Em breve: agendamento de datas.
           </p>
         </div>
 

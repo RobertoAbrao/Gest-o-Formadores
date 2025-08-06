@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -13,6 +14,7 @@ import {
   PlusCircle,
   Loader2,
   Trash2,
+  Paperclip,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -93,11 +95,12 @@ export default function QuadroPage() {
         (doc) => ({ id: doc.id, ...doc.data() } as Formacao)
       );
 
-      const newColumns = { ...initialColumns };
-      // Re-initialize formacoes arrays to avoid stale data
-      Object.keys(newColumns).forEach((key) => {
-        newColumns[key as FormadorStatus].formacoes = [];
-      });
+      const newColumns: Columns = {
+        preparacao: { title: 'Preparação', formacoes: [] },
+        'em-formacao': { title: 'Em Formação', formacoes: [] },
+        'pos-formacao': { title: 'Pós Formação', formacoes: [] },
+        concluido: { title: 'Concluído', formacoes: [] },
+      };
 
 
       formacoesData.forEach((formacao) => {
@@ -218,7 +221,7 @@ export default function QuadroPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3 min-h-[100px]">
-                  {column.formacoes.map((formacao, index) => (
+                  {column.formacoes.map((formacao) => (
                     <Card
                       key={formacao.id}
                       className="bg-card shadow-sm hover:shadow-md transition-shadow"
@@ -251,6 +254,12 @@ export default function QuadroPage() {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {formacao.descricao}
                         </p>
+                         {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
+                                <Paperclip className="h-4 w-4" />
+                                <span>{formacao.materiaisIds.length} {formacao.materiaisIds.length === 1 ? 'material' : 'materiais'}</span>
+                            </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
