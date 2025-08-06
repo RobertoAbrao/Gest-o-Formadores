@@ -22,5 +22,4 @@ export interface Material {
   tipoMaterial: MaterialType;
   dataUpload: Timestamp;
   url: string; // URL para acesso (download, link externo, vídeo)
-  pathArquivo?: string; // Caminho do arquivo no Storage, se aplicável
 }
