@@ -184,14 +184,12 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                     id="valor"
                     name={field.name}
                     placeholder="R$ 0,00"
-                    defaultValue={field.value ? field.value * 100 : undefined}
+                    defaultValue={field.value}
                     decimalsLimit={2}
+                    intlConfig={{ locale: 'pt-BR', currency: 'BRL' }}
                     onValueChange={(value, name, values) => {
                       field.onChange(values?.float);
                     }}
-                    prefix="R$ "
-                    groupSeparator="."
-                    decimalSeparator=","
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 />
               </FormControl>
