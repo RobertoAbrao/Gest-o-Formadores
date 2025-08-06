@@ -10,9 +10,10 @@ import {
   where,
   updateDoc,
   arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Formacao, Formador, Material, Anexo } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
@@ -103,7 +104,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
       
-      // Re-fetch data to show the new attachment
       await fetchData();
 
     } catch (error) {
@@ -114,6 +114,23 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       if(fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleDeleteAnexo = async (anexo: Anexo) => {
+    if (!formacao || !window.confirm(`Tem certeza que deseja excluir o anexo "${anexo.nome}"?`)) {
+      return;
+    }
+    try {
+      const formacaoRef = doc(db, 'formacoes', formacao.id);
+      await updateDoc(formacaoRef, {
+        anexos: arrayRemove(anexo)
+      });
+      toast({ title: "Sucesso", description: "Anexo excluído." });
+      await fetchData();
+    } catch (error) {
+      console.error("Erro ao excluir anexo:", error);
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir o anexo." });
     }
   };
 
@@ -205,17 +222,30 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
              ) : (
                 <div className="space-y-2">
                     {formacao.anexos.map((anexo, index) => (
-                        <a 
-                            key={index} 
-                            href={anexo.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={anexo.nome}
-                            className="flex items-center p-2 rounded-md border hover:bg-muted/50 transition-colors"
-                        >
-                            <File className="h-5 w-5 mr-3 text-primary" />
-                            <span className="flex-1 truncate text-sm">{anexo.nome}</span>
-                        </a>
+                        <div key={index} className="flex items-center justify-between p-2 rounded-md border hover:bg-muted/50 transition-colors group">
+                           <a 
+                                href={anexo.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={anexo.nome}
+                                className="flex items-center flex-1 truncate"
+                            >
+                                <File className="h-5 w-5 mr-3 text-primary" />
+                                <span className="truncate text-sm">{anexo.nome}</span>
+                            </a>
+                            <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    handleDeleteAnexo(anexo);
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4 text-destructive"/>
+                            </Button>
+                        </div>
                     ))}
                 </div>
              )}
@@ -224,3 +254,5 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       </ScrollArea>
   );
 }
+
+    
