@@ -44,12 +44,13 @@ interface ComboboxMunicipiosProps {
     selected: string[];
     onChange: (selected: string[]) => void;
     onEstadoChange: (uf: string) => void;
+    initialUf?: string;
 }
 
-export function ComboboxMunicipios({ selected, onChange, onEstadoChange }: ComboboxMunicipiosProps) {
+export function ComboboxMunicipios({ selected, onChange, onEstadoChange, initialUf = '' }: ComboboxMunicipiosProps) {
   const [open, setOpen] = React.useState(false);
   const [estados, setEstados] = React.useState<Estado[]>([]);
-  const [selectedEstado, setSelectedEstado] = React.useState<string>('');
+  const [selectedEstado, setSelectedEstado] = React.useState<string>(initialUf);
   const [municipios, setMunicipios] = React.useState<Municipio[]>([]);
   const [loading, setLoading] = React.useState(false);
   
@@ -90,8 +91,9 @@ export function ComboboxMunicipios({ selected, onChange, onEstadoChange }: Combo
 
 
   const handleSelect = (municipioNome: string) => {
-    if (!selected.includes(municipioNome)) {
-        onChange([...selected, municipioNome]);
+    const fullMunicipioName = `${municipioNome} - ${selectedEstado}`;
+    if (!selected.includes(fullMunicipioName)) {
+        onChange([...selected, fullMunicipioName]);
     }
     setOpen(false);
   };
@@ -150,7 +152,7 @@ export function ComboboxMunicipios({ selected, onChange, onEstadoChange }: Combo
                                         <Check
                                             className={cn(
                                                 'mr-2 h-4 w-4',
-                                                selected.includes(municipio.nome) ? 'opacity-100' : 'opacity-0'
+                                                selected.some(s => s.startsWith(municipio.nome)) ? 'opacity-100' : 'opacity-0'
                                             )}
                                         />
                                         {municipio.nome}
@@ -181,3 +183,5 @@ export function ComboboxMunicipios({ selected, onChange, onEstadoChange }: Combo
     </div>
   );
 }
+
+    

@@ -37,6 +37,7 @@ const formSchema = z.object({
   cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
   municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
+  uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   banco: z.string().optional(),
   agencia: z.string().optional(),
   conta: z.string().optional(),
@@ -101,6 +102,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       cpf: formador?.cpf ? formatCPF(formador.cpf) : '',
       telefone: formador?.telefone ? formatTelefone(formador.telefone) : '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
+      uf: formador?.uf || '',
       banco: formador?.banco || '',
       agencia: formador?.agencia || '',
       conta: formador?.conta || '',
@@ -283,8 +285,22 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
                 <ComboboxMunicipios
                     selected={field.value}
                     onChange={field.onChange}
-                    onEstadoChange={() => {}}
+                    onEstadoChange={(uf) => form.setValue('uf', uf, { shouldValidate: true })}
+                    initialUf={form.getValues('uf')}
                 />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="uf"
+          render={({ field }) => (
+            <FormItem className='hidden'>
+              <FormLabel>UF</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -361,3 +377,5 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     </Form>
   );
 }
+
+    

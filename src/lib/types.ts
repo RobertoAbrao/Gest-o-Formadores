@@ -10,6 +10,7 @@ export interface Formador {
   cpf: string;
   telefone: string;
   municipiosResponsaveis: string[];
+  uf: string;
   banco?: string;
   agencia?: string;
   conta?: string;
@@ -37,10 +38,12 @@ export interface Formacao {
   descricao: string;
   status: FormadorStatus;
   municipio: string;
-  uf?: string;
+  uf: string;
   dataInicio: Timestamp | null;
   dataFim: Timestamp | null;
   formadoresIds: string[];
   materiaisIds: string[];
   anexos?: Anexo[]; 
 }
+
+    

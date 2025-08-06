@@ -49,7 +49,7 @@ const formSchema = z.object({
     .min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
-  uf: z.string().optional(),
+  uf: z.string().min(2, { message: 'O estado (UF) é obrigatório.' }),
   materiaisIds: z.array(z.string()).optional(),
   dataInicio: z.date().optional(),
   dataFim: z.date().optional(),
@@ -119,10 +119,13 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         dataInicio: toDate(formacao.dataInicio),
         dataFim: toDate(formacao.dataFim),
       });
-      const mainFormadorId = formacao.formadoresIds[0];
-      const formador = formadores.find(f => f.id === mainFormadorId);
-      if (formador) {
-        setAvailableMunicipios(formador.municipiosResponsaveis || []);
+      setSelectedUf(formacao.uf || '');
+      const mainFormadorId = formacao.formadoresIds?.[0];
+      if (mainFormadorId) {
+        const formador = formadores.find(f => f.id === mainFormadorId);
+        if (formador) {
+          setAvailableMunicipios(formador.municipiosResponsaveis || []);
+        }
       }
     } else {
         form.reset({
@@ -188,28 +191,28 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           form.setValue('descricao', '', { shouldValidate: true });
         }
         form.setValue('municipio', '', { shouldValidate: true });
+        form.setValue('uf', '', { shouldValidate: true });
         setAvailableMunicipios(formador.municipiosResponsaveis || []);
+        const ufMatch = formador.municipiosResponsaveis?.[0]?.match(/-\s([A-Z]{2})$/);
+        const uf = ufMatch ? ufMatch[1] : '';
+        setSelectedUf(uf);
+        form.setValue('uf', uf, { shouldValidate: true });
+
     } else {
          setAvailableMunicipios([]);
+         setSelectedUf('');
     }
     setOpen(false);
   }
 
   const handleMunicipioChange = (municipio: string) => {
     form.setValue('municipio', municipio, { shouldValidate: true });
-    if (!isEditMode && municipio && selectedUf) {
-        const title = `${municipio} - ${selectedUf}`;
+    if (!isEditMode && municipio && form.getValues('uf')) {
+        const title = `${municipio} - ${form.getValues('uf')}`;
         const desc = `Acompanhamento pedagógico para o município de ${municipio}.`;
         form.setValue('titulo', title, { shouldValidate: true });
         form.setValue('descricao', desc, { shouldValidate: true });
     }
-  }
-
-  const handleEstadoChange = (uf: string) => {
-    setSelectedUf(uf);
-    form.setValue('uf', uf, { shouldValidate: true });
-    // Reset municipio when state changes
-    form.setValue('municipio', '', { shouldValidate: true });
   }
 
   return (
@@ -428,3 +431,5 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
