@@ -68,8 +68,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [open, setOpen] = React.useState(false);
   const [availableMunicipios, setAvailableMunicipios] = useState<string[]>([]);
-  const [selectedUf, setSelectedUf] = useState('');
-
+  
   const isEditMode = !!formacao;
 
   const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
@@ -119,7 +118,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         dataInicio: toDate(formacao.dataInicio),
         dataFim: toDate(formacao.dataFim),
       });
-      setSelectedUf(formacao.uf || '');
       const mainFormadorId = formacao.formadoresIds?.[0];
       if (mainFormadorId) {
         const formador = formadores.find(f => f.id === mainFormadorId);
@@ -179,26 +177,26 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   const selectedFormadores = formadores.filter(f => form.watch('formadoresIds').includes(f.id));
 
-  const handleSelect = (formadorId: string) => {
+  const handleSelectFormador = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds');
-    const newIds = [formadorId];
+    const newIds = [formadorId]; // Only allow one formador for now
     form.setValue('formadoresIds', newIds, { shouldValidate: true });
     
     const formador = formadores.find(f => f.id === formadorId);
     if (formador) {
+        // Reset dependent fields when formador changes in create mode
         if (!isEditMode) {
-          form.setValue('titulo', '', { shouldValidate: true });
-          form.setValue('descricao', '', { shouldValidate: true });
+            form.setValue('municipio', '', { shouldValidate: false });
+            form.setValue('titulo', '', { shouldValidate: false });
+            form.setValue('descricao', '', { shouldValidate: false });
         }
-        form.setValue('municipio', '', { shouldValidate: true });
         
         const uf = formador.uf || '';
         form.setValue('uf', uf, { shouldValidate: true });
-        setSelectedUf(uf);
         setAvailableMunicipios(formador.municipiosResponsaveis || []);
     } else {
          setAvailableMunicipios([]);
-         setSelectedUf('');
+         form.setValue('uf', '', { shouldValidate: true });
     }
     setOpen(false);
   }
@@ -246,7 +244,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     <CommandItem
                                         key={formador.id}
                                         value={formador.nomeCompleto}
-                                        onSelect={() => handleSelect(formador.id)}
+                                        onSelect={() => handleSelectFormador(formador.id)}
                                     >
                                         <Check
                                             className={cn(
@@ -430,5 +428,3 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
-
-    
