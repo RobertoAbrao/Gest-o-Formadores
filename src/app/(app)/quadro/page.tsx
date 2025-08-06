@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import type { Formador } from '@/lib/types';
+import type { Formacao } from '@/lib/types';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -17,13 +17,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 type ColumnData = {
   title: string;
-  items: Formador[];
+  items: Formacao[]; // Changed from Formador to Formacao
 };
 
 type Columns = {
   [key: string]: ColumnData;
 };
 
+// The board will now manage Formacao objects, and starts empty.
 const initialColumns: Columns = {
   'preparacao': {
     title: 'Preparação',
@@ -48,43 +49,14 @@ export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Kept for future async operations
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const fetchAndCategorizeFormadores = useCallback(async () => {
-    setLoading(true);
-    try {
-      const querySnapshot = await getDocs(collection(db, 'formadores'));
-      const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
-      
-      const newColumns = JSON.parse(JSON.stringify(initialColumns));
-
-      formadoresData.forEach(formador => {
-        const status = formador.status || 'preparacao'; // Default to 'preparacao'
-        if (newColumns[status]) {
-          newColumns[status].items.push(formador);
-        } else {
-            newColumns['preparacao'].items.push(formador); // If status is invalid, push to 'preparacao'
-        }
-      });
-
-      setColumns(newColumns);
-
-    } catch (error) {
-      console.error("Error fetching formadores:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os formadores.'});
-    } finally {
-        setLoading(false);
-    }
-  }, [toast]);
-
+  // No longer fetching data on load. The board starts empty.
   useEffect(() => {
-    fetchAndCategorizeFormadores();
-  }, [fetchAndCategorizeFormadores]);
-  
-  useEffect(() => {
-      // This ensures the component is only rendered on the client, preventing hydration errors with dnd.
-      setIsClient(true);
+    // This ensures the component is only rendered on the client, preventing hydration errors with dnd.
+    setIsClient(true);
+    setLoading(false); // Set loading to false as we are not fetching data anymore.
   }, []);
 
   const onDragEnd = async (result: DropResult) => {
@@ -98,7 +70,8 @@ export default function QuadroPage() {
         return;
     }
     
-    // Optimistic UI Update
+    // This logic now needs to be adapted for Formacao objects when they are added.
+    // For now, it will work with any items moved between columns.
     const sourceColumn = columns[sourceColumnId];
     const destColumn = columns[destColumnId];
     const sourceItems = [...sourceColumn.items];
@@ -119,22 +92,24 @@ export default function QuadroPage() {
     };
     setColumns(newColumnsState);
 
-    // Persist change to Firestore
+    // TODO: Persist change to Firestore for the Formacao object
     try {
-      const formadorRef = doc(db, 'formadores', draggableId);
-      await updateDoc(formadorRef, { status: destColumnId });
-      toast({ title: 'Sucesso!', description: `Status de ${movedItem.nomeCompleto} atualizado para "${columns[destColumnId].title}".`});
+      // const formacaoRef = doc(db, 'formacoes', draggableId);
+      // await updateDoc(formacaoRef, { status: destColumnId });
+      toast({ title: 'Status Atualizado (Localmente)', description: `O status de "${movedItem.titulo}" foi atualizado.`});
     } catch (error) {
-      console.error("Error updating formador status:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status do formador.'});
+      console.error("Error updating status:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar a alteração.'});
       // Revert UI change on error
-      fetchAndCategorizeFormadores();
+      // In a real scenario, you'd fetch the original state again.
     }
   };
 
   const handleSuccess = () => {
     setIsDialogOpen(false);
     // TODO: Re-fetch formations or update state as needed.
+    // For now, we just close the dialog.
+    toast({ title: "Formulário Fechado", description: "A lógica para adicionar a nova formação ao quadro será implementada."})
   }
   
   if (loading || !isClient) {
@@ -149,8 +124,8 @@ export default function QuadroPage() {
     <div className="flex flex-col gap-8 py-6 h-full">
         <div className="flex items-center justify-between">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
-                <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formações</h1>
+                <p className="text-muted-foreground">Crie e gerencie o progresso de cada formação.</p>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -189,8 +164,8 @@ export default function QuadroPage() {
                                     <h2 className="text-lg font-semibold font-headline">{column.title} <span className='text-sm font-light text-muted-foreground'>({column.items.length})</span></h2>
                                 </div>
                                 <div className="flex flex-col gap-4 min-h-[200px]">
-                                    {column.items.map((formador, index) => (
-                                        <Draggable key={formador.id} draggableId={formador.id} index={index}>
+                                    {column.items.map((formacao, index) => (
+                                        <Draggable key={formacao.id} draggableId={formacao.id} index={index}>
                                             {(provided, snapshot) => (
                                                 <div
                                                     ref={provided.innerRef}
@@ -201,20 +176,13 @@ export default function QuadroPage() {
                                                     <Card>
                                                         <CardContent className="p-4 space-y-3">
                                                             <p className="text-sm font-semibold flex items-center gap-2">
-                                                                <User className='h-4 w-4 text-primary'/>
-                                                                {formador.nomeCompleto}
+                                                                {/* This will be the Formacao title */}
+                                                                {formacao.titulo}
                                                             </p>
-                                                            <div className='flex flex-wrap gap-1'>
-                                                                {formador.municipiosResponsaveis.slice(0, 3).map(m => (
-                                                                    <Badge key={m} variant="secondary" className='text-xs'>
-                                                                        <Tag className='h-3 w-3 mr-1'/>
-                                                                        {m}
-                                                                    </Badge>
-                                                                ))}
-                                                                {formador.municipiosResponsaveis.length > 3 && (
-                                                                    <Badge variant="outline">...</Badge>
-                                                                )}
-                                                            </div>
+                                                             <p className="text-xs text-muted-foreground">
+                                                                {/* This will be the Formacao description */}
+                                                                {formacao.descricao}
+                                                            </p>
                                                         </CardContent>
                                                     </Card>
                                                 </div>
@@ -222,6 +190,11 @@ export default function QuadroPage() {
                                         </Draggable>
                                     ))}
                                     {provided.placeholder}
+                                    {column.items.length === 0 && provided.placeholder && (
+                                        <div className="text-center text-sm text-muted-foreground py-4">
+                                            Arraste itens para esta coluna.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
