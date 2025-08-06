@@ -1,14 +1,10 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper function to check if a user is an administrator.
-    // This requires a 'usuarios' collection where document IDs are user UIDs
-    // and each document has a 'perfil' field set to 'administrador'.
     function isAdmin() {
-      // Check if the user making the request exists and has an 'administrador' profile.
       return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
           && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
     }
@@ -17,53 +13,45 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    
+    // Helper function to check if the user is the owner of the formation.
+    function isFormadorOwner(formacao) {
+      return request.auth.uid in formacao.data.formadoresIds;
+    }
 
     // Rules for 'usuarios' collection
     match /usuarios/{userId} {
-      // READ: An admin can read any user's profile. A regular user can only read their own.
       allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      
-      // CREATE: Only an administrator can create a new user document.
       allow create: if isAdmin();
-      
-      // UPDATE: An admin can update any user. A regular user can only update their own data,
-      // and cannot change their own 'perfil'.
       allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil);
-      
-      // DELETE: Only an admin can delete a user document.
       allow delete: if isAdmin();
     }
 
     // Rules for 'formadores' collection
     match /formadores/{formadorId} {
-        // READ: Any signed-in user can view the list of trainers.
         allow read: if isSignedIn();
-        
-        // WRITE (CREATE, UPDATE, DELETE): Only administrators can manage trainer records.
         allow write: if isAdmin();
     }
     
-    // Allow admins to read and write to the 'formacoes' collection
+    // Rules for 'formacoes' collection
     match /formacoes/{formacaoId} {
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
+      // Admin can do anything.
+      // A user can read a formation if they are one of the assigned trainers.
+      allow read: if isAdmin() || (isSignedIn() && isFormadorOwner(resource));
+      allow write: if isAdmin();
     }
     
     // Rules for 'despesas' collection
     match /despesas/{despesaId} {
-      // CREATE: A signed-in user can create an expense for themselves.
-      // The 'formadorId' in the new document must match their own UID.
+      // Allow create if the incoming document's formadorId matches the user's UID.
       allow create: if isSignedIn() && request.resource.data.formadorId == request.auth.uid;
-      
-      // READ, UPDATE, DELETE: A user can only read, update or delete their own expenses.
+      // Allow read, update, delete if the existing document's formadorId matches the user's UID.
       allow read, update, delete: if isSignedIn() && resource.data.formadorId == request.auth.uid;
     }
 
     // Rules for 'materiais' collection
     match /materiais/{materialId} {
-        // READ: Any signed-in user can view materials.
         allow read: if isSignedIn();
-        
-        // WRITE (CREATE, UPDATE, DELETE): Only administrators can manage materials.
         allow write: if isAdmin();
     }
   }
