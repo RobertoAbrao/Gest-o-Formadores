@@ -97,6 +97,7 @@ export default function QuadroPage() {
         return;
     }
     
+    // Optimistic UI Update
     const sourceColumn = columns[sourceColumnId];
     const destColumn = columns[destColumnId];
     const sourceItems = [...sourceColumn.items];
@@ -117,6 +118,7 @@ export default function QuadroPage() {
     };
     setColumns(newColumnsState);
 
+    // Persist change to Firestore
     try {
       const formadorRef = doc(db, 'formadores', draggableId);
       await updateDoc(formadorRef, { status: destColumnId });
@@ -124,15 +126,25 @@ export default function QuadroPage() {
     } catch (error) {
       console.error("Error updating formador status:", error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status do formador.'});
-      fetchAndCategorizeFormadores(); // Re-fetch to revert optimistic update on fail
+      // Revert UI change on error
+      fetchAndCategorizeFormadores();
     }
   };
 
   const handleSuccess = () => {
     setIsDialogOpen(false);
     // Here you would re-fetch the formations, but we don't have them yet.
+    // For now, we can just close the dialog.
   }
   
+  if (loading) {
+     return (
+        <div className="flex h-[80vh] w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
         <div className="flex items-center justify-between">
@@ -162,12 +174,8 @@ export default function QuadroPage() {
               </DialogContent>
             </Dialog>
         </div>
-        {loading && (
-             <div className="flex h-[50vh] w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-        )}
-        {!loading && isClient && (
+
+        {isClient && (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
                     {Object.entries(columns).map(([columnId, column]) => (
