@@ -26,6 +26,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { DetalhesDespesa } from '../despesas/detalhes-despesa';
 
 
 interface DetalhesFormacaoProps {
@@ -62,6 +64,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [formador, setFormador] = useState<Formador | null>(null);
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
+  const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
+  const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -200,6 +204,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     } else {
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
     }
+  }
+
+  const openDespesaDetails = (despesa: Despesa) => {
+    setSelectedDespesa(despesa);
+    setIsDespesaDialogOpen(true);
   }
 
   if (loading) {
@@ -403,31 +412,15 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                         <TableHead>Tipo</TableHead>
                                         <TableHead>Descrição</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
-                                        <TableHead className="w-[120px] text-center">Comprovante</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {despesas.map(despesa => (
-                                        <TableRow key={despesa.id}>
+                                        <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
                                             <TableCell><Badge variant="outline">{despesa.tipo}</Badge></TableCell>
                                             <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
                                             <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                                            <TableCell className="text-center">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={!despesa.comprovanteUrl}
-                                                    onClick={() => {
-                                                        if (despesa.comprovanteUrl) {
-                                                        window.open(despesa.comprovanteUrl, '_blank');
-                                                        }
-                                                    }}
-                                                    >
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Visualizar
-                                                </Button>
-                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -446,6 +439,24 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                  </div>
             </TabsContent>
         </Tabs>
+        <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
+            setIsDespesaDialogOpen(open);
+            if (!open) {
+                setSelectedDespesa(null);
+            }
+        }}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Detalhes da Despesa</DialogTitle>
+                    <DialogDescription>
+                        Visualize as informações completas da despesa.
+                    </DialogDescription>
+                </DialogHeader>
+                {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
+            </DialogContent>
+        </Dialog>
       </ScrollArea>
   );
 }
+
+    
