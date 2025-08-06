@@ -49,7 +49,7 @@ const formSchema = z.object({
     .min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
-  uf: z.string().min(2, { message: 'O estado (UF) é obrigatório.' }),
+  uf: z.string().optional(),
   materiaisIds: z.array(z.string()).optional(),
   dataInicio: z.date().optional(),
   dataFim: z.date().optional(),
