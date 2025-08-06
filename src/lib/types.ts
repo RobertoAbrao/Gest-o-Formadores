@@ -36,4 +36,5 @@ export interface Formacao {
   dataFim: Timestamp | null;
   formadoresIds: string[];
   materiaisIds: string[];
+  detalhes?: string; // Campo para atas, fotos, etc.
 }

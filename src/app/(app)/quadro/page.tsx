@@ -54,6 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { Formacao, FormadorStatus } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
+import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 
 type Columns = {
   [key in FormadorStatus]: {
@@ -81,6 +82,7 @@ export default function QuadroPage() {
   const [loading, setLoading] = useState(true);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(
     null
   );
@@ -142,6 +144,11 @@ export default function QuadroPage() {
   const openEditDialog = (formacao: Formacao) => {
     setSelectedFormacao(formacao);
     setIsFormDialogOpen(true);
+  }
+  
+  const openDetailDialog = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsDetailDialogOpen(true);
   }
 
   const handleDeleteConfirm = async () => {
@@ -214,6 +221,15 @@ export default function QuadroPage() {
             </ScrollArea>
           </DialogContent>
         </Dialog>
+        
+        <Dialog open={isDetailDialogOpen} onOpenChange={(open) => {
+            setIsDetailDialogOpen(open);
+            if (!open) setSelectedFormacao(null);
+          }}>
+            <DialogContent className="sm:max-w-2xl">
+                {selectedFormacao && <DetalhesFormacao formacaoId={selectedFormacao.id} />}
+            </DialogContent>
+        </Dialog>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
           {Object.entries(columns).map(([columnId, column]) => (
@@ -231,7 +247,8 @@ export default function QuadroPage() {
                   {column.formacoes.map((formacao) => (
                     <Card
                       key={formacao.id}
-                      className="bg-card shadow-sm hover:shadow-md transition-shadow"
+                      className="bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => openDetailDialog(formacao)}
                     >
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between">
@@ -239,7 +256,7 @@ export default function QuadroPage() {
                             {formacao.titulo}
                           </h3>
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                               <Button
                                 variant="ghost"
                                 className="h-7 w-7 p-0"
@@ -248,13 +265,13 @@ export default function QuadroPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEditDialog(formacao)}>
+                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(formacao)}}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onClick={() => openDeleteDialog(formacao)}
+                                onClick={(e) => {e.stopPropagation(); openDeleteDialog(formacao)}}
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
