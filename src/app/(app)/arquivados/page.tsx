@@ -27,8 +27,7 @@ export default function ArquivadosPage() {
     try {
       const q = query(
         collection(db, 'formacoes'),
-        where('status', '==', 'arquivado'),
-        orderBy('titulo', 'desc')
+        where('status', '==', 'arquivado')
       );
       const querySnapshot = await getDocs(q);
       const formacoesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
