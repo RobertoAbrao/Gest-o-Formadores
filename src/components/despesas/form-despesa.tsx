@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import CurrencyInput from 'react-currency-input-field';
+import CurrencyInput, { CurrencyInputProps } from 'react-currency-input-field';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -38,18 +38,8 @@ const formSchema = z.object({
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
   valor: z
-    .any()
-    .refine((val) => val !== undefined && val !== null && val !== '', { message: 'O valor é obrigatório.' })
-    .transform((val) => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-            const cleanedVal = val.replace(/\./g, '').replace(',', '.');
-            const num = parseFloat(cleanedVal);
-            return isNaN(num) ? undefined : num;
-        }
-        return undefined;
-    })
-    .refine((val) => val !== undefined && val > 0, { message: 'O valor deve ser maior que zero.' }),
+    .number({invalid_type_error: "O valor é obrigatório."})
+    .positive({ message: 'O valor deve ser maior que zero.' }),
   comprovanteUrl: z.string().url({ message: 'Por favor, insira uma URL válida para o comprovante.' }).optional().or(z.literal('')),
 });
 
@@ -196,7 +186,9 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                     placeholder="R$ 0,00"
                     defaultValue={field.value}
                     decimalsLimit={2}
-                    onValueChange={(value) => field.onChange(value)}
+                    onValueChange={(_value, _name, values) => {
+                      field.onChange(values?.float);
+                    }}
                     prefix="R$ "
                     groupSeparator="."
                     decimalSeparator=","
