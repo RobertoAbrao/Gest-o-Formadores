@@ -414,16 +414,18 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                             <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
                                             <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                             <TableCell className="text-center">
-                                                <Button 
-                                                    variant="outline" 
+                                                <Button
+                                                    variant="outline"
                                                     size="sm"
-                                                    asChild 
                                                     disabled={!despesa.comprovanteUrl}
-                                                >
-                                                    <a href={despesa.comprovanteUrl} target="_blank" rel="noopener noreferrer">
-                                                        <Eye className="mr-2 h-4 w-4" />
-                                                        Visualizar
-                                                    </a>
+                                                    onClick={() => {
+                                                        if (despesa.comprovanteUrl) {
+                                                        window.open(despesa.comprovanteUrl, '_blank');
+                                                        }
+                                                    }}
+                                                    >
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Visualizar
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
