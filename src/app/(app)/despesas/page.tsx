@@ -18,11 +18,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip, Eye } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip, Eye, Info } from 'lucide-react';
 import type { Despesa, TipoDespesa } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, query, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, getDocs, query, deleteDoc, doc, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDespesa } from '@/components/despesas/form-despesa';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { DetalhesDespesa } from '@/components/despesas/detalhes-despesa';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -53,11 +54,33 @@ export default function DespesasPage() {
   const { user } = useAuth();
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAtivo, setLoadingAtivo] = useState(true);
+  const [isFormadorAtivo, setIsFormadorAtivo] = useState(false);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const { toast } = useToast();
+
+  const checkFormadorAtivo = useCallback(async () => {
+    if (!user) return;
+    setLoadingAtivo(true);
+    try {
+      const q = query(
+        collection(db, 'formacoes'),
+        where('formadoresIds', 'array-contains', user.uid),
+        where('status', '==', 'em-formacao'),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      setIsFormadorAtivo(!querySnapshot.empty);
+    } catch (error) {
+        console.error("Error checking active formations:", error);
+        setIsFormadorAtivo(false); // Assume not active on error
+    } finally {
+        setLoadingAtivo(false);
+    }
+  }, [user]);
 
   const fetchDespesas = useCallback(async () => {
     if (!user) return;
@@ -81,7 +104,8 @@ export default function DespesasPage() {
 
   useEffect(() => {
     fetchDespesas();
-  }, [fetchDespesas]);
+    checkFormadorAtivo();
+  }, [fetchDespesas, checkFormadorAtivo]);
 
   const groupedDespesas = useMemo(() => {
     return despesas.reduce((acc, despesa) => {
@@ -138,7 +162,7 @@ export default function DespesasPage() {
   }
 
 
-  if (loading) {
+  if (loading || loadingAtivo) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -157,7 +181,7 @@ export default function DespesasPage() {
             </div>
             <Dialog open={isFormDialogOpen} onOpenChange={handleDialogChange(setIsFormDialogOpen)}>
                 <DialogTrigger asChild>
-                    <Button>
+                    <Button disabled={!isFormadorAtivo}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Despesa
                     </Button>
@@ -177,12 +201,22 @@ export default function DespesasPage() {
                 </DialogContent>
             </Dialog>
         </div>
+        
+        {!isFormadorAtivo && (
+            <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Registro de despesas desabilitado</AlertTitle>
+                <AlertDescription>
+                    Você só pode adicionar novas despesas quando estiver participando ativamente de uma formação.
+                </AlertDescription>
+            </Alert>
+        )}
 
         {despesas.length === 0 ? (
              <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
                 <DollarSign className="w-12 h-12 text-muted-foreground" />
                 <h3 className="mt-4 text-lg font-semibold">Nenhuma despesa registrada</h3>
-                <p className="text-sm text-muted-foreground">Comece adicionando uma nova despesa.</p>
+                <p className="text-sm text-muted-foreground">Comece adicionando uma nova despesa quando estiver ativo em uma formação.</p>
             </div>
         ) : (
             <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
@@ -283,3 +317,5 @@ export default function DespesasPage() {
     </div>
   );
 }
+
+  
