@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip, Eye } from 'lucide-react';
 import type { Despesa, TipoDespesa } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { DetalhesDespesa } from '@/components/despesas/detalhes-despesa';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -54,6 +55,7 @@ export default function DespesasPage() {
   const [loading, setLoading] = useState(true);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const { toast } = useToast();
 
@@ -67,7 +69,6 @@ export default function DespesasPage() {
       );
       const querySnapshot = await getDocs(q);
       const despesasData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Despesa));
-      // Sort by date client-side
       despesasData.sort((a, b) => b.data.toMillis() - a.data.toMillis());
       setDespesas(despesasData);
     } catch (error) {
@@ -123,6 +124,19 @@ export default function DespesasPage() {
     setSelectedDespesa(despesa);
     setIsFormDialogOpen(true);
   }
+  
+  const openDetailDialog = (despesa: Despesa) => {
+    setSelectedDespesa(despesa);
+    setIsDetailDialogOpen(true);
+  }
+
+  const handleDialogChange = (setter: (open: boolean) => void) => (open: boolean) => {
+      setter(open);
+      if (!open) {
+          setSelectedDespesa(null);
+      }
+  }
+
 
   if (loading) {
     return (
@@ -134,35 +148,32 @@ export default function DespesasPage() {
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
-        <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
-            setIsFormDialogOpen(open);
-            if (!open) setSelectedDespesa(null);
-        }}>
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Relatório de Despesas</h1>
-                    <p className="text-muted-foreground">
-                        Adicione e gerencie seus gastos com as formações.
-                    </p>
-                </div>
+        <div className="flex items-center justify-between">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Relatório de Despesas</h1>
+                <p className="text-muted-foreground">
+                    Adicione e gerencie seus gastos com as formações.
+                </p>
+            </div>
+            <Dialog open={isFormDialogOpen} onOpenChange={handleDialogChange(setIsFormDialogOpen)}>
                 <DialogTrigger asChild>
                     <Button>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Adicionar Despesa
                     </Button>
                 </DialogTrigger>
-            </div>
-            <DialogContent className="sm:max-w-xl">
-                <DialogHeader>
-                    <DialogTitle>{selectedDespesa ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
-                </DialogHeader>
-                <ScrollArea className='max-h-[80vh]'>
-                    <div className='p-4'>
-                        <FormDespesa despesa={selectedDespesa} onSuccess={handleSuccess} />
-                    </div>
-                </ScrollArea>
-            </DialogContent>
-        </Dialog>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>{selectedDespesa ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className='max-h-[80vh]'>
+                        <div className='p-4'>
+                            <FormDespesa despesa={selectedDespesa} onSuccess={handleSuccess} />
+                        </div>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+        </div>
 
         {despesas.length === 0 ? (
              <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
@@ -201,22 +212,25 @@ export default function DespesasPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {despesasDoTipo.map(despesa => (
-                                                 <TableRow key={despesa.id}>
+                                                 <TableRow key={despesa.id} className="cursor-pointer" onClick={() => openDetailDialog(despesa)}>
                                                     <TableCell className="font-medium">{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
                                                     <TableCell className="hidden lg:table-cell text-muted-foreground">{despesa.descricao}</TableCell>
                                                     <TableCell className="font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
+                                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => openEditDialog(despesa)}>
+                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openDetailDialog(despesa); }}>
+                                                                <Eye className="mr-2 h-4 w-4" /> Detalhes
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(despesa); }}>
                                                                 <Pencil className="mr-2 h-4 w-4" /> Editar
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(despesa)}>
+                                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(despesa); }}>
                                                                 <Trash2 className="mr-2 h-4 w-4" /> Excluir
                                                             </DropdownMenuItem>
                                                             </DropdownMenuContent>
@@ -234,7 +248,7 @@ export default function DespesasPage() {
             </Accordion>
         )}
       
-       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogChange(setIsDeleteDialogOpen)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -243,14 +257,23 @@ export default function DespesasPage() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setSelectedDespesa(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
                         Sim, excluir
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={isDetailDialogOpen} onOpenChange={handleDialogChange(setIsDetailDialogOpen)}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Detalhes da Despesa</DialogTitle>
+                </DialogHeader>
+                {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
+            </DialogContent>
+        </Dialog>
+
     </div>
   );
 }
-
