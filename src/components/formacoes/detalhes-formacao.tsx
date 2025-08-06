@@ -11,6 +11,7 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus } from '@/lib/types';
@@ -39,6 +40,11 @@ const fileToDataURL = (file: File): Promise<string> => {
 };
 
 const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
+
+const formatDate = (timestamp: Timestamp | null | undefined) => {
+    if (!timestamp) return 'N/A';
+    return timestamp.toDate().toLocaleDateString();
+}
 
 
 export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
@@ -151,8 +157,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const handleArchive = async () => {
     if (!formacao || !window.confirm('Tem certeza que deseja arquivar esta formação?')) return;
     try {
-        const formacaoRef = doc(db, 'formacoes', formacao.id);
-        await updateDoc(formacaoRef, { status: 'arquivado' });
+        await handleStatusChange('arquivado');
         toast({ title: "Sucesso", description: "Formação arquivada." });
         onClose();
     } catch (error) {
@@ -194,6 +199,20 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     <div>
                         <p className="text-sm text-muted-foreground">Município</p>
                         <p className="font-medium">{formacao.municipio}</p>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                        <p className="text-sm text-muted-foreground">Data Início</p>
+                        <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
+                    </div>
+                </div>
+                 <div className="flex items-center gap-3">
+                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                        <p className="text-sm text-muted-foreground">Data Fim</p>
+                        <p className="font-medium">{formatDate(formacao.dataFim)}</p>
                     </div>
                 </div>
                  <div className="flex items-start gap-3">

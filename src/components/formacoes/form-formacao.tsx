@@ -11,8 +11,10 @@ import {
   serverTimestamp,
   getDocs,
   updateDoc,
+  Timestamp,
 } from 'firebase/firestore';
 import * as React from 'react';
+import { format } from "date-fns"
 
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
-import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown, CalendarIcon } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import type { Formacao, Formador } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -36,6 +38,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ComboboxMateriais } from '../materiais/combobox-materiais';
+import { Calendar } from '../ui/calendar';
 
 const formSchema = z.object({
   titulo: z
@@ -47,6 +50,8 @@ const formSchema = z.object({
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
   materiaisIds: z.array(z.string()).optional(),
+  dataInicio: z.date().optional(),
+  dataFim: z.date().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -65,6 +70,10 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   const isEditMode = !!formacao;
 
+  const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
+    return timestamp ? timestamp.toDate() : undefined;
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -73,6 +82,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       formadoresIds: [],
       municipio: '',
       materiaisIds: [],
+      dataInicio: undefined,
+      dataFim: undefined,
     },
   });
 
@@ -101,6 +112,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         formadoresIds: formacao.formadoresIds || [],
         municipio: formacao.municipio || '',
         materiaisIds: formacao.materiaisIds || [],
+        dataInicio: toDate(formacao.dataInicio),
+        dataFim: toDate(formacao.dataFim),
       });
       const mainFormadorId = formacao.formadoresIds[0];
       const formador = formadores.find(f => f.id === mainFormadorId);
@@ -114,6 +127,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             formadoresIds: [],
             municipio: '',
             materiaisIds: [],
+            dataInicio: undefined,
+            dataFim: undefined,
         });
         setAvailableMunicipios([]);
     }
@@ -123,18 +138,20 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
+      const dataToSave = {
+          ...values,
+          dataInicio: values.dataInicio ? Timestamp.fromDate(values.dataInicio) : null,
+          dataFim: values.dataFim ? Timestamp.fromDate(values.dataFim) : null,
+      };
+
       if (isEditMode && formacao) {
-         await updateDoc(doc(db, 'formacoes', formacao.id), {
-            ...values,
-         });
+         await updateDoc(doc(db, 'formacoes', formacao.id), dataToSave);
          toast({ title: 'Sucesso!', description: 'Formação atualizada com sucesso.' });
       } else {
         const newDocRef = doc(collection(db, 'formacoes'));
         await setDoc(newDocRef, {
-            ...values,
+            ...dataToSave,
             status: 'preparacao',
-            dataInicio: null,
-            dataFim: null,
             dataCriacao: serverTimestamp(),
         });
         toast({ title: 'Sucesso!', description: 'Formação criada com sucesso.' });
@@ -290,6 +307,86 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             </FormItem>
           )}
         />
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <FormField
+                control={form.control}
+                name="dataInicio"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Data de Início</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? (
+                                format(field.value, "PPP")
+                            ) : (
+                                <span>Selecione uma data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                 <FormField
+                control={form.control}
+                name="dataFim"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Data de Fim</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? (
+                                format(field.value, "PPP")
+                            ) : (
+                                <span>Selecione uma data</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+        </div>
+
 
         <FormField
           control={form.control}
@@ -305,12 +402,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             </FormItem>
           )}
         />
-
-        <div className="pt-4">
-          <p className="text-sm text-muted-foreground">
-            Em breve: agendamento de datas.
-          </p>
-        </div>
 
         <Button type="submit" className="w-full !mt-6" disabled={loading}>
           {loading ? (
