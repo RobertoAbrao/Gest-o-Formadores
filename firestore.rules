@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -12,11 +13,6 @@ service cloud.firestore {
     // Helper function to check if the user is authenticated.
     function isSignedIn() {
       return request.auth != null;
-    }
-    
-    // Helper function to check if the user is the owner of the formation.
-    function isFormadorOwner(formacao) {
-      return request.auth.uid in formacao.data.formadoresIds;
     }
 
     // Rules for 'usuarios' collection
@@ -35,18 +31,22 @@ service cloud.firestore {
     
     // Rules for 'formacoes' collection
     match /formacoes/{formacaoId} {
-      // Admin can do anything.
-      // A user can read a formation if they are one of the assigned trainers.
-      allow read: if isAdmin() || (isSignedIn() && isFormadorOwner(resource));
-      allow write: if isAdmin();
+        // Admins can read/write any formation.
+        // A trainer can only read formations they are assigned to.
+        allow write: if isAdmin();
+        allow read: if isAdmin() || (isSignedIn() && resource.data.formadoresIds.hasAny([request.auth.uid]));
     }
     
     // Rules for 'despesas' collection
     match /despesas/{despesaId} {
-      // Allow create if the incoming document's formadorId matches the user's UID.
+      // READ: The owner of the expense or an admin can read it.
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.formadorId);
+
+      // CREATE: The user creating the expense must be the owner.
       allow create: if isSignedIn() && request.resource.data.formadorId == request.auth.uid;
-      // Allow read, update, delete if the existing document's formadorId matches the user's UID.
-      allow read, update, delete: if isSignedIn() && resource.data.formadorId == request.auth.uid;
+      
+      // UPDATE, DELETE: Only the owner of the expense can update or delete it.
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.formadorId;
     }
 
     // Rules for 'materiais' collection
