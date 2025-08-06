@@ -78,15 +78,13 @@ export function DetalhesDespesa({ despesa }: DetalhesDespesaProps) {
                                 </a>
                             </CardContent>
                         </Card>
-                         <Button variant="outline" asChild className='w-full'>
-                            <a 
-                                href={despesa.comprovanteUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                            >
-                                <LinkIcon className="mr-2 h-4 w-4" />
-                                Abrir em nova aba
-                            </a>
+                         <Button 
+                            variant="outline" 
+                            className='w-full'
+                            onClick={() => window.open(despesa.comprovanteUrl, '_blank')}
+                         >
+                            <LinkIcon className="mr-2 h-4 w-4" />
+                            Abrir em nova aba
                         </Button>
                     </div>
                 )}
