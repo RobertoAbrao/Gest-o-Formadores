@@ -101,15 +101,20 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         
         // Fetch expenses
         if (formadorId && formacaoData.dataInicio && formacaoData.dataFim) {
-            const qDespesas = query(collection(db, 'despesas'), 
-                where('formadorId', '==', formadorId),
-                where('data', '>=', formacaoData.dataInicio),
-                where('data', '<=', formacaoData.dataFim)
-            );
+            const qDespesas = query(collection(db, 'despesas'), where('formadorId', '==', formadorId));
             const despesasSnap = await getDocs(qDespesas);
-            const despesasData = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
-            despesasData.sort((a, b) => a.data.toMillis() - b.data.toMillis());
-            setDespesas(despesasData);
+            const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+            
+            const startDate = formacaoData.dataInicio.toMillis();
+            const endDate = formacaoData.dataFim.toMillis();
+
+            const filteredDespesas = allDespesas.filter(d => {
+                const despesaDate = d.data.toMillis();
+                return despesaDate >= startDate && despesaDate <= endDate;
+            });
+            
+            filteredDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
+            setDespesas(filteredDespesas);
         } else {
             setDespesas([]);
         }
