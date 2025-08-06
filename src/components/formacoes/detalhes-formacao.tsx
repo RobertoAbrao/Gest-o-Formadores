@@ -13,14 +13,19 @@ import {
   collection,
   query,
   where,
+  updateDoc,
+  arrayUnion,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Formacao, Formador, Material } from '@/lib/types';
-import { useEffect, useState } from 'react';
-import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip } from 'lucide-react';
+import { db, storage } from '@/lib/firebase';
+import { Formacao, Formador, Material, Anexo } from '@/lib/types';
+import { useEffect, useState, useRef } from 'react';
+import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
+import { Button } from '../ui/button';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 
 interface DetalhesFormacaoProps {
   formacaoId: string;
@@ -28,9 +33,12 @@ interface DetalhesFormacaoProps {
 
 export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [formador, setFormador] = useState<Formador | null>(null);
   const [materiais, setMateriais] = useState<Material[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +46,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
       setLoading(true);
 
       try {
-        // Fetch Formacao
         const formacaoRef = doc(db, 'formacoes', formacaoId);
         const formacaoSnap = await getDoc(formacaoRef);
         if (!formacaoSnap.exists()) {
@@ -51,7 +58,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
         } as Formacao;
         setFormacao(formacaoData);
 
-        // Fetch Formador
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
           const formadorRef = doc(db, 'formadores', formacaoData.formadoresIds[0]);
           const formadorSnap = await getDoc(formadorRef);
@@ -60,7 +66,6 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
           }
         }
 
-        // Fetch Materiais
         if (formacaoData.materiaisIds && formacaoData.materiaisIds.length > 0) {
           const q = query(
             collection(db, 'materiais'),
@@ -74,24 +79,55 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
         }
       } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os detalhes da formação." });
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [formacaoId]);
+  }, [formacaoId, toast]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !formacao) return;
+
+    setUploading(true);
+    try {
+      const storageRef = ref(storage, `formacoes/${formacao.id}/anexos/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      const novoAnexo: Anexo = { nome: file.name, url: downloadURL };
+
+      const formacaoRef = doc(db, 'formacoes', formacao.id);
+      await updateDoc(formacaoRef, {
+        anexos: arrayUnion(novoAnexo)
+      });
+      
+      setFormacao(prev => prev ? { ...prev, anexos: [...(prev.anexos || []), novoAnexo] } : null);
+      toast({ title: "Sucesso", description: "Anexo enviado." });
+    } catch (error) {
+      console.error("Erro no upload do arquivo:", error);
+      toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
+    } finally {
+      setUploading(false);
+      if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex items-center justify-center p-8 min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   if (!formacao) {
-    return <div>Formação não encontrada.</div>;
+    return <div className="p-8">Formação não encontrada.</div>;
   }
 
   return (
@@ -150,16 +186,45 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
           )}
 
           <div className="space-y-4">
-             <h4 className="font-semibold text-lg">Anexos e Atas</h4>
-             <Separator />
-             <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                <p>
-                    <Paperclip className="h-6 w-6 mx-auto mb-2"/>
-                    Em breve: você poderá anexar atas, fotos e outros documentos aqui.
-                </p>
+             <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-lg">Anexos e Atas</h4>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    disabled={uploading}
+                />
+                 <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                    {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
+                    Enviar Arquivo
+                </Button>
              </div>
+             <Separator />
+             {(!formacao.anexos || formacao.anexos.length === 0) ? (
+                <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                    <p>
+                        <Paperclip className="h-6 w-6 mx-auto mb-2"/>
+                        Nenhum anexo encontrado. Use o botão acima para enviar.
+                    </p>
+                </div>
+             ) : (
+                <div className="space-y-2">
+                    {formacao.anexos.map((anexo, index) => (
+                        <a 
+                            key={index} 
+                            href={anexo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center p-2 rounded-md border hover:bg-muted/50 transition-colors"
+                        >
+                            <File className="h-5 w-5 mr-3 text-primary" />
+                            <span className="flex-1 truncate text-sm">{anexo.nome}</span>
+                        </a>
+                    ))}
+                </div>
+             )}
           </div>
-
         </div>
       </ScrollArea>
     </>

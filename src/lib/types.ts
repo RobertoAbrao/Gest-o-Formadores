@@ -26,6 +26,11 @@ export interface Material {
   url: string; // URL para acesso (download, link externo, vídeo)
 }
 
+export interface Anexo {
+    nome: string;
+    url: string;
+}
+
 export interface Formacao {
   id: string;
   titulo: string;
@@ -36,5 +41,5 @@ export interface Formacao {
   dataFim: Timestamp | null;
   formadoresIds: string[];
   materiaisIds: string[];
-  detalhes?: string; // Campo para atas, fotos, etc.
+  anexos?: Anexo[]; 
 }
