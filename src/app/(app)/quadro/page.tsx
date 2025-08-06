@@ -2,12 +2,19 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { PlusCircle, Loader2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { PlusCircle, Loader2, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import type { Formacao } from '@/lib/types';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
@@ -46,7 +53,10 @@ export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
+
 
   const fetchAndCategorizeFormacoes = useCallback(async () => {
     setLoading(true);
@@ -54,10 +64,7 @@ export default function QuadroPage() {
         const querySnapshot = await getDocs(query(collection(db, 'formacoes'), orderBy('titulo')));
         const formacoesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
         
-        const newColumns = { ...initialColumns };
-        Object.keys(newColumns).forEach(key => {
-            newColumns[key] = { ...newColumns[key], items: [] };
-        });
+        const newColumns: Columns = JSON.parse(JSON.stringify(initialColumns));
 
         formacoesData.forEach(formacao => {
             const status = formacao.status || 'preparacao';
@@ -81,10 +88,29 @@ export default function QuadroPage() {
     fetchAndCategorizeFormacoes();
   }, [fetchAndCategorizeFormacoes]);
 
-
   const handleSuccess = () => {
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     fetchAndCategorizeFormacoes();
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedFormacao) return;
+    try {
+        await deleteDoc(doc(db, "formacoes", selectedFormacao.id));
+        toast({ title: 'Sucesso!', description: 'Formação excluída com sucesso.' });
+        fetchAndCategorizeFormacoes();
+    } catch (error) {
+        console.error("Error deleting formation: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir a formação.' });
+    } finally {
+        setIsDeleteDialogOpen(false);
+        setSelectedFormacao(null);
+    }
+  }
+
+  const openDeleteDialog = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsDeleteDialogOpen(true);
   }
   
   if (loading) {
@@ -102,7 +128,7 @@ export default function QuadroPage() {
                 <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formações</h1>
                 <p className="text-muted-foreground">Crie e gerencie o progresso de cada formação.</p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2 h-4 w-4" />
@@ -136,21 +162,29 @@ export default function QuadroPage() {
                     </div>
                     <div className="flex flex-col gap-4 min-h-[200px]">
                         {column.items.map((formacao) => (
-                            <div
-                                key={formacao.id}
-                                className="shadow-md hover:shadow-lg transition-shadow rounded-lg"
-                            >
-                                <Card>
-                                    <CardContent className="p-4 space-y-3">
-                                        <p className="text-sm font-semibold flex items-center gap-2">
-                                            {formacao.titulo}
-                                        </p>
-                                            <p className="text-xs text-muted-foreground">
-                                            {formacao.descricao}
-                                        </p>
-                                    </CardContent>
-                                </Card>
-                            </div>
+                            <Card key={formacao.id} className="shadow-md hover:shadow-lg transition-shadow rounded-lg">
+                                <CardHeader className="flex flex-row items-center justify-between p-4">
+                                    <CardTitle className="text-sm font-semibold leading-tight">{formacao.titulo}</CardTitle>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-6 w-6 p-0">
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(formacao)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Excluir
+                                        </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </CardHeader>
+                                <CardContent className="p-4 pt-0">
+                                    <p className="text-xs text-muted-foreground">
+                                        {formacao.descricao}
+                                    </p>
+                                </CardContent>
+                            </Card>
                         ))}
                          {column.items.length === 0 && (
                             <div className="text-center text-sm text-muted-foreground py-4">
@@ -161,6 +195,24 @@ export default function QuadroPage() {
                 </div>
             ))}
         </div>
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isso excluirá permanentemente a formação
+                        dos nossos servidores.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setSelectedFormacao(null)}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+                        Sim, excluir
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
