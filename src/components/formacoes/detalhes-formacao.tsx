@@ -11,7 +11,7 @@ import {
   updateDoc,
   arrayUnion,
 } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Formacao, Formador, Material, Anexo } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File, Trash2 } from 'lucide-react';
@@ -19,12 +19,22 @@ import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 
 interface DetalhesFormacaoProps {
   formacaoId: string;
 }
+
+// Helper function to convert a file to a Base64 data URL
+const fileToDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
 
 export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
@@ -82,11 +92,9 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
 
     setUploading(true);
     try {
-      const storageRef = ref(storage, `formacoes/${formacao.id}/anexos/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const dataUrl = await fileToDataURL(file);
 
-      const novoAnexo: Anexo = { nome: file.name, url: downloadURL };
+      const novoAnexo: Anexo = { nome: file.name, url: dataUrl };
 
       const formacaoRef = doc(db, 'formacoes', formacao.id);
       await updateDoc(formacaoRef, {
@@ -202,6 +210,7 @@ export function DetalhesFormacao({ formacaoId }: DetalhesFormacaoProps) {
                             href={anexo.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            download={anexo.nome}
                             className="flex items-center p-2 rounded-md border hover:bg-muted/50 transition-colors"
                         >
                             <File className="h-5 w-5 mr-3 text-primary" />
