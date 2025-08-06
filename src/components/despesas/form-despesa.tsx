@@ -129,7 +129,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                         )}
                         >
                         {field.value ? (
-                            format(field.value, "PPP", { locale: ptBR })
+                            format(field.value, 'dd/MM/yyyy', { locale: ptBR })
                         ) : (
                             <span>Selecione uma data</span>
                         )}
@@ -186,7 +186,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                     placeholder="R$ 0,00"
                     defaultValue={field.value}
                     decimalsLimit={2}
-                    onValueChange={(_value, _name, values) => {
+                    onValueChange={(value, name, values) => {
                       field.onChange(values?.float);
                     }}
                     prefix="R$ "
@@ -233,5 +233,3 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
     </Form>
   );
 }
-
-    
