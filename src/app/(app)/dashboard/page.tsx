@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Users, BookCopy, MapPin, Loader2 } from 'lucide-react';
 import { collection, getCountFromServer } from 'firebase/firestore';
 
@@ -11,7 +10,6 @@ import { db } from '@/lib/firebase';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [stats, setStats] = useState([
     { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-blue-500' },
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
@@ -19,16 +17,10 @@ export default function DashboardPage() {
   ]);
   const [loading, setLoading] = useState(true);
 
-  // Redirect trainers to their material list
-  useEffect(() => {
-    if (user && user.perfil === 'formador') {
-      router.replace('/materiais');
-    }
-  }, [user, router]);
-
   useEffect(() => {
     if (user?.perfil === 'administrador') {
       const fetchStats = async () => {
+        setLoading(true);
         try {
           const formadoresCol = collection(db, 'formadores');
           const materiaisCol = collection(db, 'materiais');

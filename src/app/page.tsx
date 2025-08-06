@@ -2,32 +2,29 @@
 
 import { useState, type FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, KeyRound, Building, UserCog, Loader2 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { User, KeyRound, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, type UserRole } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
 import AppLogo from '@/components/AppLogo';
-import { db } from '@/lib/firebase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, login, assignRole, logout } = useAuth();
+  const { user, login } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('formador');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
+    // If user is already logged in, redirect based on their profile
     if (user) {
-      router.replace('/dashboard');
+      const targetPath = user.perfil === 'administrador' ? '/dashboard' : '/materiais';
+      router.replace(targetPath);
     }
   }, [user, router]);
 
@@ -46,37 +43,15 @@ export default function LoginPage() {
     setLoading(true);
     
     try {
-      // First, just sign in the user to get their credentials
-      const userCredential = await login(email, password);
-      const loggedInUser = userCredential.user;
-
-      // Now, check their profile from Firestore
-      const userDocRef = doc(db, 'usuarios', loggedInUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        throw new Error("Seu usuário não foi configurado corretamente. Contate o suporte.");
-      }
-
-      const userData = userDoc.data();
-      const userProfile = userData.perfil as UserRole;
-
-      // Compare the selected role with the one from Firestore
-      if (userProfile !== role) {
-        // If roles don't match, logout immediately and show error
-        await logout(); 
-        throw new Error(`Você não tem permissão para acessar como ${role}.`);
-      }
-      
-      // If roles match, assign the role to the provider and redirect
-      assignRole(role);
+      // The auth provider will handle fetching the user role and data
+      await login(email, password);
       
       toast({
         title: 'Login bem-sucedido!',
         description: 'Redirecionando para o painel.',
       });
-      
-      router.push('/dashboard');
+
+      // The useEffect hook will handle the redirection once the user state is updated.
 
     } catch (error: any) {
       console.error(error);
@@ -143,29 +118,7 @@ export default function LoginPage() {
                   />
                 </div>
               </div>
-              <div className="space-y-3">
-                <Label>Acessar como</Label>
-                <RadioGroup
-                  value={role}
-                  onValueChange={(value: UserRole) => setRole(value)}
-                  className="flex items-center space-x-4"
-                  disabled={loading}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="formador" id="formador" />
-                    <Label htmlFor="formador" className="flex items-center gap-2 font-normal">
-                      <Building className="h-4 w-4" /> Formador
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="administrador" id="administrador" />
-                    <Label htmlFor="administrador" className="flex items-center gap-2 font-normal">
-                      <UserCog className="h-4 w-4" /> Administrador
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              <Button type="submit" className="w-full font-bold" disabled={loading}>
+              <Button type="submit" className="w-full font-bold !mt-8" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : 'Entrar'}
               </Button>
             </form>
