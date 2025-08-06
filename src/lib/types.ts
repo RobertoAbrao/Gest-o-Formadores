@@ -31,6 +31,7 @@ export interface Formacao {
   titulo: string;
   descricao: string;
   status: FormadorStatus;
+  municipio: string;
   dataInicio: Timestamp | null;
   dataFim: Timestamp | null;
   formadoresIds: string[];

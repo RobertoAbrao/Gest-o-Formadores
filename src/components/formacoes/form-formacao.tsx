@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formSchema = z.object({
   titulo: z
@@ -43,6 +44,7 @@ const formSchema = z.object({
     .string()
     .min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
+  municipio: z.string().min(1, { message: 'Selecione um município.' }),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,6 +58,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
   const [loading, setLoading] = useState(false);
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [open, setOpen] = React.useState(false);
+  const [availableMunicipios, setAvailableMunicipios] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
       titulo: '',
       descricao: '',
       formadoresIds: [],
+      municipio: '',
     },
   });
 
@@ -113,32 +117,27 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
 
   const handleSelect = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds');
-    const isSelected = currentIds.includes(formadorId);
+    // For simplicity, let's stick to a single selection for now to auto-fill
+    const newIds = [formadorId];
+    form.setValue('formadoresIds', newIds, { shouldValidate: true });
     
-    let newIds: string[];
-    if (isSelected) {
-        newIds = currentIds.filter(id => id !== formadorId);
-    } else {
-        newIds = [...currentIds, formadorId];
-    }
-    form.setValue('formadoresIds', newIds);
-
-    // Auto-fill logic
-    if (newIds.length > 0) {
-        const lastSelectedId = newIds[newIds.length - 1];
-        const formador = formadores.find(f => f.id === lastSelectedId);
-        if (formador) {
-            form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
-            const desc = formador.municipiosResponsaveis.length > 0 
-                ? `Acompanhamento pedagógico para o município de ${formador.municipiosResponsaveis[0]}`
-                : 'Formador sem município responsável definido.';
-            form.setValue('descricao', desc, { shouldValidate: true });
-        }
-    } else {
-        // Clear fields if no formador is selected
-        form.setValue('titulo', '', { shouldValidate: true });
+    const formador = formadores.find(f => f.id === formadorId);
+    if (formador) {
+        form.setValue('titulo', `Formação para ${formador.nomeCompleto}`, { shouldValidate: true });
+        // Clear description and municipality for re-selection
         form.setValue('descricao', '', { shouldValidate: true });
+        form.setValue('municipio', '', { shouldValidate: true });
+        setAvailableMunicipios(formador.municipiosResponsaveis || []);
+    } else {
+         setAvailableMunicipios([]);
     }
+    setOpen(false); // Close popover after selection
+  }
+
+  const handleMunicipioChange = (municipio: string) => {
+    form.setValue('municipio', municipio, { shouldValidate: true });
+     const desc = `Acompanhamento pedagógico para o município de ${municipio}`;
+    form.setValue('descricao', desc, { shouldValidate: true });
   }
 
   return (
@@ -150,7 +149,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
           name="formadoresIds"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Formadores</FormLabel>
+              <FormLabel>Formador</FormLabel>
                 <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
@@ -159,7 +158,7 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
                         aria-expanded={open}
                         className="w-full justify-between"
                     >
-                        {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)` : "Selecione formadores..."}
+                        {selectedFormadores.length > 0 ? selectedFormadores[0].nomeCompleto : "Selecione um formador..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
@@ -189,14 +188,38 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
                     </Command>
                 </PopoverContent>
             </Popover>
-             <div className='pt-2 flex flex-wrap gap-2'>
-                {selectedFormadores.map(f => <Badge key={f.id} variant="secondary">{f.nomeCompleto}</Badge>)}
-             </div>
               <FormMessage />
             </FormItem>
           )}
         />
         
+        <FormField
+          control={form.control}
+          name="municipio"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Município</FormLabel>
+                <Select 
+                    onValueChange={handleMunicipioChange} 
+                    defaultValue={field.value}
+                    disabled={availableMunicipios.length === 0}
+                >
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione o município da formação" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {availableMunicipios.map(m => (
+                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="titulo"
@@ -244,5 +267,3 @@ export function FormFormacao({ onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
-
-    
