@@ -18,19 +18,35 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign } from 'lucide-react';
-import type { Despesa } from '@/lib/types';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip } from 'lucide-react';
+import type { Despesa, TipoDespesa } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collection, getDocs, query, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDespesa } from '@/components/despesas/form-despesa';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
+
+const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
+
+const typeIcons: Record<TipoDespesa, React.ElementType> = {
+  'Alimentação': Utensils,
+  'Transporte': Car,
+  'Hospedagem': Building,
+  'Material Didático': Book,
+  'Outros': Grip,
+};
+
+type GroupedDespesas = {
+    [key in TipoDespesa]?: Despesa[];
+}
 
 export default function DespesasPage() {
   const { user } = useAuth();
@@ -65,6 +81,17 @@ export default function DespesasPage() {
   useEffect(() => {
     fetchDespesas();
   }, [fetchDespesas]);
+
+  const groupedDespesas = useMemo(() => {
+    return despesas.reduce((acc, despesa) => {
+        const type = despesa.tipo;
+        if (!acc[type]) {
+            acc[type] = [];
+        }
+        acc[type]!.push(despesa);
+        return acc;
+    }, {} as GroupedDespesas);
+  }, [despesas]);
 
   const handleSuccess = () => {
     fetchDespesas();
@@ -136,55 +163,77 @@ export default function DespesasPage() {
                 </ScrollArea>
             </DialogContent>
         </Dialog>
-      
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="hidden lg:table-cell">Descrição</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead className="w-[100px] text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {despesas.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Nenhuma despesa registrada.
-                    </TableCell>
-                </TableRow>
-            ) : despesas.map((despesa) => (
-                <TableRow key={despesa.id}>
-                  <TableCell className="font-medium">{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell>{despesa.tipo}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">{despesa.descricao}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                  <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(despesa)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(despesa)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            }
-          </TableBody>
-        </Table>
-      </div>
 
+        {despesas.length === 0 ? (
+             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                <DollarSign className="w-12 h-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">Nenhuma despesa registrada</h3>
+                <p className="text-sm text-muted-foreground">Comece adicionando uma nova despesa.</p>
+            </div>
+        ) : (
+            <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
+                {despesaTypes.map(type => {
+                    const despesasDoTipo = groupedDespesas[type] || [];
+                    if (despesasDoTipo.length === 0) return null;
+                    const Icon = typeIcons[type];
+                    const total = despesasDoTipo.reduce((sum, item) => sum + item.valor, 0);
+
+                    return (
+                        <AccordionItem value={type} key={type}>
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-3">
+                                    <Icon className="h-5 w-5 text-primary"/>
+                                    <span className='text-lg font-semibold'>{type}</span>
+                                    <Badge variant="outline">{despesasDoTipo.length} {despesasDoTipo.length === 1 ? 'registro' : 'registros'}</Badge>
+                                </div>
+                                <span className="text-lg font-semibold text-primary">{formatCurrency(total)}</span>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="border rounded-lg overflow-hidden">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Data</TableHead>
+                                                <TableHead className="hidden lg:table-cell">Descrição</TableHead>
+                                                <TableHead>Valor</TableHead>
+                                                <TableHead className="w-[100px] text-right">Ações</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {despesasDoTipo.map(despesa => (
+                                                 <TableRow key={despesa.id}>
+                                                    <TableCell className="font-medium">{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                    <TableCell className="hidden lg:table-cell text-muted-foreground">{despesa.descricao}</TableCell>
+                                                    <TableCell className="font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => openEditDialog(despesa)}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(despesa)}>
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                            </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    )
+                })}
+            </Accordion>
+        )}
+      
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -204,3 +253,4 @@ export default function DespesasPage() {
     </div>
   );
 }
+
