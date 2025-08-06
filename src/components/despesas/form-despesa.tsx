@@ -184,7 +184,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                     id="valor"
                     name={field.name}
                     placeholder="R$ 0,00"
-                    defaultValue={field.value}
+                    defaultValue={field.value ? field.value * 100 : undefined}
                     decimalsLimit={2}
                     onValueChange={(value, name, values) => {
                       field.onChange(values?.float);
