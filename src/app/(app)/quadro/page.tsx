@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { User, Tag } from 'lucide-react';
+import { User, Tag, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Formador } from '@/lib/types';
@@ -44,8 +44,10 @@ export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
 
   const fetchAndCategorizeFormadores = useCallback(async () => {
+    setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, 'formadores'));
       const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
@@ -53,11 +55,10 @@ export default function QuadroPage() {
       const newColumns = JSON.parse(JSON.stringify(initialColumns));
 
       formadoresData.forEach(formador => {
-        const status = formador.status || 'ativo'; // Default to 'ativo' if status is not set
+        const status = formador.status || 'ativo';
         if (newColumns[status]) {
           newColumns[status].items.push(formador);
         } else {
-            // If formador has an unknown status, add them to a default column
             newColumns['ativo'].items.push(formador);
         }
       });
@@ -67,6 +68,8 @@ export default function QuadroPage() {
     } catch (error) {
       console.error("Error fetching formadores:", error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os formadores.'});
+    } finally {
+        setLoading(false);
     }
   }, [toast]);
 
@@ -82,7 +85,6 @@ export default function QuadroPage() {
     const sourceColumnId = source.droppableId;
     const destColumnId = destination.droppableId;
     
-    // Do not do anything if the item is dropped in the same place
     if (sourceColumnId === destColumnId && source.index === destination.index) {
         return;
     }
@@ -107,7 +109,6 @@ export default function QuadroPage() {
     };
     setColumns(newColumnsState);
 
-    // Update Firestore
     try {
       const formadorRef = doc(db, 'formadores', draggableId);
       await updateDoc(formadorRef, { status: destColumnId });
@@ -115,19 +116,22 @@ export default function QuadroPage() {
     } catch (error) {
       console.error("Error updating formador status:", error);
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status do formador.'});
-      // Revert UI change on error
       fetchAndCategorizeFormadores();
     }
   };
   
-
   return (
     <div className="flex flex-col gap-8 py-6 h-full">
         <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Acompanhamento de Formadores</h1>
             <p className="text-muted-foreground">Visualize e gerencie o progresso de cada formador.</p>
         </div>
-        {isClient ? (
+        {loading && (
+             <div className="flex h-[50vh] w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )}
+        {!loading && isClient && (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
                     {Object.entries(columns).map(([columnId, column]) => (
@@ -182,7 +186,7 @@ export default function QuadroPage() {
                     ))}
                 </div>
             </DragDropContext>
-        ) : null}
+        )}
     </div>
   );
 }
