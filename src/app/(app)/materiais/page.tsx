@@ -22,8 +22,7 @@ import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback } from 'react';
 import { collection, getDocs, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
-import { deleteObject, ref } from 'firebase/storage';
+import { db } from '@/lib/firebase';
 import { FormMaterial } from '@/components/materiais/form-material';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -82,12 +81,6 @@ export default function MateriaisPage() {
     try {
         // Delete the Firestore document
         await deleteDoc(doc(db, "materiais", material.id));
-
-        // If there's a file associated, delete it from Storage
-        if (material.pathArquivo) {
-            const fileRef = ref(storage, material.pathArquivo);
-            await deleteObject(fileRef);
-        }
 
         toast({ title: 'Sucesso!', description: 'Material excluído com sucesso.' });
         fetchMateriais();
