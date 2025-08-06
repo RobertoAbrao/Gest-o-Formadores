@@ -22,9 +22,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        // If user data is already loaded, no need to fetch again.
+        // This is especially important during new user creation by an admin,
+        // to prevent the auth state listener from overriding the admin's session.
         if(user && user.uid === firebaseUser.uid) {
-          // User data is already loaded, no need to fetch again.
-          // This prevents state updates on re-login during user creation.
           setLoading(false);
           return;
         }
@@ -42,8 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: firebaseUser.email,
             nome: nome,
             perfil: role,
-            // Keep admin password from previous state if available
-            adminPassword: user?.perfil === 'administrador' ? user.adminPassword : undefined,
+            // Only preserve adminPassword if the incoming user is also an admin
+            adminPassword: role === 'administrador' && user?.adminPassword ? user.adminPassword : undefined,
           };
           
           setUser(loggedInUser);
@@ -54,9 +55,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
         } else {
-            console.error("User document not found in Firestore. Logging out.");
-            await signOut(auth);
-            setUser(null);
+            // This case can happen right after an admin creates a new user.
+            // The auth state changes, but the Firestore document for the new user hasn't been created yet.
+            // We shouldn't log out the current user (the admin).
+            // We just don't set a user, allowing the creation process to continue.
+            // When the *new* user eventually logs in, their doc will exist.
+            console.log("User document not yet found in Firestore, likely during new user creation. No action taken.");
         }
 
       } else {
@@ -78,17 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (userDoc.exists()) {
       const userData = userDoc.data();
+      const userProfile: User = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        nome: userData.nome,
+        perfil: userData.perfil,
+      };
+
       if (userData.perfil === 'administrador') {
-        // Store the password in the user object ONLY for admins
-        setUser(prevUser => ({
-          ...prevUser,
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          nome: userData.nome,
-          perfil: 'administrador',
-          adminPassword: password, // <-- Here is the critical change
-        }));
+        // Store the password in the user object ONLY for admins, so they can re-login
+        userProfile.adminPassword = password;
       }
+      setUser(userProfile);
     }
     
     return userCredential;
