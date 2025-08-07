@@ -1,7 +1,7 @@
 
+import { RelatorioContainer } from '@/components/despesas/relatorio-container';
 import { RelatorioDespesas } from '@/components/despesas/relatorio-despesas';
 import { Button } from '@/components/ui/button';
-import { Printer } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RelatorioPage({ params }: { params: { id: string } }) {
@@ -19,18 +19,8 @@ export default function RelatorioPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-end items-center mb-4 non-printable-area">
-          <Button onClick={() => window.print()}>
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir
-          </Button>
-        </div>
-        <div className="printable-area">
-            <RelatorioDespesas formacaoId={formacaoId} />
-        </div>
-      </div>
-    </div>
+    <RelatorioContainer>
+        <RelatorioDespesas formacaoId={formacaoId} />
+    </RelatorioContainer>
   );
 }
