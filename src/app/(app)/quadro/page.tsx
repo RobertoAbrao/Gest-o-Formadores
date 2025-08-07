@@ -291,8 +291,8 @@ export default function QuadroPage() {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => {e.stopPropagation();}}>
-                                <Link href={`/quadro/${formacao.id}/print`} target="_blank" className="flex items-center w-full">
+                              <DropdownMenuItem>
+                                <Link href={`/relatorio/${formacao.id}`} target="_blank" className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
                                   Imprimir Relatório
                                 </Link>

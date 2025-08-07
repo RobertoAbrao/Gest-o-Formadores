@@ -244,6 +244,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
   return (
     <ScrollArea className="max-h-[70vh]">
+      <div className='p-1'>
         <Tabs defaultValue="info" className="p-4">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
@@ -481,6 +482,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                 {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
             </DialogContent>
         </Dialog>
-      </ScrollArea>
+      </div>
+    </ScrollArea>
   );
 }

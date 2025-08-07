@@ -98,21 +98,6 @@ export default function PrintPage() {
     fetchData();
   }, [fetchData]);
 
-  const handlePrint = () => {
-    window.print();
-  }
-  
-  // Trigger print dialog automatically after data has loaded and rendered
-  useEffect(() => {
-    if (!loading && !error && formacao) {
-      // Small timeout to ensure the content is fully rendered before printing
-      const timer = setTimeout(() => {
-        handlePrint();
-      }, 500); 
-      return () => clearTimeout(timer);
-    }
-  }, [loading, error, formacao]);
-
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -138,7 +123,7 @@ export default function PrintPage() {
                     <AppLogo />
                     <p className="text-muted-foreground mt-1">Pré-visualização do Relatório</p>
                 </div>
-                <Button onClick={handlePrint}>
+                <Button onClick={() => window.print()}>
                     <Printer className="mr-2 h-4 w-4" />
                     Imprimir
                 </Button>
