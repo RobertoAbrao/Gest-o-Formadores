@@ -4,7 +4,7 @@ import { AuthProvider } from '@/components/auth-provider';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'EduConnect Hub',
+  title: 'Gestão Formadores',
   description: 'Portal de Apoio Pedagógico',
 };
 

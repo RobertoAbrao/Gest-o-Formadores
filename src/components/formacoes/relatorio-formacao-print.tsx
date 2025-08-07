@@ -131,7 +131,7 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas }:
       </main>
 
       <footer className="text-center text-xs text-gray-400 pt-8 mt-8 border-t">
-        EduConnect Hub - Portal de Apoio Pedagógico
+        Gestão Formadores - Portal de Apoio Pedagógico
       </footer>
     </div>
   );
