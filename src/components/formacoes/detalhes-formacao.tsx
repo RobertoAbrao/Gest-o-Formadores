@@ -15,9 +15,9 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa } from '@/lib/types';
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye } from 'lucide-react';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { Loader2, User, BookOpen, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DetalhesDespesa } from '../despesas/detalhes-despesa';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
 interface DetalhesFormacaoProps {
@@ -47,6 +48,15 @@ const fileToDataURL = (file: File): Promise<string> => {
 };
 
 const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
+const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
+
+const typeIcons: Record<TipoDespesa, React.ElementType> = {
+  'Alimentação': Utensils,
+  'Transporte': Car,
+  'Hospedagem': Building,
+  'Material Didático': Book,
+  'Outros': Grip,
+};
 
 const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
     if (!timestamp) return 'N/A';
@@ -62,6 +72,10 @@ const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.Date
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
+
+type GroupedDespesas = {
+    [key in TipoDespesa]?: Despesa[];
+}
 
 
 export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
@@ -149,6 +163,17 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const groupedDespesas = useMemo(() => {
+    return despesas.reduce((acc, despesa) => {
+        const type = despesa.tipo;
+        if (!acc[type]) {
+            acc[type] = [];
+        }
+        acc[type]!.push(despesa);
+        return acc;
+    }, {} as GroupedDespesas);
+  }, [despesas]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -431,28 +456,49 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </p>
                         </div>
                      ) : (
-                        <div className="border rounded-lg overflow-hidden">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Data</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead>Descrição</TableHead>
-                                        <TableHead className="text-right">Valor</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {despesas.map(despesa => (
-                                        <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
-                                            <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
-                                            <TableCell><Badge variant="outline">{despesa.tipo}</Badge></TableCell>
-                                            <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
-                                            <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                         </div>
+                        <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
+                            {despesaTypes.map(type => {
+                                const despesasDoTipo = groupedDespesas[type] || [];
+                                if (despesasDoTipo.length === 0) return null;
+                                const Icon = typeIcons[type];
+                                const total = despesasDoTipo.reduce((sum, item) => sum + item.valor, 0);
+
+                                return (
+                                    <AccordionItem value={type} key={type}>
+                                        <AccordionTrigger>
+                                            <div className="flex items-center gap-3">
+                                                <Icon className="h-5 w-5 text-primary"/>
+                                                <span className='text-lg font-semibold'>{type}</span>
+                                                <Badge variant="outline">{despesasDoTipo.length} {despesasDoTipo.length === 1 ? 'registro' : 'registros'}</Badge>
+                                            </div>
+                                            <span className="text-lg font-semibold text-primary">{formatCurrency(total)}</span>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="border rounded-lg overflow-hidden">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Data</TableHead>
+                                                            <TableHead>Descrição</TableHead>
+                                                            <TableHead className="text-right">Valor</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {despesasDoTipo.map(despesa => (
+                                                            <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
+                                                                <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
+                                                                <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )
+                            })}
+                        </Accordion>
                      )}
                      { !formacao.dataInicio || !formacao.dataFim && (
                          <Alert variant="default">
