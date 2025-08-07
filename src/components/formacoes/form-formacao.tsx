@@ -64,6 +64,12 @@ interface FormFormacaoProps {
   onSuccess: () => void;
 }
 
+const generateFormationCode = (municipio: string) => {
+    const municipioPart = municipio.substring(0, 4).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${municipioPart}-${randomPart}`;
+};
+
 export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -155,7 +161,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-      const dataToSave = {
+      const dataToSave: Partial<Formacao> & Omit<FormValues, 'dataInicio' | 'dataFim'> & { dataInicio?: Timestamp | null; dataFim?: Timestamp | null } = {
           ...values,
           dataInicio: values.dataInicio ? Timestamp.fromDate(values.dataInicio) : null,
           dataFim: values.dataFim ? Timestamp.fromDate(values.dataFim) : null,
@@ -168,6 +174,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         const newDocRef = doc(collection(db, 'formacoes'));
         await setDoc(newDocRef, {
             ...dataToSave,
+            id: newDocRef.id,
+            codigo: generateFormationCode(values.municipio),
             status: 'preparacao',
             dataCriacao: serverTimestamp(),
         });
@@ -206,7 +214,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const handleMunicipioChange = (municipio: string) => {
     form.setValue('municipio', municipio, { shouldValidate: true });
     if (!isEditMode && municipio) {
-        const title = municipio;
+        const title = `Formação ${municipio}`;
         const desc = `Acompanhamento pedagógico para o município de ${municipio}.`;
         form.setValue('titulo', title, { shouldValidate: true });
         form.setValue('descricao', desc, { shouldValidate: true });

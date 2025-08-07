@@ -18,6 +18,7 @@ import {
   Pencil,
   Printer,
   Eye,
+  Hash,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -36,6 +37,7 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -60,6 +62,7 @@ import { db } from '@/lib/firebase';
 import type { Formacao, FormadorStatus } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
+import { Badge } from '@/components/ui/badge';
 
 type Columns = {
   [key in FormadorStatus]: {
@@ -243,7 +246,11 @@ export default function QuadroPage() {
                   <>
                     <DialogHeader>
                         <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
-                        <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
+                        <DialogDescription>
+                            <div className='flex items-center gap-2'>
+                                <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
+                            </div>
+                        </DialogDescription>
                     </DialogHeader>
                     <DetalhesFormacao 
                         formacaoId={selectedFormacao.id} 
@@ -296,7 +303,7 @@ export default function QuadroPage() {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
+                              <DropdownMenuItem>
                                 <Link href={`/relatorio/${formacao.id}`} className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
                                   Ver Relatório
@@ -316,12 +323,18 @@ export default function QuadroPage() {
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {formacao.descricao}
                         </p>
-                         {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2">
-                                <Paperclip className="h-4 w-4" />
-                                <span>{formacao.materiaisIds.length} {formacao.materiaisIds.length === 1 ? 'material' : 'materiais'}</span>
-                            </div>
-                        )}
+                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                           {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <Paperclip className="h-4 w-4" />
+                                    <span>{formacao.materiaisIds.length} {formacao.materiaisIds.length === 1 ? 'material' : 'materiais'}</span>
+                                </div>
+                            )}
+                            <Badge variant="outline" className="font-mono">
+                                <Hash className="h-3 w-3 mr-1" />
+                                {formacao.codigo}
+                            </Badge>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -358,7 +371,3 @@ export default function QuadroPage() {
       </div>
   );
 }
-
-    
-
-    

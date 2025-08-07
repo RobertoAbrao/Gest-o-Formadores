@@ -38,6 +38,7 @@ export interface Anexo {
 
 export interface Formacao {
   id:string;
+  codigo: string;
   titulo: string;
   descricao: string;
   status: FormadorStatus;
@@ -53,6 +54,7 @@ export interface Formacao {
 export interface Despesa {
     id: string;
     formadorId: string;
+    formacaoId: string;
     formadorNome?: string; // Adicionado para facilitar a exibição
     data: Timestamp;
     tipo: TipoDespesa;

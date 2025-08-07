@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,8 +23,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Despesa, TipoDespesa } from '@/lib/types';
-import { useState, useRef } from 'react';
+import type { Despesa, TipoDespesa, Formacao } from '@/lib/types';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Loader2, CalendarIcon, UploadCloud, File as FileIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Calendar } from '../ui/calendar';
@@ -37,6 +37,7 @@ const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB, to be safe with Firestore documen
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
+  formacaoId: z.string({ required_error: 'Selecione a formação.' }),
   data: z.date({ required_error: 'A data é obrigatória.' }),
   tipo: z.enum(despesaTypes, { required_error: 'Selecione um tipo de despesa.' }),
   descricao: z.string().min(3, { message: 'A descrição deve ter pelo menos 3 caracteres.' }),
@@ -74,10 +75,33 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-
+  const [activeFormations, setActiveFormations] = useState<Formacao[]>([]);
   const isEditMode = !!despesa;
   
   const comprovanteRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchActiveFormations = async () => {
+        if (!user) return;
+        setLoading(true);
+        try {
+            const q = query(
+                collection(db, 'formacoes'),
+                where('formadoresIds', 'array-contains', user.uid),
+                where('status', '==', 'em-formacao'),
+            );
+            const querySnapshot = await getDocs(q);
+            const formationsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
+            setActiveFormations(formationsData);
+        } catch (error) {
+            console.error("Error fetching active formations:", error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar as formações ativas.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchActiveFormations();
+  }, [user, toast]);
 
   const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
     return timestamp ? timestamp.toDate() : undefined;
@@ -86,6 +110,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      formacaoId: despesa?.formacaoId || undefined,
       data: toDate(despesa?.data) || new Date(),
       tipo: despesa?.tipo,
       descricao: despesa?.descricao || '',
@@ -96,6 +121,11 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
   });
   
   const selectedFile = form.watch('comprovante');
+
+  const selectedFormation = useMemo(() => {
+    const formacaoId = form.watch('formacaoId');
+    return activeFormations.find(f => f.id === formacaoId);
+  }, [form, activeFormations]);
 
   async function onSubmit(values: FormValues) {
     if (!user) {
@@ -114,6 +144,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
 
         const dataToSave = {
             formadorId: user.uid,
+            formacaoId: values.formacaoId,
             data: Timestamp.fromDate(values.data),
             tipo: values.tipo,
             descricao: values.descricao,
@@ -148,6 +179,33 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
+          control={form.control}
+          name="formacaoId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Formação</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isEditMode}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a formação correspondente" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {activeFormations.map(f => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.titulo} ({f.codigo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormDescription>
+                Associe esta despesa a uma formação em andamento.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
             control={form.control}
             name="data"
             render={({ field }) => (
@@ -179,9 +237,16 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                         onSelect={field.onChange}
                         initialFocus
                         locale={ptBR}
+                        disabled={(date) => {
+                            if (!selectedFormation?.dataInicio || !selectedFormation?.dataFim) return true;
+                            return date < selectedFormation.dataInicio.toDate() || date > selectedFormation.dataFim.toDate();
+                        }}
                     />
                     </PopoverContent>
                 </Popover>
+                 <FormDescription>
+                    A data deve estar dentro do período da formação.
+                </FormDescription>
                 <FormMessage />
                 </FormItem>
             )}

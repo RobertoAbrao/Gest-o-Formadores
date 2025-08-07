@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -139,7 +139,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
 
-            const qDespesas = query(collection(db, 'despesas'), where('formadorId', 'in', formacaoData.formadoresIds));
+            const qDespesas = query(collection(db, 'despesas'), where('formacaoId', '==', formacaoId));
             const despesasSnap = await getDocs(qDespesas);
             const allDespesas = despesasSnap.docs.map(doc => {
                 const data = doc.data();
@@ -150,17 +150,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                 } as Despesa
             });
             
-            const startDate = formacaoData.dataInicio?.toMillis();
-            const endDate = formacaoData.dataFim?.toMillis();
-
-            const filteredDespesas = allDespesas.filter(d => {
-                if (!startDate || !endDate) return false;
-                const despesaDate = d.data.toMillis();
-                return despesaDate >= startDate && despesaDate <= endDate;
-            });
-            
-            filteredDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
-            setDespesas(filteredDespesas);
+            allDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
+            setDespesas(allDespesas);
         } else {
             setDespesas([]);
         }
@@ -540,15 +531,6 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                 </AccordionItem>
                             ))}
                         </Accordion>
-                     )}
-                     { !formacao.dataInicio || !formacao.dataFim && (
-                         <Alert>
-                            <Info className="h-4 w-4" />
-                            <AlertTitle>Datas não definidas</AlertTitle>
-                            <AlertDescription>
-                                Para visualizar as despesas, defina as datas de início e fim da formação.
-                            </AlertDescription>
-                        </Alert>
                      )}
                  </div>
             </TabsContent>

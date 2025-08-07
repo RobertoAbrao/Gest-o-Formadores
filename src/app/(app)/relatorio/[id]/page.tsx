@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -137,7 +137,7 @@ export default function DetalhesFormacaoPage() {
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
 
-            const qDespesas = query(collection(db, 'despesas'), where('formadorId', 'in', formacaoData.formadoresIds));
+            const qDespesas = query(collection(db, 'despesas'), where('formacaoId', '==', formacaoId));
             const despesasSnap = await getDocs(qDespesas);
             const allDespesas = despesasSnap.docs.map(doc => {
                 const data = doc.data();
@@ -148,17 +148,8 @@ export default function DetalhesFormacaoPage() {
                 } as Despesa
             });
             
-            const startDate = formacaoData.dataInicio?.toMillis();
-            const endDate = formacaoData.dataFim?.toMillis();
-
-            const filteredDespesas = allDespesas.filter(d => {
-                if (!startDate || !endDate) return false;
-                const despesaDate = d.data.toMillis();
-                return despesaDate >= startDate && despesaDate <= endDate;
-            });
-            
-            filteredDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
-            setDespesas(filteredDespesas);
+            allDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
+            setDespesas(allDespesas);
         } else {
             setDespesas([]);
         }
@@ -327,7 +318,9 @@ export default function DetalhesFormacaoPage() {
         
         <div className="no-print">
             <h1 className="text-3xl font-bold tracking-tight font-headline mt-2">{formacao.titulo}</h1>
-            <p className="text-muted-foreground">{formacao.descricao}</p>
+            <p className="text-muted-foreground flex items-center gap-2">
+                 <Hash className="h-4 w-4" /> {formacao.codigo}
+            </p>
         </div>
         
         <Tabs defaultValue="info" className="w-full">
