@@ -76,7 +76,7 @@ export default function DetalhesFormacaoPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
-  const [formador, setFormador] = useState<Formador | null>(null);
+  const [formadores, setFormadores] = useState<Formador[]>([]);
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
@@ -104,14 +104,13 @@ export default function DetalhesFormacaoPage() {
 
         setFormacao(formacaoData);
 
-        let formadorId: string | null = null;
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            formadorId = formacaoData.formadoresIds[0];
-            const formadorRef = doc(db, 'formadores', formadorId);
-            const formadorSnap = await getDoc(formadorRef);
-            if (formadorSnap.exists()) {
-                setFormador({ id: formadorSnap.id, ...formadorSnap.data() } as Formador);
-            }
+            const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
+            const formadoresSnap = await getDocs(qFormadores);
+            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            setFormadores(formadoresData);
+        } else {
+            setFormadores([]);
         }
 
         if (formacaoData.materiaisIds && formacaoData.materiaisIds.length > 0) {
@@ -123,8 +122,8 @@ export default function DetalhesFormacaoPage() {
             setMateriais([]);
         }
         
-        if (formadorId) {
-            const qDespesas = query(collection(db, 'despesas'), where('formadorId', '==', formadorId));
+        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const qDespesas = query(collection(db, 'despesas'), where('formadorId', 'in', formacaoData.formadoresIds));
             const despesasSnap = await getDocs(qDespesas);
             const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
             
@@ -311,12 +310,12 @@ export default function DetalhesFormacaoPage() {
                         <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
                         <Separator />
                         <div className="grid gap-4 md:grid-cols-2">
-                            {formador && (
-                                <div className="flex items-center gap-3">
+                            {formadores.length > 0 && (
+                                <div className="flex items-start gap-3">
                                     <User className="h-5 w-5 text-muted-foreground" />
                                     <div>
-                                        <p className="text-sm text-muted-foreground">Formador</p>
-                                        <p className="font-medium">{formador.nomeCompleto}</p>
+                                        <p className="text-sm text-muted-foreground">Formador(es)</p>
+                                        {formadores.map(f => <p key={f.id} className="font-medium">{f.nomeCompleto}</p>)}
                                     </div>
                                 </div>
                             )}
@@ -561,5 +560,3 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
-
-    
