@@ -17,6 +17,7 @@ import {
   Paperclip,
   Pencil,
   Printer,
+  Eye,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -287,14 +288,18 @@ export default function QuadroPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(formacao)}}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalhes
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(formacao)}}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/relatorio/${formacao.id}`} target="_blank" className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
-                                  Imprimir Relatório
+                                  Ver Relatório
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -353,3 +358,5 @@ export default function QuadroPage() {
       </div>
   );
 }
+
+    
