@@ -468,7 +468,6 @@ export default function DetalhesFormacaoPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    <tr className='print:hidden'>
                                     {despesas.map(despesa => (
                                         <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer no-print">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
@@ -477,9 +476,8 @@ export default function DetalhesFormacaoPage() {
                                             <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                         </TableRow>
                                     ))}
-                                    </tr>
                                     {despesas.map(despesa => (
-                                        <TableRow key={despesa.id} className="hidden print:table-row">
+                                        <TableRow key={despesa.id + '-print'} className="hidden print:table-row">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
                                             <TableCell>{despesa.tipo}</TableCell>
                                             <TableCell>{despesa.descricao}</TableCell>
