@@ -297,7 +297,7 @@ export default function QuadroPage() {
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/relatorio/${formacao.id}`} target="_blank" className="flex items-center w-full">
+                                <Link href={`/relatorio/${formacao.id}`} className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
                                   Ver Relatório
                                 </Link>
@@ -358,5 +358,7 @@ export default function QuadroPage() {
       </div>
   );
 }
+
+    
 
     
