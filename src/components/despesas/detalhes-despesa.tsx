@@ -4,7 +4,7 @@
 import type { Despesa } from '@/lib/types';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, DollarSign, Grip, Link as LinkIcon, FileText, Utensils, Car, Building, Book } from 'lucide-react';
+import { Calendar, DollarSign, Grip, Link as LinkIcon, FileText, Utensils, Car, Building, Book, User } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -57,6 +57,15 @@ export function DetalhesDespesa({ despesa }: DetalhesDespesaProps) {
                                 <p className="font-medium">{despesa.data.toDate().toLocaleDateString('pt-BR')}</p>
                             </div>
                         </div>
+                        {despesa.formadorNome && (
+                             <div className="flex items-center gap-3">
+                                <User className="h-5 w-5 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Formador</p>
+                                    <p className="font-medium">{despesa.formadorNome}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

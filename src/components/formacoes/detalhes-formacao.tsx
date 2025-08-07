@@ -111,10 +111,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
         setFormacao(formacaoData);
 
+        let formadoresData: Formador[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(qFormadores);
-            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setFormadores(formadoresData);
         } else {
             setFormadores([]);
@@ -131,9 +132,18 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         
         // Fetch expenses
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
+
             const qDespesas = query(collection(db, 'despesas'), where('formadorId', 'in', formacaoData.formadoresIds));
             const despesasSnap = await getDocs(qDespesas);
-            const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+            const allDespesas = despesasSnap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    formadorNome: formadoresMap.get(data.formadorId) || 'N/A'
+                } as Despesa
+            });
             
             const startDate = formacaoData.dataInicio?.toMillis();
             const endDate = formacaoData.dataFim?.toMillis();
@@ -478,6 +488,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                     <TableHeader>
                                                         <TableRow>
                                                             <TableHead>Data</TableHead>
+                                                            <TableHead>Formador</TableHead>
                                                             <TableHead>Descrição</TableHead>
                                                             <TableHead className="text-right">Valor</TableHead>
                                                         </TableRow>
@@ -486,6 +497,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                         {despesasDoTipo.map(despesa => (
                                                             <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
                                                                 <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                <TableCell className="font-medium">{despesa.formadorNome}</TableCell>
                                                                 <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
                                                                 <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                                             </TableRow>
@@ -500,7 +512,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                         </Accordion>
                      )}
                      { !formacao.dataInicio || !formacao.dataFim && (
-                         <Alert variant="default">
+                         <Alert>
                             <Info className="h-4 w-4" />
                             <AlertTitle>Datas não definidas</AlertTitle>
                             <AlertDescription>

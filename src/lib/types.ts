@@ -53,6 +53,7 @@ export interface Formacao {
 export interface Despesa {
     id: string;
     formadorId: string;
+    formadorNome?: string; // Adicionado para facilitar a exibição
     data: Timestamp;
     tipo: TipoDespesa;
     descricao: string;

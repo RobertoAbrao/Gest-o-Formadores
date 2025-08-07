@@ -104,10 +104,11 @@ export default function DetalhesFormacaoPage() {
 
         setFormacao(formacaoData);
 
+        let formadoresData: Formador[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(qFormadores);
-            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setFormadores(formadoresData);
         } else {
             setFormadores([]);
@@ -123,9 +124,18 @@ export default function DetalhesFormacaoPage() {
         }
         
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
+
             const qDespesas = query(collection(db, 'despesas'), where('formadorId', 'in', formacaoData.formadoresIds));
             const despesasSnap = await getDocs(qDespesas);
-            const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+            const allDespesas = despesasSnap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    formadorNome: formadoresMap.get(data.formadorId) || 'N/A'
+                } as Despesa
+            });
             
             const startDate = formacaoData.dataInicio?.toMillis();
             const endDate = formacaoData.dataFim?.toMillis();
@@ -501,6 +511,7 @@ export default function DetalhesFormacaoPage() {
                                                     <TableHeader>
                                                         <TableRow>
                                                             <TableHead>Data</TableHead>
+                                                            <TableHead>Formador</TableHead>
                                                             <TableHead>Descrição</TableHead>
                                                             <TableHead className="text-right">Valor</TableHead>
                                                         </TableRow>
@@ -509,6 +520,7 @@ export default function DetalhesFormacaoPage() {
                                                         {despesasDoTipo.map(despesa => (
                                                             <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer no-print">
                                                                 <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                <TableCell className="font-medium">{despesa.formadorNome}</TableCell>
                                                                 <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
                                                                 <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                                             </TableRow>
@@ -516,6 +528,7 @@ export default function DetalhesFormacaoPage() {
                                                         {despesasDoTipo.map(despesa => (
                                                             <TableRow key={despesa.id + '-print'} className="hidden print:table-row">
                                                                 <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                <TableCell>{despesa.formadorNome}</TableCell>
                                                                 <TableCell>{despesa.descricao}</TableCell>
                                                                 <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                                             </TableRow>
