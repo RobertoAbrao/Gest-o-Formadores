@@ -1,5 +1,5 @@
 
-'use server';
+'use client';
 
 import {
   doc,
@@ -15,6 +15,8 @@ import type { Formacao, Formador, Despesa } from '@/lib/types';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { useCallback, useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 interface RelatorioProps {
   formacaoId: string;
@@ -34,50 +36,91 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
+export function RelatorioDespesas({ formacaoId }: RelatorioProps) {
+  const [data, setData] = useState<{
+    formacao: Formacao;
+    formador: Formador | null;
+    despesas: Despesa[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-async function getRelatorioData(formacaoId: string) {
-    const formacaoRef = doc(db, 'formacoes', formacaoId);
-    const formacaoSnap = await getDoc(formacaoRef);
-    if (!formacaoSnap.exists()) {
-      throw new Error('Formação não encontrada.');
-    }
-    const formacao = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
-    
-    let formador: Formador | null = null;
-    if (formacao.formadoresIds && formacao.formadoresIds.length > 0) {
-      const formadorId = formacao.formadoresIds[0];
-      const formadorRef = doc(db, 'formadores', formadorId);
-      const formadorSnap = await getDoc(formadorRef);
-      if (formadorSnap.exists()) {
-        formador = { id: formadorSnap.id, ...formadorSnap.data() } as Formador;
-      }
-    }
-
-    let despesas: Despesa[] = [];
-    if (formador) {
-        const qDespesas = query(collection(db, 'despesas'), where('formadorId', '==', formador.id));
-        const despesasSnap = await getDocs(qDespesas);
-        const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+  const getRelatorioData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+        const formacaoRef = doc(db, 'formacoes', formacaoId);
+        const formacaoSnap = await getDoc(formacaoRef);
+        if (!formacaoSnap.exists()) {
+          throw new Error('Formação não encontrada.');
+        }
+        const formacao = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         
-        const startDate = formacao.dataInicio?.toMillis();
-        const endDate = formacao.dataFim?.toMillis();
+        let formador: Formador | null = null;
+        if (formacao.formadoresIds && formacao.formadoresIds.length > 0) {
+          const formadorId = formacao.formadoresIds[0];
+          const formadorRef = doc(db, 'formadores', formadorId);
+          const formadorSnap = await getDoc(formadorRef);
+          if (formadorSnap.exists()) {
+            formador = { id: formadorSnap.id, ...formadorSnap.data() } as Formador;
+          }
+        }
 
-        const filteredDespesas = allDespesas.filter(d => {
-            if (!startDate || !endDate) return false;
-            const despesaDate = d.data.toMillis();
-            return despesaDate >= startDate && despesaDate <= endDate;
-        });
+        let despesas: Despesa[] = [];
+        if (formador) {
+            const qDespesas = query(collection(db, 'despesas'), where('formadorId', '==', formador.id));
+            const despesasSnap = await getDocs(qDespesas);
+            const allDespesas = despesasSnap.docs.map(doc => ({id: doc.id, ...doc.data()} as Despesa));
+            
+            const startDate = formacao.dataInicio?.toMillis();
+            const endDate = formacao.dataFim?.toMillis();
+
+            const filteredDespesas = allDespesas.filter(d => {
+                if (!startDate || !endDate) return false;
+                const despesaDate = d.data.toMillis();
+                return despesaDate >= startDate && despesaDate <= endDate;
+            });
+            
+            filteredDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
+            despesas = filteredDespesas;
+        }
         
-        filteredDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
-        despesas = filteredDespesas;
+        setData({ formacao, formador, despesas });
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Ocorreu um erro ao buscar os dados do relatório.');
+    } finally {
+        setLoading(false);
     }
-    
-    return { formacao, formador, despesas };
-}
+  }, [formacaoId]);
 
+  useEffect(() => {
+    getRelatorioData();
+  }, [getRelatorioData]);
 
-export async function RelatorioDespesas({ formacaoId }: RelatorioProps) {
-  const { formacao, formador, despesas } = await getRelatorioData(formacaoId);
+  if (loading) {
+    return (
+        <div className="flex flex-col items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Carregando dados do relatório...</p>
+        </div>
+    );
+  }
+
+  if (error) {
+    return (
+        <div className="flex flex-col items-center justify-center h-64 bg-destructive/10 text-destructive border border-destructive rounded-lg p-4">
+            <h3 className="font-bold">Erro ao Carregar Relatório</h3>
+            <p className="text-sm">{error}</p>
+        </div>
+    );
+  }
+  
+  if (!data) {
+    return <p>Nenhum dado encontrado.</p>
+  }
+
+  const { formacao, formador, despesas } = data;
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
@@ -165,3 +208,5 @@ export async function RelatorioDespesas({ formacaoId }: RelatorioProps) {
     </div>
   );
 }
+
+    
