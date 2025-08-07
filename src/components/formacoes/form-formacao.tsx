@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
-import { Loader2, Check, ChevronsUpDown, CalendarIcon } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown, CalendarIcon, X } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import type { Formacao, Formador } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ComboboxMateriais } from '../materiais/combobox-materiais';
 import { Calendar } from '../ui/calendar';
+import { Badge } from '../ui/badge';
 
 const formSchema = z.object({
   titulo: z
@@ -106,6 +107,23 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     fetchFormadores();
   }, []);
 
+  const selectedFormadoresIds = form.watch('formadoresIds');
+
+  useEffect(() => {
+    if (formadores.length > 0) {
+      const selected = formadores.filter(f => selectedFormadoresIds.includes(f.id));
+      const allMunicipios = selected.flatMap(f => f.municipiosResponsaveis);
+      const uniqueMunicipios = [...new Set(allMunicipios)].sort();
+      setAvailableMunicipios(uniqueMunicipios);
+
+      // Set UF based on the first selected formador
+      if (selected.length > 0 && selected[0].uf) {
+        form.setValue('uf', selected[0].uf);
+      } else if (selected.length === 0) {
+        form.setValue('uf', '');
+      }
+    }
+  }, [selectedFormadoresIds, formadores, form]);
 
   useEffect(() => {
     if (formacao && formadores.length > 0) {
@@ -119,13 +137,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         dataInicio: toDate(formacao.dataInicio),
         dataFim: toDate(formacao.dataFim),
       });
-      const mainFormadorId = formacao.formadoresIds?.[0];
-      if (mainFormadorId) {
-        const formador = formadores.find(f => f.id === mainFormadorId);
-        if (formador) {
-          setAvailableMunicipios(formador.municipiosResponsaveis || []);
-        }
-      }
     } else {
         form.reset({
             titulo: '',
@@ -137,7 +148,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             dataInicio: undefined,
             dataFim: undefined,
         });
-        setAvailableMunicipios([]);
     }
   }, [formacao, form, formadores]);
 
@@ -179,28 +189,19 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const selectedFormadores = formadores.filter(f => form.watch('formadoresIds').includes(f.id));
 
   const handleSelectFormador = (formadorId: string) => {
-    const currentIds = form.getValues('formadoresIds');
-    const newIds = [formadorId]; // Only allow one formador for now
+    const currentIds = form.getValues('formadoresIds') || [];
+    const newIds = currentIds.includes(formadorId)
+      ? currentIds.filter(id => id !== formadorId)
+      : [...currentIds, formadorId];
     form.setValue('formadoresIds', newIds, { shouldValidate: true });
-    
-    const formador = formadores.find(f => f.id === formadorId);
-    if (formador) {
-        // Reset dependent fields when formador changes in create mode
-        if (!isEditMode) {
-            form.setValue('municipio', '', { shouldValidate: false });
-            form.setValue('titulo', '', { shouldValidate: false });
-            form.setValue('descricao', '', { shouldValidate: false });
-        }
-        
-        const uf = formador.uf || '';
-        form.setValue('uf', uf, { shouldValidate: true });
-        setAvailableMunicipios(formador.municipiosResponsaveis || []);
-    } else {
-         setAvailableMunicipios([]);
-         form.setValue('uf', '', { shouldValidate: true });
+
+    // When deselecting the last formador for a specific municipality, reset it
+    const formador = formadores.find(f => f.id === formadorId)!;
+    const currentMunicipio = form.getValues('municipio');
+    if (!newIds.some(id => formadores.find(f => f.id === id)?.municipiosResponsaveis.includes(currentMunicipio))) {
+      form.setValue('municipio', '');
     }
-    setOpen(false);
-  }
+  };
 
   const handleMunicipioChange = (municipio: string) => {
     form.setValue('municipio', municipio, { shouldValidate: true });
@@ -211,6 +212,12 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         form.setValue('descricao', desc, { shouldValidate: true });
     }
   }
+  
+  const getTriggerText = () => {
+    if (selectedFormadores.length === 0) return "Selecione formadores...";
+    if (selectedFormadores.length === 1) return selectedFormadores[0].nomeCompleto;
+    return `${selectedFormadores.length} formadores selecionados`;
+  };
 
   return (
     <Form {...form}>
@@ -221,7 +228,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           name="formadoresIds"
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Formador</FormLabel>
+              <FormLabel>Formadores</FormLabel>
                 <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button
@@ -230,7 +237,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                         aria-expanded={open}
                         className="w-full justify-between"
                     >
-                        {selectedFormadores.length > 0 ? selectedFormadores[0].nomeCompleto : "Selecione um formador..."}
+                        <span className="truncate">{getTriggerText()}</span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
@@ -260,6 +267,22 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                     </Command>
                 </PopoverContent>
             </Popover>
+            {selectedFormadores.length > 0 && (
+              <div className="pt-2 flex flex-wrap gap-1">
+                {selectedFormadores.map(formador => (
+                  <Badge key={formador.id} variant="secondary">
+                    {formador.nomeCompleto}
+                    <button
+                      type="button"
+                      className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      onClick={() => handleSelectFormador(formador.id)}
+                    >
+                      <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
               <FormMessage />
             </FormItem>
           )}
