@@ -18,7 +18,6 @@ import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa } fro
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -247,9 +246,8 @@ export default function DetalhesFormacaoPage() {
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
 
   return (
-    <>
-    <div className="flex flex-col gap-4 py-6 h-full print-container">
-        <div className="flex items-center justify-between no-print">
+    <div className="print-container flex flex-col gap-4 py-6 h-full">
+        <div className="no-print flex items-center justify-between">
             <div>
                 <Button variant="outline" size="sm" asChild>
                     <Link href="/quadro">
@@ -257,14 +255,18 @@ export default function DetalhesFormacaoPage() {
                         Voltar
                     </Link>
                 </Button>
-                <h1 className="text-3xl font-bold tracking-tight font-headline mt-2">{formacao.titulo}</h1>
-                <p className="text-muted-foreground">{formacao.descricao}</p>
             </div>
             <Button onClick={() => window.print()}>
                 <Printer className="mr-2 h-4 w-4" />
                 Imprimir
             </Button>
         </div>
+        
+        <div className="no-print">
+            <h1 className="text-3xl font-bold tracking-tight font-headline mt-2">{formacao.titulo}</h1>
+            <p className="text-muted-foreground">{formacao.descricao}</p>
+        </div>
+        
         <Tabs defaultValue="info" className="w-full">
             <TabsList className="grid w-full grid-cols-2 no-print">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
@@ -326,7 +328,7 @@ export default function DetalhesFormacaoPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <p className='print-only font-medium'>{formacao.status}</p>
+                                    <p className='hidden print:block font-medium'>{formacao.status}</p>
                                 </div>
                             </div>
                         </div>
@@ -466,7 +468,7 @@ export default function DetalhesFormacaoPage() {
                                         </TableRow>
                                     ))}
                                     {despesas.map(despesa => (
-                                        <TableRow key={despesa.id} className="print-only">
+                                        <TableRow key={despesa.id} className="hidden print:table-row">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
                                             <TableCell>{despesa.tipo}</TableCell>
                                             <TableCell>{despesa.descricao}</TableCell>
@@ -489,56 +491,22 @@ export default function DetalhesFormacaoPage() {
                  </div>
             </TabsContent>
         </Tabs>
+        <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
+            setIsDespesaDialogOpen(open);
+            if (!open) {
+                setSelectedDespesa(null);
+            }
+        }}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Detalhes da Despesa</DialogTitle>
+                    <DialogDescription>
+                        Visualize as informações completas da despesa.
+                    </DialogDescription>
+                </DialogHeader>
+                {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
+            </DialogContent>
+        </Dialog>
     </div>
-
-    <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
-        setIsDespesaDialogOpen(open);
-        if (!open) {
-            setSelectedDespesa(null);
-        }
-    }}>
-        <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-                <DialogTitle>Detalhes da Despesa</DialogTitle>
-                <DialogDescription>
-                    Visualize as informações completas da despesa.
-                </DialogDescription>
-            </DialogHeader>
-            {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
-        </DialogContent>
-    </Dialog>
-
-    <style jsx global>{`
-        @media print {
-            body {
-                margin: 0;
-                padding: 1rem;
-                background-color: #fff;
-            }
-            .no-print {
-                display: none !important;
-            }
-            .print-only {
-                display: table-row !important;
-            }
-            .print-container {
-                display: block;
-                padding: 0;
-            }
-            .tabs-content-print {
-                display: block !important;
-            }
-            @page {
-                size: auto;
-                margin: 0.5in;
-            }
-        }
-        .print-only {
-            display: none;
-        }
-    `}</style>
-    </>
   );
 }
-
-    

@@ -87,26 +87,26 @@ body {
   }
 }
 
-@layer utilities {
-  .non-printable-area {
-    display: block;
-  }
-  .printable-area {
-    display: none;
-  }
-}
-
 @media print {
   body * {
     visibility: hidden;
   }
-  .printable-area, .printable-area * {
+  .print-container, .print-container * {
     visibility: visible;
   }
-  .printable-area {
+  .print-container {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    height: auto;
+    padding: 1rem;
+    margin: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .tabs-content-print {
+    display: block !important;
   }
 }
