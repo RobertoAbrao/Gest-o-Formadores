@@ -69,6 +69,7 @@ export function DetalhesDespesa({ despesa }: DetalhesDespesaProps) {
                                     href={despesa.comprovanteUrl} 
                                     target="_blank" 
                                     rel="noopener noreferrer"
+                                    download
                                 >
                                     <img 
                                         src={despesa.comprovanteUrl} 
