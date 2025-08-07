@@ -106,6 +106,9 @@ body {
   .no-print {
     display: none !important;
   }
+  .print-only {
+      display: block !important;
+  }
   .tabs-content-print {
     display: block !important;
   }

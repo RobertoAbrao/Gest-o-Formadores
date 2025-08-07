@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DetalhesDespesa } from '@/components/despesas/detalhes-despesa';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AppLogo from '@/components/AppLogo';
 
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -247,6 +248,14 @@ export default function DetalhesFormacaoPage() {
 
   return (
     <div className="print-container flex flex-col gap-4 py-6 h-full">
+        <header className="hidden print:flex justify-between items-center pb-4 border-b-2">
+            <AppLogo />
+            <div className='text-right'>
+                <h2 className="text-xl font-bold">Relatório de Formação</h2>
+                <p className="text-sm">Data de Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+            </div>
+        </header>
+
         <div className="no-print flex items-center justify-between">
             <div>
                 <Button variant="outline" size="sm" asChild>
@@ -459,6 +468,7 @@ export default function DetalhesFormacaoPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
+                                    <tr className='print:hidden'>
                                     {despesas.map(despesa => (
                                         <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer no-print">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
@@ -467,6 +477,7 @@ export default function DetalhesFormacaoPage() {
                                             <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
                                         </TableRow>
                                     ))}
+                                    </tr>
                                     {despesas.map(despesa => (
                                         <TableRow key={despesa.id} className="hidden print:table-row">
                                             <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
