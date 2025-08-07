@@ -246,8 +246,8 @@ export default function QuadroPage() {
                   <>
                     <DialogHeader>
                         <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
-                        <DialogDescription>
-                            <div className='flex items-center gap-2'>
+                        <DialogDescription asChild>
+                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
                                 <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
                             </div>
                         </DialogDescription>
@@ -303,7 +303,7 @@ export default function QuadroPage() {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem asChild>
                                 <Link href={`/relatorio/${formacao.id}`} className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
                                   Ver Relatório
