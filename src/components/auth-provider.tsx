@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AuthContext, type User, type UserRole } from '@/hooks/use-auth';
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(loggedInUser);
           
           const targetPath = role === 'administrador' ? '/dashboard' : '/materiais';
-          if (window.location.pathname !== targetPath && !window.location.pathname.startsWith('/formadores')) {
+          if (!window.location.pathname.startsWith('/')) {
              router.replace(targetPath);
           }
 
