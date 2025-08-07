@@ -16,8 +16,10 @@ import {
   Trash2,
   Paperclip,
   Pencil,
+  Printer,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 
 import {
   AlertDialog,
@@ -48,6 +50,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -288,6 +291,13 @@ export default function QuadroPage() {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {e.stopPropagation();}}>
+                                <Link href={`/quadro/${formacao.id}/print`} target="_blank" className="flex items-center w-full">
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Imprimir Relatório
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                 onClick={(e) => {e.stopPropagation(); openDeleteDialog(formacao)}}
