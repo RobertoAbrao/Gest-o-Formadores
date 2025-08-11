@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, Map } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, Map, Users } from 'lucide-react';
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -199,6 +199,7 @@ export default function FormadoresPage() {
                                     <TableHead>Nome Completo</TableHead>
                                     <TableHead className="hidden lg:table-cell">Disciplina</TableHead>
                                     <TableHead className="hidden md:table-cell">Email</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Telefone</TableHead>
                                     <TableHead>Municípios</TableHead>
                                     <TableHead className="w-[60px]"></TableHead>
                                     </TableRow>
@@ -209,6 +210,7 @@ export default function FormadoresPage() {
                                         <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
                                         <TableCell className="hidden lg:table-cell text-muted-foreground">{formador.disciplina || 'N/A'}</TableCell>
                                         <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formador.telefone}</TableCell>
                                         <TableCell>
                                         <div className="flex flex-wrap gap-1">
                                             {formador.municipiosResponsaveis.map((m) => (
