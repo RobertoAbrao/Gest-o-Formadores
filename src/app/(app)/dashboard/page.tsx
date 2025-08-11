@@ -7,6 +7,7 @@ import { collection, getCountFromServer } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
+import { Calendar } from '@/components/ui/calendar';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ export default function DashboardPage() {
     { title: 'Municípios Cobertos', value: '0', icon: MapPin, color: 'text-orange-500' },
   ]);
   const [loading, setLoading] = useState(true);
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
     if (user?.perfil === 'administrador') {
@@ -74,15 +76,22 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-      <div>
-        {/* Placeholder for future charts or activity feeds */}
-        <Card className="mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card>
             <CardHeader>
                 <CardTitle>Atividade Recente</CardTitle>
             </CardHeader>
             <CardContent>
                 <p className="text-muted-foreground">Em breve: um feed com as últimas atividades.</p>
             </CardContent>
+        </Card>
+        <Card className="flex justify-center items-center p-4">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            className="rounded-md border"
+          />
         </Card>
       </div>
     </div>
