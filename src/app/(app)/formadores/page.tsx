@@ -98,7 +98,9 @@ export default function FormadoresPage() {
         ? formadores.filter(f => 
             f.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
             f.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            f.disciplina?.toLowerCase().includes(searchTerm.toLowerCase())
+            f.uf.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (f.disciplina && f.disciplina.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            f.municipiosResponsaveis.some(m => m.toLowerCase().includes(searchTerm.toLowerCase()))
           )
         : formadores;
 
@@ -167,7 +169,7 @@ export default function FormadoresPage() {
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input 
-          placeholder="Buscar formador por nome, email ou disciplina..." 
+          placeholder="Buscar por nome, email, disciplina, cidade ou estado..." 
           className="pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
