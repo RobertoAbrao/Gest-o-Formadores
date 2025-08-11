@@ -70,6 +70,7 @@ const materiaisTema = [
 const avaliacaoSchema = z.object({
     nomeCompleto: z.string().min(3, 'O nome completo é obrigatório.'),
     email: z.string().email('Por favor, insira um email válido.'),
+    confirmarEmail: z.string().email('A confirmação de e-mail é obrigatória.'),
     uf: z.string().min(2, 'O estado (UF) é obrigatório.'),
     cidade: z.string().min(2, 'A cidade é obrigatória.'),
     modalidade: z.enum(['Presencial', 'On-line'], { required_error: 'Selecione a modalidade.'}),
@@ -97,6 +98,9 @@ const avaliacaoSchema = z.object({
         required_error: 'Avalie a formação da Editora LT.'
     }),
     observacoes: z.string().optional(),
+}).refine(data => data.email === data.confirmarEmail, {
+    message: "Os emails não correspondem.",
+    path: ["confirmarEmail"],
 });
 
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
@@ -116,6 +120,7 @@ export default function AvaliacaoPage() {
     defaultValues: {
         nomeCompleto: '',
         email: '',
+        confirmarEmail: '',
         uf: '',
         cidade: '',
         materialTema: [],
@@ -167,8 +172,9 @@ export default function AvaliacaoPage() {
 
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
+      const { confirmarEmail, ...dataToSave } = data;
       await addDoc(collection(db, 'avaliacoes'), {
-        ...data,
+        ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
         dataCriacao: Timestamp.now(),
@@ -247,6 +253,13 @@ export default function AvaliacaoPage() {
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                     <FormField control={form.control} name="confirmarEmail" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Confirmar Email</FormLabel>
+                                            <FormControl><Input type="email" placeholder="Confirme seu e-mail" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
