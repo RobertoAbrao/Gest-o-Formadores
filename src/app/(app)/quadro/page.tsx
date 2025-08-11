@@ -312,7 +312,7 @@ export default function QuadroPage() {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/avaliacao/${formacao.id}`} className="flex items-center w-full">
+                                <Link href={`/avaliacao/${formacao.id}`} target="_blank" className="flex items-center w-full">
                                   <ClipboardCheck className="mr-2 h-4 w-4" />
                                   Formulário de Avaliação
                                 </Link>
@@ -387,5 +387,3 @@ export default function QuadroPage() {
       </div>
   );
 }
-
-    
