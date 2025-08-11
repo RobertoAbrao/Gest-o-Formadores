@@ -52,6 +52,10 @@ const formSchema = z.object({
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
   uf: z.string().optional(),
+  participantes: z.preprocess(
+    (val) => Number(val),
+    z.number().min(1, { message: 'Deve haver pelo menos 1 participante.' })
+  ).optional(),
   materiaisIds: z.array(z.string()).optional(),
   dataInicio: z.date().optional(),
   dataFim: z.date().optional(),
@@ -91,6 +95,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       formadoresIds: [],
       municipio: '',
       uf: '',
+      participantes: 1,
       materiaisIds: [],
       dataInicio: undefined,
       dataFim: undefined,
@@ -139,6 +144,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         formadoresIds: formacao.formadoresIds || [],
         municipio: formacao.municipio || '',
         uf: formacao.uf || '',
+        participantes: formacao.participantes || 1,
         materiaisIds: formacao.materiaisIds || [],
         dataInicio: toDate(formacao.dataInicio),
         dataFim: toDate(formacao.dataFim),
@@ -150,6 +156,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             formadoresIds: [],
             municipio: '',
             uf: '',
+            participantes: 1,
             materiaisIds: [],
             dataInicio: undefined,
             dataFim: undefined,
@@ -296,32 +303,47 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           )}
         />
         
-        <FormField
-          control={form.control}
-          name="municipio"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Município</FormLabel>
-                <Select 
-                    onValueChange={handleMunicipioChange} 
-                    value={field.value}
-                    disabled={availableMunicipios.length === 0}
-                >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="municipio"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Município</FormLabel>
+                    <Select 
+                        onValueChange={handleMunicipioChange} 
+                        value={field.value}
+                        disabled={availableMunicipios.length === 0}
+                    >
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione o município" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {availableMunicipios.map(m => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+                control={form.control}
+                name="participantes"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nº de Participantes</FormLabel>
                     <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Selecione o município da formação" />
-                        </SelectTrigger>
+                        <Input type="number" min="1" placeholder="Ex: 25" {...field} value={field.value ?? ''} />
                     </FormControl>
-                    <SelectContent>
-                        {availableMunicipios.map(m => (
-                            <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
 
         <FormField
           control={form.control}

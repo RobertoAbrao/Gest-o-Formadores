@@ -19,6 +19,7 @@ import {
   Printer,
   Eye,
   Hash,
+  Users,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -324,12 +325,20 @@ export default function QuadroPage() {
                           {formacao.descricao}
                         </p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-                           {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <Paperclip className="h-4 w-4" />
-                                    <span>{formacao.materiaisIds.length} {formacao.materiaisIds.length === 1 ? 'material' : 'materiais'}</span>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-4">
+                               {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        <Paperclip className="h-4 w-4" />
+                                        <span>{formacao.materiaisIds.length}</span>
+                                    </div>
+                                )}
+                                {formacao.participantes && formacao.participantes > 0 && (
+                                     <div className="flex items-center gap-1">
+                                        <Users className="h-4 w-4" />
+                                        <span>{formacao.participantes}</span>
+                                    </div>
+                                )}
+                            </div>
                             <Badge variant="outline" className="font-mono">
                                 <Hash className="h-3 w-3 mr-1" />
                                 {formacao.codigo}

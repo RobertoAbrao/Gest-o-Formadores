@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -301,11 +301,20 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                         <Separator />
                         <div className="grid gap-4 md:grid-cols-2">
                             {formadores.length > 0 && (
-                                <div className="flex items-start gap-3 md:col-span-2">
+                                <div className="flex items-start gap-3">
                                     <User className="h-5 w-5 text-muted-foreground mt-1" />
                                     <div>
                                         <p className="text-sm text-muted-foreground">Formador(es)</p>
                                         {formadores.map(f => <p key={f.id} className="font-medium">{f.nomeCompleto}</p>)}
+                                    </div>
+                                </div>
+                            )}
+                            {formacao.participantes && formacao.participantes > 0 && (
+                                <div className="flex items-start gap-3">
+                                    <Users className="h-5 w-5 text-muted-foreground mt-1" />
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">Nº de Participantes</p>
+                                        <p className="font-medium">{formacao.participantes}</p>
                                     </div>
                                 </div>
                             )}

@@ -43,18 +43,21 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas }:
       <main className="mt-8 space-y-10">
         <section>
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes da Formação</h3>
-          <div className="space-y-2 text-sm">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p><strong>Formação:</strong> {formacao.titulo}</p>
             <p><strong>Status:</strong> <Badge variant="outline" className="text-sm">{formacao.status}</Badge></p>
             <p><strong>Município:</strong> {formacao.municipio} - {formacao.uf}</p>
-            <p><strong>Período:</strong> {formatDate(formacao.dataInicio, {dateStyle: 'short'})} a {formatDate(formacao.dataFim, {dateStyle: 'short'})}</p>
+             <p><strong>Período:</strong> {formatDate(formacao.dataInicio, {dateStyle: 'short'})} a {formatDate(formacao.dataFim, {dateStyle: 'short'})}</p>
+            {formacao.participantes && (
+                <p><strong>Nº de Participantes:</strong> {formacao.participantes}</p>
+            )}
           </div>
         </section>
 
         {formador && (
             <section>
                 <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Dados do Formador</h3>
-                <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                     <p><strong>Nome:</strong> {formador.nomeCompleto}</p>
                     <p><strong>Email:</strong> {formador.email}</p>
                     <p><strong>CPF:</strong> {formador.cpf}</p>
