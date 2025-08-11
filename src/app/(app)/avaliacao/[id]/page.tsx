@@ -137,6 +137,13 @@ export default function AvaliacaoPage() {
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         setFormacao(formacaoData);
 
+        // Pre-fill form with formation data
+        form.reset({
+            ...form.getValues(), // keep existing values
+            uf: formacaoData.uf,
+            cidade: formacaoData.municipio,
+        });
+
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const q = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(q);
@@ -151,7 +158,7 @@ export default function AvaliacaoPage() {
     } finally {
       setLoading(false);
     }
-  }, [formacaoId, toast]);
+  }, [formacaoId, toast, form]);
 
   useEffect(() => {
     fetchData();
@@ -248,7 +255,7 @@ export default function AvaliacaoPage() {
                                     <FormField control={form.control} name="uf" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>UF</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled>
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
@@ -260,7 +267,7 @@ export default function AvaliacaoPage() {
                                     <FormField control={form.control} name="cidade" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Cidade</FormLabel>
-                                            <FormControl><Input placeholder="Sua cidade" {...field} /></FormControl>
+                                            <FormControl><Input placeholder="Sua cidade" {...field} disabled /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
@@ -547,5 +554,3 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    
