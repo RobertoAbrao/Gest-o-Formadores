@@ -33,6 +33,7 @@ import AppLogo from '@/components/AppLogo';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -79,6 +80,15 @@ type GroupedByFormador = {
         despesasPorTipo: GroupedDespesas;
         total: number;
     }
+}
+
+type AvaliacaoSummary = {
+    total: number;
+    mediaEditora: number;
+    assuntos: Record<string, number>;
+    organizacao: Record<string, number>;
+    relevancia: Record<string, number>;
+    material: Record<string, number>;
 }
 
 
@@ -174,6 +184,34 @@ export default function DetalhesFormacaoPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+    const avaliacaoSummary = useMemo<AvaliacaoSummary | null>(() => {
+        if (avaliacoes.length === 0) return null;
+
+        const summary: AvaliacaoSummary = {
+            total: avaliacoes.length,
+            mediaEditora: 0,
+            assuntos: {},
+            organizacao: {},
+            relevancia: {},
+            material: {},
+        };
+
+        let totalEditora = 0;
+
+        for (const avaliacao of avaliacoes) {
+            totalEditora += Number(avaliacao.avaliacaoEditora);
+            
+            summary.assuntos[avaliacao.avaliacaoAssuntos] = (summary.assuntos[avaliacao.avaliacaoAssuntos] || 0) + 1;
+            summary.organizacao[avaliacao.avaliacaoOrganizacao] = (summary.organizacao[avaliacao.avaliacaoOrganizacao] || 0) + 1;
+            summary.relevancia[avaliacao.avaliacaoRelevancia] = (summary.relevancia[avaliacao.avaliacaoRelevancia] || 0) + 1;
+            summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
+        }
+
+        summary.mediaEditora = totalEditora / summary.total;
+        
+        return summary;
+    }, [avaliacoes]);
 
   const despesasAgrupadas = useMemo(() => {
     return despesas.reduce((acc, despesa) => {
@@ -608,62 +646,148 @@ export default function DetalhesFormacaoPage() {
                      <Separator />
                       {avaliacoes.length === 0 ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <p>
+                            <div>
                                 <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
                                 Nenhuma avaliação recebida para esta formação.
-                            </p>
+                            </div>
                         </div>
                      ) : (
-                        <ScrollArea className="h-[60vh]">
-                            <div className="space-y-4 p-1">
-                                {avaliacoes.map(avaliacao => (
-                                    <Card key={avaliacao.id}>
-                                        <CardHeader>
-                                            <CardTitle className="text-base flex items-center justify-between">
-                                                <span>{avaliacao.nomeCompleto}</span>
-                                                <span className="text-xs text-muted-foreground font-normal">
-                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="text-sm space-y-4">
-                                            <Accordion type="single" collapsible className="w-full">
-                                                <AccordionItem value="item-1">
-                                                    <AccordionTrigger>Ver respostas</AccordionTrigger>
-                                                    <AccordionContent className='space-y-3 pt-2'>
-                                                        <div><strong>Função:</strong> {avaliacao.funcao}</div>
-                                                        <div><strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></div>
-                                                        <div><strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></div>
-                                                        <div><strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></div>
-                                                        <div><strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></div>
-                                                        <div>
-                                                            <strong>Avaliação (1-5):</strong>
-                                                            <span className='flex items-center gap-1 mt-1'>
-                                                                {[...Array(5)].map((_, i) => (
-                                                                <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
-                                                                ))}
-                                                            </span>
+                        <div>
+                             {avaliacaoSummary && (
+                                <div className="mb-8 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{avaliacaoSummary.total}</div>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Média Avaliação da Editora</CardTitle>
+                                                <Star className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{avaliacaoSummary.mediaEditora.toFixed(1)} / 5</div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-base">Resumo das Avaliações</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4 text-sm">
+                                                <div className="space-y-2">
+                                                    <p className="font-medium">Assuntos Abordados</p>
+                                                    {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
+                                                        <div key={key}>
+                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
                                                         </div>
-                                                        {avaliacao.interesseFormacao && (
-                                                          <div>
-                                                            <p><strong>Interesse:</strong></p>
-                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
-                                                          </div>
-                                                        )}
-                                                         {avaliacao.observacoes && (
-                                                          <div>
-                                                            <p><strong>Observações:</strong></p>
-                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
-                                                          </div>
-                                                        )}
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                                                    ))}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="font-medium">Organização do Encontro</p>
+                                                    {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
+                                                        <div key={key}>
+                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader><CardTitle className="text-base">Relevância e Material</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4 text-sm">
+                                                <div className="space-y-2">
+                                                    <p className="font-medium">Relevância para Prática</p>
+                                                    {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
+                                                        <div key={key}>
+                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                 <div className="space-y-2">
+                                                    <p className="font-medium">Material Atende Expectativas</p>
+                                                    {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
+                                                        <div key={key}>
+                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                    <Separator />
+                                </div>
+                            )}
+                            
+                            <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
+                            <ScrollArea className="h-[60vh]">
+                                <div className="space-y-4 p-1">
+                                    {avaliacoes.map(avaliacao => (
+                                        <Card key={avaliacao.id}>
+                                            <CardHeader>
+                                                <CardTitle className="text-base flex items-center justify-between">
+                                                    <span>{avaliacao.nomeCompleto}</span>
+                                                    <span className="text-xs text-muted-foreground font-normal">
+                                                        {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="text-sm space-y-4">
+                                                <Accordion type="single" collapsible className="w-full">
+                                                    <AccordionItem value="item-1">
+                                                        <AccordionTrigger>Ver respostas</AccordionTrigger>
+                                                        <AccordionContent className='space-y-3 pt-2'>
+                                                            <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                                            <div>
+                                                              <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
+                                                            </div>
+                                                            <div>
+                                                              <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
+                                                            </div>
+                                                            <div>
+                                                              <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
+                                                            </div>
+                                                            <div>
+                                                              <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
+                                                            </div>
+                                                            <div>
+                                                                <strong>Avaliação (1-5):</strong>
+                                                                <span className='flex items-center gap-1 mt-1'>
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                    <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                                    ))}
+                                                                </span>
+                                                            </div>
+                                                            {avaliacao.interesseFormacao && (
+                                                            <div>
+                                                                <p><strong>Interesse:</strong></p>
+                                                                <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                                            </div>
+                                                            )}
+                                                            {avaliacao.observacoes && (
+                                                            <div>
+                                                                <p><strong>Observações:</strong></p>
+                                                                <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                                            </div>
+                                                            )}
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
                      )}
                  </div>
             </TabsContent>
