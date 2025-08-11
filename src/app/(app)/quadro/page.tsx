@@ -20,6 +20,7 @@ import {
   Eye,
   Hash,
   Users,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -310,6 +311,12 @@ export default function QuadroPage() {
                                   Ver Relatório
                                 </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/avaliacao/${formacao.id}`} className="flex items-center w-full">
+                                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                                  Formulário de Avaliação
+                                </Link>
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"
@@ -380,3 +387,5 @@ export default function QuadroPage() {
       </div>
   );
 }
+
+    
