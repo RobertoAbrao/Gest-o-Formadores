@@ -10,7 +10,7 @@ Este é um projeto Next.js que serve como um portal de apoio pedagógico, projet
 - **Componentes UI:** shadcn/ui
 - **Backend & Banco de Dados:** Firebase (Firestore, Authentication)
 - **Gráficos e Visualização:** Recharts
-- **Validação de Formulários:** Zod e React Hook Form
+- **Validação de Formulários:** Zod e React Hook Form 
 
 ---
 
