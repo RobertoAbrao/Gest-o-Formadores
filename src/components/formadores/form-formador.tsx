@@ -30,6 +30,20 @@ import { ComboboxMunicipios } from './combobox-municipios';
 import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
 import { Textarea } from '../ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+
+const disciplinas = [
+    "Língua Portuguesa",
+    "Matemática",
+    "Ciências",
+    "História",
+    "Geografia",
+    "Artes",
+    "Educação Física",
+    "Língua Estrangeira",
+    "Pedagogo(a)",
+    "Outra",
+];
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -37,6 +51,7 @@ const formSchema = z.object({
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
   cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
+  disciplina: z.string().optional(),
   curriculo: z.string().optional(),
   municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
   uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
@@ -103,6 +118,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       password: '',
       cpf: formador?.cpf ? formatCPF(formador.cpf) : '',
       telefone: formador?.telefone ? formatTelefone(formador.telefone) : '',
+      disciplina: formador?.disciplina || '',
       curriculo: formador?.curriculo || '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
       uf: formador?.uf || '',
@@ -279,6 +295,30 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             )}
             />
         </div>
+
+        <FormField
+          control={form.control}
+          name="disciplina"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Disciplina Principal</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a disciplina" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {disciplinas.map(d => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="curriculo"

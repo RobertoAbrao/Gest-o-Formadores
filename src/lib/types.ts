@@ -15,6 +15,7 @@ export interface Formador {
   municipiosResponsaveis: string[];
   uf: string;
   curriculo?: string;
+  disciplina?: string;
   banco?: string;
   agencia?: string;
   conta?: string;

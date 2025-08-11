@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Building, Loader2, BookText } from 'lucide-react';
+import { User, Mail, Building, Loader2, BookText, BookMark } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formador } from '@/lib/types';
@@ -83,6 +83,17 @@ export default function PerfilPage() {
             </div>
             {formadorData && (
               <>
+                {formadorData.disciplina && (
+                    <div className="flex items-start gap-3">
+                      <BookMark className="h-5 w-5 text-muted-foreground mt-1" />
+                      <div>
+                        <p className="text-sm font-medium">Disciplina Principal</p>
+                        <Badge variant="outline" className="text-base mt-1">
+                          {formadorData.disciplina}
+                        </Badge>
+                      </div>
+                    </div>
+                )}
                 <div className="flex items-start gap-3">
                   <Building className="h-5 w-5 text-muted-foreground mt-1" />
                   <div>

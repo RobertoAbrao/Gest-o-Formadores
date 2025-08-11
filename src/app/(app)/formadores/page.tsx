@@ -97,7 +97,8 @@ export default function FormadoresPage() {
     const filtered = searchTerm
         ? formadores.filter(f => 
             f.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            f.email.toLowerCase().includes(searchTerm.toLowerCase())
+            f.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.disciplina?.toLowerCase().includes(searchTerm.toLowerCase())
           )
         : formadores;
 
@@ -166,7 +167,7 @@ export default function FormadoresPage() {
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input 
-          placeholder="Buscar formador por nome ou email..." 
+          placeholder="Buscar formador por nome, email ou disciplina..." 
           className="pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -196,6 +197,7 @@ export default function FormadoresPage() {
                                 <TableHeader>
                                     <TableRow>
                                     <TableHead>Nome Completo</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Disciplina</TableHead>
                                     <TableHead className="hidden md:table-cell">Email</TableHead>
                                     <TableHead>Municípios</TableHead>
                                     <TableHead className="w-[60px]"></TableHead>
@@ -205,6 +207,7 @@ export default function FormadoresPage() {
                                     {groupedFormadores[uf].map((formador) => (
                                     <TableRow key={formador.id}>
                                         <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
+                                        <TableCell className="hidden lg:table-cell text-muted-foreground">{formador.disciplina || 'N/A'}</TableCell>
                                         <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
                                         <TableCell>
                                         <div className="flex flex-wrap gap-1">
