@@ -676,54 +676,47 @@ export default function DetalhesFormacaoPage() {
                                         </Card>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <Card>
-                                            <CardHeader><CardTitle className="text-base">Resumo das Avaliações</CardTitle></CardHeader>
-                                            <CardContent className="space-y-4 text-sm">
+                                    <Card>
+                                        <CardHeader><CardTitle className="text-base">Resumo das Respostas</CardTitle></CardHeader>
+                                        <CardContent className="space-y-6 text-sm">
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Assuntos Abordados</p>
+                                                {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Organização do Encontro</p>
+                                                {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                             <div className="space-y-2">
+                                                <p className="font-medium">Relevância para Prática</p>
+                                                {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
                                                 <div className="space-y-2">
-                                                    <p className="font-medium">Assuntos Abordados</p>
-                                                    {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
-                                                        <div key={key}>
-                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <p className="font-medium">Organização do Encontro</p>
-                                                    {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
-                                                        <div key={key}>
-                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        <Card>
-                                            <CardHeader><CardTitle className="text-base">Relevância e Material</CardTitle></CardHeader>
-                                            <CardContent className="space-y-4 text-sm">
-                                                <div className="space-y-2">
-                                                    <p className="font-medium">Relevância para Prática</p>
-                                                    {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
-                                                        <div key={key}>
-                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                 <div className="space-y-2">
-                                                    <p className="font-medium">Material Atende Expectativas</p>
-                                                    {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
-                                                        <div key={key}>
-                                                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                            <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
+                                                <p className="font-medium">Material Atende Expectativas</p>
+                                                {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
                                     <Separator />
                                 </div>
                             )}
@@ -806,7 +799,3 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
-
-    
-
-    
