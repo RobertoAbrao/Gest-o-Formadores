@@ -213,14 +213,6 @@ export default function AvaliacaoPage() {
   return (
     <div className="flex flex-col gap-4 py-6 h-full items-center">
         <div className="w-full max-w-4xl">
-            <div className='mb-4'>
-                <Button variant="outline" size="sm" asChild>
-                    <Link href="/quadro">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Voltar ao Quadro
-                    </Link>
-                </Button>
-            </div>
             <Card>
                 <CardHeader>
                     <CardTitle className='flex items-center gap-3'>
