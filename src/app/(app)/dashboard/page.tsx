@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Users, BookCopy, MapPin, Loader2 } from 'lucide-react';
 import { collection, getCountFromServer } from 'firebase/firestore';
+import { ptBR } from 'date-fns/locale';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
@@ -91,6 +93,7 @@ export default function DashboardPage() {
             selected={date}
             onSelect={setDate}
             className="rounded-md border"
+            locale={ptBR}
           />
         </Card>
       </div>

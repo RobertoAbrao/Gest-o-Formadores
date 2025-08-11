@@ -222,7 +222,7 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
                         )}
                         >
                         {field.value ? (
-                            format(field.value, 'dd/MM/yyyy', { locale: ptBR })
+                            format(field.value, 'PPP', { locale: ptBR })
                         ) : (
                             <span>Selecione uma data</span>
                         )}
