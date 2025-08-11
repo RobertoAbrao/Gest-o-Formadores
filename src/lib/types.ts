@@ -23,6 +23,22 @@ export interface Formador {
   status?: FormadorStatus;
 }
 
+export interface Assessor {
+  id: string;
+  nomeCompleto: string;
+  email: string;
+  cpf: string;
+  telefone: string;
+  municipiosResponsaveis: string[];
+  uf: string;
+  curriculo?: string;
+  disciplina?: string;
+  banco?: string;
+  agencia?: string;
+  conta?: string;
+  pix?: string;
+}
+
 export interface Material {
   id: string;
   titulo: string;
