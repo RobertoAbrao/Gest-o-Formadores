@@ -112,6 +112,7 @@ export default function AvaliacaoPage() {
   
   const form = useForm<AvaliacaoFormValues>({
     resolver: zodResolver(avaliacaoSchema),
+    shouldFocusError: true,
     defaultValues: {
         nomeCompleto: '',
         email: '',
@@ -551,5 +552,3 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    
