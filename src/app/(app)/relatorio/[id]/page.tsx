@@ -631,18 +631,19 @@ export default function DetalhesFormacaoPage() {
                                                 <AccordionItem value="item-1">
                                                     <AccordionTrigger>Ver respostas</AccordionTrigger>
                                                     <AccordionContent className='space-y-3 pt-2'>
-                                                        <p><strong>Função:</strong> {avaliacao.funcao}</p>
-                                                        <p><strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></p>
-                                                        <p><strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></p>
-                                                        <p><strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></p>
-                                                        <p><strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></p>
-                                                        <p><strong>Avaliação (1-5):</strong> 
-                                                          <span className='flex items-center gap-1 mt-1'>
-                                                            {[...Array(5)].map((_, i) => (
-                                                              <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
-                                                            ))}
-                                                          </span>
-                                                        </p>
+                                                        <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                                        <div><strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></div>
+                                                        <div><strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></div>
+                                                        <div><strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></div>
+                                                        <div><strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></div>
+                                                        <div>
+                                                            <strong>Avaliação (1-5):</strong>
+                                                            <span className='flex items-center gap-1 mt-1'>
+                                                                {[...Array(5)].map((_, i) => (
+                                                                <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                                ))}
+                                                            </span>
+                                                        </div>
                                                         {avaliacao.interesseFormacao && (
                                                           <div>
                                                             <p><strong>Interesse:</strong></p>
@@ -686,3 +687,5 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
+
+    
