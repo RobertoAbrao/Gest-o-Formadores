@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { doc, getDoc, getDocs, collection, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, where, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { Loader2, ArrowLeft, ClipboardCheck } from 'lucide-react';
@@ -532,6 +532,8 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
 
     
 
