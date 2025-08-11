@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 const ufs = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
@@ -84,6 +85,18 @@ const avaliacaoSchema = z.object({
     avaliacaoOrganizacao: z.enum(['Ótima', 'Boa', 'Ruim'], {
         required_error: 'Avalie a organização do encontro.'
     }),
+    avaliacaoRelevancia: z.enum(['Ótima', 'Boa', 'Ruim'], {
+        required_error: 'Avalie a relevância da formação.'
+    }),
+    materialAtendeExpectativa: z.enum(['Sim', 'Não', 'Parcialmente'], {
+        required_error: 'Avalie se o material atende às expectativas.'
+    }),
+    motivoMaterialNaoAtende: z.string().optional(),
+    interesseFormacao: z.string().optional(),
+    avaliacaoEditora: z.enum(['1', '2', '3', '4', '5'], {
+        required_error: 'Avalie a formação da Editora LT.'
+    }),
+    observacoes: z.string().optional(),
 });
 
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
@@ -105,8 +118,13 @@ export default function AvaliacaoPage() {
         uf: '',
         cidade: '',
         materialTema: [],
+        motivoMaterialNaoAtende: '',
+        interesseFormacao: '',
+        observacoes: '',
     }
   });
+
+  const materialAtende = form.watch('materialAtendeExpectativa');
 
 
   const fetchData = useCallback(async () => {
@@ -397,6 +415,111 @@ export default function AvaliacaoPage() {
                                 )}/>
                             </div>
 
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>10. Avalie a relevância da formação para sua prática em sala de aula.</h3>
+                                 <Separator />
+                                <FormField control={form.control} name="avaliacaoRelevancia" render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                        <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                                 {['Ótima', 'Boa', 'Ruim'].map(val => (
+                                                    <FormItem key={val} className="flex items-center space-x-3 space-y-0">
+                                                        <FormControl><RadioGroupItem value={val} /></FormControl>
+                                                        <FormLabel className="font-normal">{val}</FormLabel>
+                                                    </FormItem>
+                                                ))}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>11. O material atende às expectativas no uso em sala de aula?</h3>
+                                 <Separator />
+                                <FormField control={form.control} name="materialAtendeExpectativa" render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                        <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                                 {['Sim', 'Não', 'Parcialmente'].map(val => (
+                                                    <FormItem key={val} className="flex items-center space-x-3 space-y-0">
+                                                        <FormControl><RadioGroupItem value={val} /></FormControl>
+                                                        <FormLabel className="font-normal">{val}</FormLabel>
+                                                    </FormItem>
+                                                ))}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+                            
+                            {(materialAtende === 'Não' || materialAtende === 'Parcialmente') && (
+                                <div className="space-y-4 p-4 border rounded-lg">
+                                    <h3 className='font-semibold text-lg'>12. De acordo com a questão anterior, se sua resposta for não ou parcialmente, escreva o motivo.</h3>
+                                    <Separator />
+                                    <FormField control={form.control} name="motivoMaterialNaoAtende" render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <Textarea placeholder="Descreva o motivo..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                            )}
+
+                            <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>13. O que mais despertou seu interesse nessa formação?</h3>
+                                <Separator />
+                                <FormField control={form.control} name="interesseFormacao" render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Textarea placeholder="Seu feedback é importante..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>14. Avalie a formação da Editora LT.</h3>
+                                 <Separator />
+                                <FormField control={form.control} name="avaliacaoEditora" render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                         <FormDescription>
+                                            Numa escala de 1 a 5, sendo 1 "Muito Ruim" e 5 "Excelente".
+                                        </FormDescription>
+                                        <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex items-center space-x-4">
+                                                 {['1', '2', '3', '4', '5'].map(val => (
+                                                    <FormItem key={val} className="flex items-center space-x-2 space-y-0">
+                                                        <FormControl><RadioGroupItem value={val} /></FormControl>
+                                                        <FormLabel className="font-normal">{val}</FormLabel>
+                                                    </FormItem>
+                                                ))}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>15. Observações.</h3>
+                                <Separator />
+                                <FormField control={form.control} name="observacoes" render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <Textarea placeholder="Deixe aqui suas observações, críticas ou sugestões." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+
+
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Enviar Avaliação
@@ -409,5 +532,7 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
 
     
