@@ -81,3 +81,27 @@ export interface Despesa {
     valor: number;
     comprovanteUrl?: string; // URL para o comprovante
 }
+
+export interface Avaliacao {
+    id: string;
+    formacaoId: string;
+    formacaoTitulo: string;
+    nomeCompleto: string;
+    email: string;
+    uf: string;
+    cidade: string;
+    modalidade: 'Presencial' | 'On-line';
+    funcao: string;
+    dataFormacao: Timestamp;
+    etapaEnsino: string;
+    materialTema: string[];
+    avaliacaoAssuntos: 'Pouco relevantes' | 'Relevantes' | 'Muito relevantes' | 'Fundamentais';
+    avaliacaoOrganizacao: 'Ótima' | 'Boa' | 'Ruim';
+    avaliacaoRelevancia: 'Ótima' | 'Boa' | 'Ruim';
+    materialAtendeExpectativa: 'Sim' | 'Não' | 'Parcialmente';
+    motivoMaterialNaoAtende?: string;
+    interesseFormacao?: string;
+    avaliacaoEditora: '1' | '2' | '3' | '4' | '5';
+    observacoes?: string;
+    dataCriacao: Timestamp;
+}

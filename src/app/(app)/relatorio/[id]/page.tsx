@@ -14,9 +14,9 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLogo from '@/components/AppLogo';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -90,6 +92,7 @@ export default function DetalhesFormacaoPage() {
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,6 +156,12 @@ export default function DetalhesFormacaoPage() {
         } else {
             setDespesas([]);
         }
+        
+        const qAvaliacoes = query(collection(db, 'avaliacoes'), where('formacaoId', '==', formacaoId));
+        const avaliacoesSnap = await getDocs(qAvaliacoes);
+        const avaliacoesData = avaliacoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Avaliacao));
+        setAvaliacoes(avaliacoesData);
+
 
     } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
@@ -324,10 +333,13 @@ export default function DetalhesFormacaoPage() {
         </div>
         
         <Tabs defaultValue="info" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 no-print">
+            <TabsList className="grid w-full grid-cols-3 no-print">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
                 <TabsTrigger value="despesas">
                     Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="avaliacoes">
+                    Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length}</Badge>
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="info">
@@ -587,6 +599,70 @@ export default function DetalhesFormacaoPage() {
                                 Para visualizar as despesas, defina as datas de início e fim da formação.
                             </AlertDescription>
                         </Alert>
+                     )}
+                 </div>
+            </TabsContent>
+            <TabsContent value="avaliacoes">
+                 <div className="space-y-6 pt-4">
+                     <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                     <Separator />
+                      {avaliacoes.length === 0 ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                            <p>
+                                <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
+                                Nenhuma avaliação recebida para esta formação.
+                            </p>
+                        </div>
+                     ) : (
+                        <ScrollArea className="h-[60vh]">
+                            <div className="space-y-4 p-1">
+                                {avaliacoes.map(avaliacao => (
+                                    <Card key={avaliacao.id}>
+                                        <CardHeader>
+                                            <CardTitle className="text-base flex items-center justify-between">
+                                                <span>{avaliacao.nomeCompleto}</span>
+                                                <span className="text-xs text-muted-foreground font-normal">
+                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="text-sm space-y-4">
+                                            <Accordion type="single" collapsible className="w-full">
+                                                <AccordionItem value="item-1">
+                                                    <AccordionTrigger>Ver respostas</AccordionTrigger>
+                                                    <AccordionContent className='space-y-3 pt-2'>
+                                                        <p><strong>Função:</strong> {avaliacao.funcao}</p>
+                                                        <p><strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></p>
+                                                        <p><strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></p>
+                                                        <p><strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></p>
+                                                        <p><strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></p>
+                                                        <p><strong>Avaliação (1-5):</strong> 
+                                                          <span className='flex items-center gap-1 mt-1'>
+                                                            {[...Array(5)].map((_, i) => (
+                                                              <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                            ))}
+                                                          </span>
+                                                        </p>
+                                                        {avaliacao.interesseFormacao && (
+                                                          <div>
+                                                            <p><strong>Interesse:</strong></p>
+                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                                          </div>
+                                                        )}
+                                                         {avaliacao.observacoes && (
+                                                          <div>
+                                                            <p><strong>Observações:</strong></p>
+                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                                          </div>
+                                                        )}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </ScrollArea>
                      )}
                  </div>
             </TabsContent>
