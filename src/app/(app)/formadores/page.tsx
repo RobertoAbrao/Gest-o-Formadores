@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, Map } from 'lucide-react';
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,11 @@ import { db } from '@/lib/firebase';
 import { FormFormador } from '@/components/formadores/form-formador';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+type GroupedFormadores = {
+    [uf: string]: Formador[];
+}
 
 export default function FormadoresPage() {
   const { user } = useAuth();
@@ -88,13 +93,26 @@ export default function FormadoresPage() {
     setIsDialogOpen(true);
   }
 
-  const filteredFormadores = useMemo(() => {
-    if (!searchTerm) return formadores;
-    return formadores.filter(f => 
-        f.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const groupedFormadores = useMemo(() => {
+    const filtered = searchTerm
+        ? formadores.filter(f => 
+            f.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.email.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : formadores;
+
+    return filtered.reduce((acc, formador) => {
+        const uf = formador.uf || 'Sem Região';
+        if (!acc[uf]) {
+            acc[uf] = [];
+        }
+        acc[uf].push(formador);
+        return acc;
+    }, {} as GroupedFormadores);
   }, [formadores, searchTerm]);
+
+  const ufs = useMemo(() => Object.keys(groupedFormadores).sort(), [groupedFormadores]);
+
 
   if (!user || user.perfil !== 'administrador') {
     return (
@@ -155,53 +173,76 @@ export default function FormadoresPage() {
         />
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome Completo</TableHead>
-              <TableHead className="hidden md:table-cell">Email</TableHead>
-              <TableHead>Municípios</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredFormadores.map((formador) => (
-              <TableRow key={formador.id}>
-                <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
-                <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {formador.municipiosResponsaveis.map((m) => (
-                      <Badge key={m} variant="secondary">{m}</Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Abrir menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(formador)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(formador.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+      {formadores.length === 0 ? (
+         <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+            <Users className="w-12 h-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">Nenhum formador cadastrado</h3>
+            <p className="text-sm text-muted-foreground">Comece adicionando um novo formador para visualizá-lo aqui.</p>
+        </div>
+      ) : (
+        <Accordion type="multiple" defaultValue={ufs} className="w-full space-y-4">
+            {ufs.map(uf => (
+                <AccordionItem value={uf} key={uf} className="border rounded-md px-4">
+                    <AccordionTrigger>
+                        <div className="flex items-center gap-3">
+                            <Map className="h-5 w-5 text-primary"/>
+                            <span className='text-lg font-semibold'>{uf}</span>
+                            <Badge variant="outline">{groupedFormadores[uf].length} {groupedFormadores[uf].length === 1 ? 'formador' : 'formadores'}</Badge>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                    <TableHead>Nome Completo</TableHead>
+                                    <TableHead className="hidden md:table-cell">Email</TableHead>
+                                    <TableHead>Municípios</TableHead>
+                                    <TableHead className="w-[60px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupedFormadores[uf].map((formador) => (
+                                    <TableRow key={formador.id}>
+                                        <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
+                                        <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
+                                        <TableCell>
+                                        <div className="flex flex-wrap gap-1">
+                                            {formador.municipiosResponsaveis.map((m) => (
+                                            <Badge key={m} variant="secondary">{m}</Badge>
+                                            ))}
+                                        </div>
+                                        </TableCell>
+                                        <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                <span className="sr-only">Abrir menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openEditDialog(formador)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Editar
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(formador.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Excluir
+                                            </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
             ))}
-          </TableBody>
-        </Table>
-      </div>
+        </Accordion>
+      )}
     </div>
   );
 }
