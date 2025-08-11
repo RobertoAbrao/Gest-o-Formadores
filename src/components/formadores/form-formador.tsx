@@ -29,6 +29,7 @@ import { Loader2 } from 'lucide-react';
 import { ComboboxMunicipios } from './combobox-municipios';
 import { Separator } from '../ui/separator';
 import { useAuth } from '@/hooks/use-auth';
+import { Textarea } from '../ui/textarea';
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
@@ -36,6 +37,7 @@ const formSchema = z.object({
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
   cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
+  curriculo: z.string().optional(),
   municipiosResponsaveis: z.array(z.string()).min(1, { message: 'Selecione ao menos um município.'}),
   uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   banco: z.string().optional(),
@@ -101,6 +103,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
       password: '',
       cpf: formador?.cpf ? formatCPF(formador.cpf) : '',
       telefone: formador?.telefone ? formatTelefone(formador.telefone) : '',
+      curriculo: formador?.curriculo || '',
       municipiosResponsaveis: formador?.municipiosResponsaveis || [],
       uf: formador?.uf || '',
       banco: formador?.banco || '',
@@ -278,6 +281,23 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
         </div>
         <FormField
           control={form.control}
+          name="curriculo"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Currículo</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Descreva a experiência e qualificações do formador."
+                  className="min-h-[100px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="municipiosResponsaveis"
           render={({ field }) => (
             <FormItem className="flex flex-col">
@@ -377,5 +397,3 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     </Form>
   );
 }
-
-    

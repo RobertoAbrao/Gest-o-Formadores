@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
@@ -5,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Building, Loader2 } from 'lucide-react';
+import { User, Mail, Building, Loader2, BookText } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formador } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 export default function PerfilPage() {
   const { user } = useAuth();
@@ -80,19 +82,36 @@ export default function PerfilPage() {
               <span className="text-sm">{user.email}</span>
             </div>
             {formadorData && (
-              <div className="flex items-start gap-3">
-                <Building className="h-5 w-5 text-muted-foreground mt-1" />
-                <div>
-                  <p className="text-sm font-medium">Municípios de Responsabilidade</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formadorData.municipiosResponsaveis.map((municipio) => (
-                      <Badge key={municipio} variant="secondary" className="text-base">
-                        {municipio}
-                      </Badge>
-                    ))}
+              <>
+                <div className="flex items-start gap-3">
+                  <Building className="h-5 w-5 text-muted-foreground mt-1" />
+                  <div>
+                    <p className="text-sm font-medium">Municípios de Responsabilidade</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formadorData.municipiosResponsaveis.map((municipio) => (
+                        <Badge key={municipio} variant="secondary" className="text-base">
+                          {municipio}
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {formadorData.curriculo && (
+                  <>
+                    <Separator />
+                    <div className="flex items-start gap-3">
+                      <BookText className="h-5 w-5 text-muted-foreground mt-1" />
+                      <div>
+                        <p className="text-sm font-medium">Currículo</p>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
+                          {formadorData.curriculo}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
