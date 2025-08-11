@@ -85,10 +85,15 @@ type GroupedByFormador = {
 type AvaliacaoSummary = {
     total: number;
     mediaEditora: number;
+    modalidade: Record<string, number>;
+    funcao: Record<string, number>;
+    etapaEnsino: Record<string, number>;
+    materialTema: Record<string, number>;
     assuntos: Record<string, number>;
     organizacao: Record<string, number>;
     relevancia: Record<string, number>;
     material: Record<string, number>;
+    avaliacaoEditora: Record<string, number>;
 }
 
 
@@ -191,10 +196,15 @@ export default function DetalhesFormacaoPage() {
         const summary: AvaliacaoSummary = {
             total: avaliacoes.length,
             mediaEditora: 0,
+            modalidade: {},
+            funcao: {},
+            etapaEnsino: {},
+            materialTema: {},
             assuntos: {},
             organizacao: {},
             relevancia: {},
             material: {},
+            avaliacaoEditora: {},
         };
 
         let totalEditora = 0;
@@ -202,10 +212,19 @@ export default function DetalhesFormacaoPage() {
         for (const avaliacao of avaliacoes) {
             totalEditora += Number(avaliacao.avaliacaoEditora);
             
+            summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
+            summary.funcao[avaliacao.funcao] = (summary.funcao[avaliacao.funcao] || 0) + 1;
+            summary.etapaEnsino[avaliacao.etapaEnsino] = (summary.etapaEnsino[avaliacao.etapaEnsino] || 0) + 1;
+            
+            for (const tema of avaliacao.materialTema) {
+                summary.materialTema[tema] = (summary.materialTema[tema] || 0) + 1;
+            }
+
             summary.assuntos[avaliacao.avaliacaoAssuntos] = (summary.assuntos[avaliacao.avaliacaoAssuntos] || 0) + 1;
             summary.organizacao[avaliacao.avaliacaoOrganizacao] = (summary.organizacao[avaliacao.avaliacaoOrganizacao] || 0) + 1;
             summary.relevancia[avaliacao.avaliacaoRelevancia] = (summary.relevancia[avaliacao.avaliacaoRelevancia] || 0) + 1;
             summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
+            summary.avaliacaoEditora[avaliacao.avaliacaoEditora] = (summary.avaliacaoEditora[avaliacao.avaliacaoEditora] || 0) + 1;
         }
 
         summary.mediaEditora = totalEditora / summary.total;
@@ -365,9 +384,9 @@ export default function DetalhesFormacaoPage() {
         
         <div className="no-print">
             <h1 className="text-3xl font-bold tracking-tight font-headline mt-2">{formacao.titulo}</h1>
-            <p className="text-muted-foreground flex items-center gap-2">
+            <div className="text-muted-foreground flex items-center gap-2">
                  <Hash className="h-4 w-4" /> {formacao.codigo}
-            </p>
+            </div>
         </div>
         
         <Tabs defaultValue="info" className="w-full">
@@ -429,7 +448,7 @@ export default function DetalhesFormacaoPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <p className='hidden print:block font-medium'>{formacao.status}</p>
+                                    <div className='hidden print:block font-medium'>{formacao.status}</div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -486,10 +505,10 @@ export default function DetalhesFormacaoPage() {
                         <Separator />
                         {(!formacao.anexos || formacao.anexos.length === 0) ? (
                             <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                                <p>
+                                <div>
                                     <Paperclip className="h-6 w-6 mx-auto mb-2"/>
                                     Nenhum anexo encontrado.
-                                </p>
+                                </div>
                             </div>
                         ) : (
                             <div className="relative pl-6">
@@ -557,10 +576,10 @@ export default function DetalhesFormacaoPage() {
                     <Separator />
                      {despesas.length === 0 ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <p>
+                            <div>
                                 <DollarSign className="h-6 w-6 mx-auto mb-2"/>
                                 Nenhuma despesa encontrada para esta formação.
-                            </p>
+                            </div>
                         </div>
                      ) : (
                         <Accordion type="multiple" className="w-full space-y-4">
@@ -679,6 +698,47 @@ export default function DetalhesFormacaoPage() {
                                     <Card>
                                         <CardHeader><CardTitle className="text-base">Resumo das Respostas</CardTitle></CardHeader>
                                         <CardContent className="space-y-6 text-sm">
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Modalidade</p>
+                                                {Object.entries(avaliacaoSummary.modalidade).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Função Pedagógica</p>
+                                                {Object.entries(avaliacaoSummary.funcao).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Etapa de Ensino</p>
+                                                {Object.entries(avaliacaoSummary.etapaEnsino).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Material/Tema da Formação</p>
+                                                {Object.entries(avaliacaoSummary.materialTema).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
                                             <div className="space-y-2">
                                                 <p className="font-medium">Assuntos Abordados</p>
                                                 {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
@@ -688,6 +748,7 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                 ))}
                                             </div>
+
                                             <div className="space-y-2">
                                                 <p className="font-medium">Organização do Encontro</p>
                                                 {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
@@ -697,6 +758,7 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                 ))}
                                             </div>
+
                                              <div className="space-y-2">
                                                 <p className="font-medium">Relevância para Prática</p>
                                                 {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
@@ -706,7 +768,8 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                 ))}
                                             </div>
-                                                <div className="space-y-2">
+                                            
+                                            <div className="space-y-2">
                                                 <p className="font-medium">Material Atende Expectativas</p>
                                                 {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
                                                     <div key={key}>
@@ -715,6 +778,20 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                 ))}
                                             </div>
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Avaliação da Editora (1-5)</p>
+                                                {Object.entries(avaliacaoSummary.avaliacaoEditora).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span className="flex items-center gap-1">{key} <Star className="h-4 w-4 text-yellow-400" /></span>
+                                                            <span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span>
+                                                        </div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
                                         </CardContent>
                                     </Card>
                                     <Separator />
@@ -751,11 +828,11 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                     <div>
                                                         <strong>Avaliação (1-5):</strong>
-                                                        <span className='flex items-center gap-1 mt-1'>
+                                                        <div className='flex items-center gap-1 mt-1'>
                                                             {[...Array(5)].map((_, i) => (
                                                             <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
                                                             ))}
-                                                        </span>
+                                                        </div>
                                                     </div>
                                                     {avaliacao.interesseFormacao && (
                                                     <div>
