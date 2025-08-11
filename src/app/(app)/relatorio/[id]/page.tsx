@@ -433,7 +433,7 @@ export default function DetalhesFormacaoPage() {
                             <div className="flex items-start gap-3">
                                 <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    <div className="text-sm text-muted-foreground">Status</div>
                                     <div className='no-print'>
                                         <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
                                             <SelectTrigger className="w-[180px]">
@@ -799,20 +799,20 @@ export default function DetalhesFormacaoPage() {
                             )}
                             
                             <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
-                            <ScrollArea className="h-[60vh]">
-                                <div className="space-y-4 p-1">
-                                    {avaliacoes.map(avaliacao => (
-                                        <Card key={avaliacao.id}>
-                                            <CardHeader>
-                                                <CardTitle className="text-base flex items-center justify-between">
-                                                    <span>{avaliacao.nomeCompleto}</span>
-                                                    <span className="text-xs text-muted-foreground font-normal">
-                                                        {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="text-sm space-y-4">
-                                                <div className='space-y-3 pt-2'>
+                             <Accordion type="multiple" className="w-full space-y-2">
+                                {avaliacoes.map(avaliacao => (
+                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
+                                        <AccordionTrigger className='px-4 hover:no-underline'>
+                                            <div className="flex items-center justify-between w-full pr-4">
+                                                <span>{avaliacao.nomeCompleto}</span>
+                                                <span className="text-xs text-muted-foreground font-normal">
+                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="text-sm space-y-4 p-4 border-t">
+                                                <div className='space-y-3'>
                                                     <div><strong>Função:</strong> {avaliacao.funcao}</div>
                                                     <div>
                                                       <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
@@ -847,11 +847,11 @@ export default function DetalhesFormacaoPage() {
                                                     </div>
                                                     )}
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
                         </div>
                      )}
                  </div>
@@ -876,3 +876,4 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
+
