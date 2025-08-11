@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { doc, getDoc, getDocs, collection, where, query, addDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, where, addDoc, Timestamp, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { Loader2, ArrowLeft, ClipboardCheck, CheckCircle2 } from 'lucide-react';
@@ -70,7 +70,7 @@ const materiaisTema = [
 const avaliacaoSchema = z.object({
     nomeCompleto: z.string().min(3, 'O nome completo é obrigatório.'),
     email: z.string().email('Por favor, insira um email válido.'),
-    uf: z.string().min(2, 'Selecione um estado.'),
+    uf: z.string().min(2, 'O estado (UF) é obrigatório.'),
     cidade: z.string().min(2, 'A cidade é obrigatória.'),
     modalidade: z.enum(['Presencial', 'On-line'], { required_error: 'Selecione a modalidade.'}),
     funcao: z.string({ required_error: 'Selecione sua função pedagógica.'}),
@@ -210,12 +210,6 @@ export default function AvaliacaoPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <p className="text-xl">Formação não encontrada.</p>
-        <Button asChild variant="outline">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </Link>
-        </Button>
       </div>
     );
   }
