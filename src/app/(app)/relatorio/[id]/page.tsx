@@ -742,46 +742,41 @@ export default function DetalhesFormacaoPage() {
                                                 </CardTitle>
                                             </CardHeader>
                                             <CardContent className="text-sm space-y-4">
-                                                <Accordion type="single" collapsible className="w-full">
-                                                    <AccordionItem value="item-1">
-                                                        <AccordionTrigger>Ver respostas</AccordionTrigger>
-                                                        <AccordionContent className='space-y-3 pt-2'>
-                                                            <div><strong>Função:</strong> {avaliacao.funcao}</div>
-                                                            <div>
-                                                              <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
-                                                            </div>
-                                                            <div>
-                                                              <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
-                                                            </div>
-                                                            <div>
-                                                              <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
-                                                            </div>
-                                                            <div>
-                                                              <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
-                                                            </div>
-                                                            <div>
-                                                                <strong>Avaliação (1-5):</strong>
-                                                                <span className='flex items-center gap-1 mt-1'>
-                                                                    {[...Array(5)].map((_, i) => (
-                                                                    <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
-                                                                    ))}
-                                                                </span>
-                                                            </div>
-                                                            {avaliacao.interesseFormacao && (
-                                                            <div>
-                                                                <p><strong>Interesse:</strong></p>
-                                                                <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
-                                                            </div>
-                                                            )}
-                                                            {avaliacao.observacoes && (
-                                                            <div>
-                                                                <p><strong>Observações:</strong></p>
-                                                                <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
-                                                            </div>
-                                                            )}
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                </Accordion>
+                                                <div className='space-y-3 pt-2'>
+                                                    <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                                    <div>
+                                                      <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
+                                                    </div>
+                                                    <div>
+                                                        <strong>Avaliação (1-5):</strong>
+                                                        <span className='flex items-center gap-1 mt-1'>
+                                                            {[...Array(5)].map((_, i) => (
+                                                            <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                            ))}
+                                                        </span>
+                                                    </div>
+                                                    {avaliacao.interesseFormacao && (
+                                                    <div>
+                                                        <strong>Interesse:</strong>
+                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                                    </div>
+                                                    )}
+                                                    {avaliacao.observacoes && (
+                                                    <div>
+                                                        <strong>Observações:</strong>
+                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                                    </div>
+                                                    )}
+                                                </div>
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -811,5 +806,7 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
+
+    
 
     
