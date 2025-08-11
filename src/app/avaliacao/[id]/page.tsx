@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { doc, getDoc, getDocs, collection, where, query, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
-import { Loader2, ArrowLeft, ClipboardCheck } from 'lucide-react';
+import { Loader2, ArrowLeft, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,12 +103,12 @@ type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
 export default function AvaliacaoPage() {
   const params = useParams();
-  const router = useRouter();
   const { toast } = useToast();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [formadores, setFormadores] = useState<Formador[]>([]);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   
   const form = useForm<AvaliacaoFormValues>({
     resolver: zodResolver(avaliacaoSchema),
@@ -177,7 +177,7 @@ export default function AvaliacaoPage() {
           title: "Avaliação enviada com sucesso!",
           description: "Obrigado pelo seu feedback.",
       });
-      router.push('/quadro');
+      setIsSubmitted(true);
     } catch (error) {
        console.error("Error adding document: ", error);
        toast({
@@ -196,23 +196,34 @@ export default function AvaliacaoPage() {
     );
   }
 
+  if (isSubmitted) {
+    return (
+        <div className="flex flex-col items-center justify-center h-screen gap-4 text-center">
+            <CheckCircle2 className="h-16 w-16 text-green-500" />
+            <h1 className="text-2xl font-bold">Obrigado pela sua avaliação!</h1>
+            <p className="text-muted-foreground">Seu feedback é muito importante para nós.</p>
+        </div>
+    );
+  }
+
   if (!formacao) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
         <p className="text-xl">Formação não encontrada.</p>
         <Button asChild variant="outline">
-          <Link href="/quadro">
+          <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao Quadro
+            Voltar
           </Link>
         </Button>
       </div>
     );
   }
 
+
   return (
-    <div className="flex flex-col gap-4 py-6 h-full items-center">
-        <div className="w-full max-w-4xl">
+    <div className="flex flex-col gap-4 py-6 h-full items-center bg-muted">
+        <div className="w-full max-w-4xl p-4 md:p-8">
             <Card>
                 <CardHeader>
                     <CardTitle className='flex items-center gap-3'>
@@ -546,3 +557,5 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
