@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { doc, getDoc, getDocs, collection, where, query } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, where, query, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { Loader2, ArrowLeft, ClipboardCheck } from 'lucide-react';
@@ -157,13 +157,28 @@ export default function AvaliacaoPage() {
     fetchData();
   }, [fetchData]);
 
-  const onSubmit = (data: AvaliacaoFormValues) => {
-    console.log(data);
-    toast({
-        title: "Avaliação enviada com sucesso!",
-        description: "Obrigado pelo seu feedback.",
-    });
-    router.push('/quadro');
+  const onSubmit = async (data: AvaliacaoFormValues) => {
+    try {
+      await addDoc(collection(db, 'avaliacoes'), {
+        ...data,
+        formacaoId: formacaoId,
+        formacaoTitulo: formacao?.titulo,
+        dataCriacao: Timestamp.now(),
+      });
+
+      toast({
+          title: "Avaliação enviada com sucesso!",
+          description: "Obrigado pelo seu feedback.",
+      });
+      router.push('/quadro');
+    } catch (error) {
+       console.error("Error adding document: ", error);
+       toast({
+           variant: 'destructive',
+           title: "Erro ao enviar avaliação",
+           description: "Não foi possível salvar sua avaliação. Tente novamente.",
+       });
+    }
   };
 
   if (loading) {
@@ -532,9 +547,5 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    
-
-    
 
     
