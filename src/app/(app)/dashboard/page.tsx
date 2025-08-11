@@ -1,15 +1,27 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Users, BookCopy, MapPin, Loader2 } from 'lucide-react';
-import { collection, getCountFromServer } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
+import { Users, BookCopy, MapPin, Loader2, Calendar as CalendarIcon, Hash } from 'lucide-react';
+import { collection, getCountFromServer, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
+import { format, isSameDay } from 'date-fns';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
+import type { Formacao } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+
+const statusColors: Record<Formacao['status'], string> = {
+    preparacao: 'bg-yellow-100 text-yellow-800',
+    'em-formacao': 'bg-blue-100 text-blue-800',
+    'pos-formacao': 'bg-purple-100 text-purple-800',
+    concluido: 'bg-green-100 text-green-800',
+    arquivado: 'bg-gray-100 text-gray-800',
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -18,20 +30,23 @@ export default function DashboardPage() {
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
     { title: 'Municípios Cobertos', value: '0', icon: MapPin, color: 'text-orange-500' },
   ]);
+  const [formacoes, setFormacoes] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
     if (user?.perfil === 'administrador') {
-      const fetchStats = async () => {
+      const fetchData = async () => {
         setLoading(true);
         try {
           const formadoresCol = collection(db, 'formadores');
           const materiaisCol = collection(db, 'materiais');
+          const formacoesCol = collection(db, 'formacoes');
           
-          const [formadoresSnapshot, materiaisSnapshot] = await Promise.all([
+          const [formadoresSnapshot, materiaisSnapshot, formacoesSnapshot] = await Promise.all([
             getCountFromServer(formadoresCol),
             getCountFromServer(materiaisCol),
+            getDocs(query(formacoesCol, where('status', '!=', 'arquivado'))),
           ]);
           
           setStats([
@@ -39,16 +54,48 @@ export default function DashboardPage() {
             { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
             { title: 'Municípios Cobertos', value: '15', icon: MapPin, color: 'text-orange-500' }, // Mocked for now
           ]);
+
+          const formacoesData = formacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
+          setFormacoes(formacoesData);
+
         } catch (error) {
-          console.error("Error fetching stats:", error);
+          console.error("Error fetching data:", error);
           // Handle error, e.g., show a toast message
         } finally {
           setLoading(false);
         }
       };
-      fetchStats();
+      fetchData();
     }
   }, [user]);
+
+  const eventDays = useMemo(() => {
+    return formacoes.reduce((acc, formacao) => {
+        if (formacao.dataInicio) acc.push(formacao.dataInicio.toDate());
+        if (formacao.dataFim) acc.push(formacao.dataFim.toDate());
+        return acc;
+    }, [] as Date[]);
+  }, [formacoes]);
+
+  const selectedDayEvents = useMemo(() => {
+    if (!date) return [];
+    return formacoes.filter(f => 
+        (f.dataInicio && isSameDay(f.dataInicio.toDate(), date)) || 
+        (f.dataFim && isSameDay(f.dataFim.toDate(), date))
+    ).sort((a,b) => a.dataInicio!.toMillis() - b.dataInicio!.toMillis());
+  }, [date, formacoes]);
+
+  const modifiers = {
+    event: eventDays,
+  };
+
+  const modifiersStyles = {
+    event: {
+      border: '2px solid hsl(var(--primary))',
+      borderRadius: 'var(--radius)',
+    },
+  };
+
 
   if (!user || user.perfil !== 'administrador' || loading) {
     return (
@@ -78,13 +125,42 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2">
             <CardHeader>
-                <CardTitle>Atividade Recente</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    Agenda de Formações
+                </CardTitle>
+                <CardDescription>
+                    Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
+                </CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground">Em breve: um feed com as últimas atividades.</p>
+                {selectedDayEvents.length > 0 ? (
+                    <div className="space-y-4">
+                        {selectedDayEvents.map(formacao => (
+                            <div key={formacao.id} className="space-y-2">
+                                <div>
+                                    <div className="flex justify-between items-start">
+                                        <h4 className="font-semibold">{formacao.titulo}</h4>
+                                        <Badge variant="outline" className={statusColors[formacao.status]}>
+                                            {formacao.status}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                        <Hash className="h-3 w-3" /> {formacao.codigo} - {formacao.municipio}
+                                    </p>
+                                </div>
+                                <Separator />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                        Nenhuma formação para o dia selecionado.
+                    </p>
+                )}
             </CardContent>
         </Card>
         <Card className="flex justify-center items-center p-4">
@@ -94,6 +170,8 @@ export default function DashboardPage() {
             onSelect={setDate}
             className="rounded-md border"
             locale={ptBR}
+            modifiers={modifiers}
+            modifiersStyles={modifiersStyles}
           />
         </Card>
       </div>
