@@ -16,10 +16,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, Map, Users } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, Map, Users, Eye } from 'lucide-react';
 import type { Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -30,6 +31,7 @@ import { FormFormador } from '@/components/formadores/form-formador';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { DetalhesFormador } from '@/components/formadores/detalhes-formador';
 
 type GroupedFormadores = {
     [uf: string]: Formador[];
@@ -41,7 +43,8 @@ export default function FormadoresPage() {
   const { toast } = useToast();
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedFormador, setSelectedFormador] = useState<Formador | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -69,7 +72,7 @@ export default function FormadoresPage() {
   
   const handleSuccess = () => {
     fetchFormadores();
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     setSelectedFormador(null);
   }
   
@@ -90,8 +93,21 @@ export default function FormadoresPage() {
 
   const openEditDialog = (formador: Formador) => {
     setSelectedFormador(formador);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   }
+  
+  const openDetailDialog = (formador: Formador) => {
+    setSelectedFormador(formador);
+    setIsDetailDialogOpen(true);
+  };
+  
+  const handleDialogChange = (setter: React.Dispatch<React.SetStateAction<boolean>>) => (open: boolean) => {
+    setter(open);
+    if (!open) {
+      setSelectedFormador(null);
+    }
+  };
+
 
   const groupedFormadores = useMemo(() => {
     const filtered = searchTerm
@@ -140,10 +156,7 @@ export default function FormadoresPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gerenciar Formadores</h1>
             <p className="text-muted-foreground">Adicione, edite e remova formadores do sistema.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) setSelectedFormador(null);
-        }}>
+        <Dialog open={isFormDialogOpen} onOpenChange={handleDialogChange(setIsFormDialogOpen)}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -209,7 +222,11 @@ export default function FormadoresPage() {
                                 <TableBody>
                                     {groupedFormadores[uf].map((formador) => (
                                     <TableRow key={formador.id}>
-                                        <TableCell className="font-medium">{formador.nomeCompleto}</TableCell>
+                                        <TableCell className="font-medium">
+                                          <span className='cursor-pointer hover:underline' onClick={() => openDetailDialog(formador)}>
+                                            {formador.nomeCompleto}
+                                          </span>
+                                        </TableCell>
                                         <TableCell className="hidden lg:table-cell text-muted-foreground">{formador.disciplina || 'N/A'}</TableCell>
                                         <TableCell className="hidden md:table-cell text-muted-foreground">{formador.email}</TableCell>
                                         <TableCell className="hidden sm:table-cell text-muted-foreground">{formador.telefone}</TableCell>
@@ -229,14 +246,19 @@ export default function FormadoresPage() {
                                             </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => openEditDialog(formador)}>
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                Editar
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(formador.id)}>
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Excluir
-                                            </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => openDetailDialog(formador)}>
+                                                  <Eye className="mr-2 h-4 w-4" />
+                                                  Ver Detalhes
+                                              </DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => openEditDialog(formador)}>
+                                                  <Pencil className="mr-2 h-4 w-4" />
+                                                  Editar
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(formador.id)}>
+                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                  Excluir
+                                              </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         </TableCell>
@@ -250,6 +272,18 @@ export default function FormadoresPage() {
             ))}
         </Accordion>
       )}
+
+      <Dialog open={isDetailDialogOpen} onOpenChange={handleDialogChange(setIsDetailDialogOpen)}>
+          <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                  <DialogTitle>Detalhes do Formador</DialogTitle>
+                   <DialogDescription>
+                       Informações completas sobre o formador.
+                   </DialogDescription>
+              </DialogHeader>
+              {selectedFormador && <DetalhesFormador formador={selectedFormador} />}
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }
