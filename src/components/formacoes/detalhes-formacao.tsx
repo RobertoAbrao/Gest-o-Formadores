@@ -14,9 +14,9 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -29,6 +29,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DetalhesDespesa } from '../despesas/detalhes-despesa';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 
 interface DetalhesFormacaoProps {
@@ -92,6 +94,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +159,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             setDespesas([]);
         }
 
+        const qAvaliacoes = query(collection(db, 'avaliacoes'), where('formacaoId', '==', formacaoId));
+        const avaliacoesSnap = await getDocs(qAvaliacoes);
+        const avaliacoesData = avaliacoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Avaliacao));
+        setAvaliacoes(avaliacoesData);
+
 
     } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
@@ -168,6 +176,21 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const avaliacaoSummary = useMemo(() => {
+    if (avaliacoes.length === 0) return null;
+    const total = avaliacoes.length;
+    const media = avaliacoes.reduce((sum, aval) => sum + Number(aval.avaliacaoEditora), 0) / total;
+    
+    const countByRating: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    avaliacoes.forEach(aval => {
+        countByRating[aval.avaliacaoEditora] = (countByRating[aval.avaliacaoEditora] || 0) + 1;
+    });
+
+    const pieData = Object.entries(countByRating).map(([name, value]) => ({ name: `${name} Estrela(s)`, value }));
+
+    return { total, media: media.toFixed(1), pieData };
+  }, [avaliacoes]);
 
   const despesasAgrupadas = useMemo(() => {
     return despesas.reduce((acc, despesa) => {
@@ -284,14 +307,20 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
 
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'];
+
+
   return (
     <ScrollArea className="max-h-[70vh]">
       <div className='p-1'>
         <Tabs defaultValue="info" className="p-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
                 <TabsTrigger value="despesas">
                     Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="avaliacoes">
+                    Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length}</Badge>
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="info">
@@ -540,6 +569,77 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                 </AccordionItem>
                             ))}
                         </Accordion>
+                     )}
+                 </div>
+            </TabsContent>
+            <TabsContent value="avaliacoes">
+                 <div className="space-y-6 pt-4">
+                     <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                     <Separator />
+                      {avaliacoes.length === 0 ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                            <p>
+                                <Star className="h-6 w-6 mx-auto mb-2"/>
+                                Nenhuma avaliação recebida para esta formação.
+                            </p>
+                        </div>
+                     ) : (
+                        <div>
+                            {avaliacaoSummary && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                            <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
+                                            <Users className="h-4 w-4 text-muted-foreground" />
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-bold">{avaliacaoSummary.total}</div>
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                            <CardTitle className="text-sm font-medium">Média da Avaliação</CardTitle>
+                                            <Star className="h-4 w-4 text-muted-foreground" />
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-2xl font-bold">{avaliacaoSummary.media} / 5</div>
+                                        </CardContent>
+                                    </Card>
+                                    <div className="md:col-span-2 h-48">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={avaliacaoSummary.pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8" label>
+                                                    {avaliacaoSummary.pieData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+                             <Accordion type="multiple" className="w-full space-y-2">
+                                {avaliacoes.map(avaliacao => (
+                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
+                                        <AccordionTrigger className='px-4'>
+                                            <div className="flex items-center justify-between w-full pr-4">
+                                                <span>{avaliacao.nomeCompleto}</span>
+                                                <div className='flex items-center gap-1'>
+                                                    {avaliacao.avaliacaoEditora} <Star className="h-4 w-4 text-yellow-400" />
+                                                </div>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="text-sm space-y-2 p-4 border-t">
+                                                <p><strong>Observações:</strong> {avaliacao.observacoes || 'Nenhuma'}</p>
+                                                <p><strong>Interesse:</strong> {avaliacao.interesseFormacao || 'Nenhum'}</p>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        </div>
                      )}
                  </div>
             </TabsContent>
