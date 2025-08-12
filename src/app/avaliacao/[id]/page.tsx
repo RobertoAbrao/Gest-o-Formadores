@@ -3,7 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { addDoc, Timestamp, collection } from 'firebase/firestore';
+import { addDoc, Timestamp, collection, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
+import type { Formacao } from '@/lib/types';
+
 
 const ufs = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
@@ -114,7 +116,8 @@ export default function AvaliacaoPage() {
   const { toast } = useToast();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [formacao, setFormacao] = useState<FormacaoPublica | null>(null);
+  const [formacao, setFormacao] = useState<Formacao | null>(null);
+  const [formadorNomes, setFormadorNomes] = useState<string[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   const form = useForm<AvaliacaoFormValues>({
@@ -140,20 +143,21 @@ export default function AvaliacaoPage() {
     if (!formacaoId) return;
     setLoading(true);
     try {
-      const response = await fetch(`/api/formacao/${formacaoId}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-      const data: FormacaoPublica = await response.json();
-      setFormacao(data);
+        const formacaoRef = doc(db, 'formacoes', formacaoId);
+        const formacaoSnap = await getDoc(formacaoRef);
 
-      // Pre-fill form with formation data
-      form.reset({
-          ...form.getValues(), // keep existing values
-          uf: data.uf,
-          cidade: data.municipio,
-      });
+        if (!formacaoSnap.exists()) {
+            throw new Error('Formação não encontrada.');
+        }
+
+        const data = formacaoSnap.data() as Formacao;
+        setFormacao(data);
+
+        form.reset({
+            ...form.getValues(), // keep existing values
+            uf: data.uf,
+            cidade: data.municipio,
+        });
 
     } catch (error: any) {
       console.error('Erro ao buscar dados da formação:', error);
@@ -285,7 +289,7 @@ export default function AvaliacaoPage() {
                                 <h3 className='font-semibold text-lg'>2. Formador(es)</h3>
                                  <Separator />
                                  <div className='p-2 bg-muted rounded-md'>
-                                    {formacao.formadores.map((nome, index) => <p key={index}>{nome}</p>)}
+                                    {formadorNomes.length > 0 ? formadorNomes.map((nome, index) => <p key={index}>{nome}</p>) : <p>Carregando...</p>}
                                  </div>
                             </div>
 
