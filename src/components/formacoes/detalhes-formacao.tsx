@@ -14,9 +14,9 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLand, Hotel, CalendarCheck2 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -367,8 +367,9 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     <ScrollArea className="max-h-[80vh]">
       <div className='p-1'>
         <Tabs defaultValue="info" className="p-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
+                <TabsTrigger value="logistica">Logística</TabsTrigger>
                 <TabsTrigger value="despesas">
                     Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
                 </TabsTrigger>
@@ -558,6 +559,59 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                         </div>
                     )}
                 </div>
+            </TabsContent>
+            <TabsContent value="logistica">
+                 <div className="space-y-6 pt-4">
+                    <h4 className="font-semibold text-lg">Passagens e Hospedagem</h4>
+                    <Separator />
+                     {(!formacao.logistica || formacao.logistica.length === 0) ? (
+                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                            <div>
+                                <Hotel className="h-6 w-6 mx-auto mb-2"/>
+                                Nenhuma informação de logística registrada.
+                            </div>
+                        </div>
+                     ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                           <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Formador</TableHead>
+                                        <TableHead>Partida</TableHead>
+                                        <TableHead>Ida/Volta</TableHead>
+                                        <TableHead>Hotel</TableHead>
+                                        <TableHead>Check-in/Check-out</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {formacao.logistica.map((item, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell className="font-medium">{item.formadorNome}</TableCell>
+                                            <TableCell>{item.localPartida || 'N/A'}</TableCell>
+                                            <TableCell>
+                                                <div className='flex items-center gap-1'>
+                                                    <PlaneTakeoff className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataIda)}
+                                                </div>
+                                                <div className='flex items-center gap-1'>
+                                                    <PlaneLand className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataVolta)}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{item.hotel || 'N/A'}</TableCell>
+                                            <TableCell>
+                                                 <div className='flex items-center gap-1'>
+                                                    <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkin)}
+                                                </div>
+                                                <div className='flex items-center gap-1'>
+                                                    <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                     )}
+                 </div>
             </TabsContent>
             <TabsContent value="despesas">
                  <div className="space-y-6 pt-4">

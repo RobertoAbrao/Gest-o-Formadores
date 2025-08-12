@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -33,7 +33,7 @@ import { db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Loader2, Check, ChevronsUpDown, CalendarIcon, X } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
-import type { Formacao, Formador } from '@/lib/types';
+import type { Formacao, Formador, LogisticaViagem } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ComboboxMateriais } from '../materiais/combobox-materiais';
 import { Calendar } from '../ui/calendar';
 import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
+
+const logisticaSchema = z.object({
+    formadorId: z.string(),
+    formadorNome: z.string(),
+    localPartida: z.string().optional(),
+    dataIda: z.date().optional().nullable(),
+    dataVolta: z.date().optional().nullable(),
+    hotel: z.string().optional(),
+    checkin: z.date().optional().nullable(),
+    checkout: z.date().optional().nullable(),
+});
 
 const formSchema = z.object({
   titulo: z
@@ -59,6 +71,7 @@ const formSchema = z.object({
   materiaisIds: z.array(z.string()).optional(),
   dataInicio: z.date().optional(),
   dataFim: z.date().optional(),
+  logistica: z.array(logisticaSchema).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -74,6 +87,17 @@ const generateFormationCode = (municipio: string) => {
     return `${municipioPart}-${randomPart}`;
 };
 
+const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
+    if (!timestamp) return undefined;
+    return timestamp.toDate();
+};
+
+const toNullableDate = (timestamp: Timestamp | null | undefined): Date | null | undefined => {
+    if (timestamp === undefined) return undefined;
+    if (timestamp === null) return null;
+    return timestamp.toDate();
+};
+
 export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -82,10 +106,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const [availableMunicipios, setAvailableMunicipios] = useState<string[]>([]);
   
   const isEditMode = !!formacao;
-
-  const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
-    return timestamp ? timestamp.toDate() : undefined;
-  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +119,13 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       materiaisIds: [],
       dataInicio: undefined,
       dataFim: undefined,
+      logistica: [],
     },
+  });
+
+  const { fields: logisticaFields, replace: replaceLogistica } = useFieldArray({
+    control: form.control,
+    name: "logistica",
   });
 
   useEffect(() => {
@@ -127,14 +153,29 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       const uniqueMunicipios = [...new Set(allMunicipios)].sort();
       setAvailableMunicipios(uniqueMunicipios);
 
-      // Set UF based on the first selected formador
       if (selected.length > 0 && selected[0].uf) {
         form.setValue('uf', selected[0].uf);
       } else if (selected.length === 0) {
         form.setValue('uf', '');
       }
+
+      const currentLogistica = form.getValues('logistica') || [];
+      const newLogistica = selected.map(formador => {
+        const existing = currentLogistica.find(l => l.formadorId === formador.id);
+        return existing || {
+          formadorId: formador.id,
+          formadorNome: formador.nomeCompleto,
+          localPartida: '',
+          dataIda: null,
+          dataVolta: null,
+          hotel: '',
+          checkin: null,
+          checkout: null,
+        };
+      });
+      replaceLogistica(newLogistica);
     }
-  }, [selectedFormadoresIds, formadores, form]);
+  }, [selectedFormadoresIds, formadores, form, replaceLogistica]);
 
   useEffect(() => {
     if (formacao && formadores.length > 0) {
@@ -148,6 +189,13 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         materiaisIds: formacao.materiaisIds || [],
         dataInicio: toDate(formacao.dataInicio),
         dataFim: toDate(formacao.dataFim),
+        logistica: formacao.logistica?.map(l => ({
+            ...l,
+            dataIda: toNullableDate(l.dataIda),
+            dataVolta: toNullableDate(l.dataVolta),
+            checkin: toNullableDate(l.checkin),
+            checkout: toNullableDate(l.checkout),
+        })) || [],
       });
     } else {
         form.reset({
@@ -160,6 +208,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             materiaisIds: [],
             dataInicio: undefined,
             dataFim: undefined,
+            logistica: [],
         });
     }
   }, [formacao, form, formadores]);
@@ -168,14 +217,21 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-      const dataToSave: Partial<Formacao> & Omit<FormValues, 'dataInicio' | 'dataFim'> & { dataInicio?: Timestamp | null; dataFim?: Timestamp | null } = {
+      const dataToSave = {
           ...values,
           dataInicio: values.dataInicio ? Timestamp.fromDate(values.dataInicio) : null,
           dataFim: values.dataFim ? Timestamp.fromDate(values.dataFim) : null,
+          logistica: values.logistica?.map(l => ({
+            ...l,
+            dataIda: l.dataIda ? Timestamp.fromDate(l.dataIda) : null,
+            dataVolta: l.dataVolta ? Timestamp.fromDate(l.dataVolta) : null,
+            checkin: l.checkin ? Timestamp.fromDate(l.checkin) : null,
+            checkout: l.checkout ? Timestamp.fromDate(l.checkout) : null,
+          }))
       };
 
       if (isEditMode && formacao) {
-         await updateDoc(doc(db, 'formacoes', formacao.id), dataToSave);
+         await updateDoc(doc(db, 'formacoes', formacao.id), dataToSave as any);
          toast({ title: 'Sucesso!', description: 'Formação atualizada com sucesso.' });
       } else {
         const newDocRef = doc(collection(db, 'formacoes'));
@@ -186,7 +242,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             status: 'preparacao',
             avaliacoesAbertas: false,
             dataCriacao: serverTimestamp(),
-        });
+        } as any);
         toast({ title: 'Sucesso!', description: 'Formação criada com sucesso.' });
       }
       onSuccess();
@@ -211,7 +267,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       : [...currentIds, formadorId];
     form.setValue('formadoresIds', newIds, { shouldValidate: true });
 
-    // When deselecting the last formador for a specific municipality, reset it
     const formador = formadores.find(f => f.id === formadorId)!;
     const currentMunicipio = form.getValues('municipio');
     if (!newIds.some(id => formadores.find(f => f.id === id)?.municipiosResponsaveis.includes(currentMunicipio))) {
@@ -472,6 +527,143 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             </FormItem>
           )}
         />
+
+        {logisticaFields.length > 0 && (
+             <div className='space-y-4 pt-4'>
+                <Separator />
+                <div>
+                    <h3 className='font-medium text-lg'>Logística de Viagem</h3>
+                    <p className='text-sm text-muted-foreground'>Preencha os detalhes de viagem e hospedagem para cada formador.</p>
+                </div>
+                <div className='space-y-6'>
+                    {logisticaFields.map((field, index) => (
+                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                             <h4 className='font-semibold'>{field.formadorNome}</h4>
+                             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.localPartida`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Local de Partida</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Cidade - UF" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.hotel`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Hotel</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Nome do Hotel" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.dataIda`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Data de Ida</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.dataVolta`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Data de Volta</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.checkin`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Check-in</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.checkout`}
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                        <FormLabel>Check-out</FormLabel>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                             </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
 
         <Button type="submit" className="w-full !mt-6" disabled={loading}>
           {loading ? (

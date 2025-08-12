@@ -54,6 +54,17 @@ export interface Anexo {
     dataUpload: Timestamp;
 }
 
+export interface LogisticaViagem {
+  formadorId: string;
+  formadorNome: string;
+  localPartida: string;
+  dataIda: Timestamp | null;
+  dataVolta: Timestamp | null;
+  hotel: string;
+  checkin: Timestamp | null;
+  checkout: Timestamp | null;
+}
+
 export interface Formacao {
   id:string;
   codigo: string;
@@ -69,6 +80,7 @@ export interface Formacao {
   materiaisIds: string[];
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;
+  logistica?: LogisticaViagem[];
 }
 
 export interface Despesa {
