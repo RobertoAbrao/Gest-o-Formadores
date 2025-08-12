@@ -1,16 +1,14 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { doc, getDoc, getDocs, collection, where, addDoc, Timestamp, query } from 'firebase/firestore';
+import { addDoc, Timestamp, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador } from '@/lib/types';
-import { Loader2, ArrowLeft, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -66,7 +64,6 @@ const materiaisTema = [
     { id: 'inteligenios', label: 'Inteligênios' },
 ];
 
-
 const avaliacaoSchema = z.object({
     nomeCompleto: z.string().min(3, 'O nome completo é obrigatório.'),
     email: z.string().email('Por favor, insira um email válido.'),
@@ -105,13 +102,19 @@ const avaliacaoSchema = z.object({
 
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
+interface FormacaoPublica {
+    titulo: string;
+    formadores: string[];
+    uf: string;
+    municipio: string;
+}
+
 export default function AvaliacaoPage() {
   const params = useParams();
   const { toast } = useToast();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [formacao, setFormacao] = useState<Formacao | null>(null);
-  const [formadores, setFormadores] = useState<Formador[]>([]);
+  const [formacao, setFormacao] = useState<FormacaoPublica | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   const form = useForm<AvaliacaoFormValues>({
@@ -137,30 +140,24 @@ export default function AvaliacaoPage() {
     if (!formacaoId) return;
     setLoading(true);
     try {
-      const formacaoRef = doc(db, 'formacoes', formacaoId);
-      const formacaoSnap = await getDoc(formacaoRef);
-      if (formacaoSnap.exists()) {
-        const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
-        setFormacao(formacaoData);
-
-        // Pre-fill form with formation data
-        form.reset({
-            ...form.getValues(), // keep existing values
-            uf: formacaoData.uf,
-            cidade: formacaoData.municipio,
-        });
-
-        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const q = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
-            const formadoresSnap = await getDocs(q);
-            setFormadores(formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador)));
-        }
-      } else {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Formação não encontrada.' });
+      const response = await fetch(`/api/formacao/${formacaoId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-    } catch (error) {
+      const data: FormacaoPublica = await response.json();
+      setFormacao(data);
+
+      // Pre-fill form with formation data
+      form.reset({
+          ...form.getValues(), // keep existing values
+          uf: data.uf,
+          cidade: data.municipio,
+      });
+
+    } catch (error: any) {
       console.error('Erro ao buscar dados da formação:', error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados.' });
+      toast({ variant: 'destructive', title: 'Erro', description: `Não foi possível carregar os dados: ${error.message}` });
     } finally {
       setLoading(false);
     }
@@ -216,11 +213,10 @@ export default function AvaliacaoPage() {
   if (!formacao) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <p className="text-xl">Formação não encontrada.</p>
+        <p className="text-xl">Formação não encontrada ou indisponível.</p>
       </div>
     );
   }
-
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full items-center bg-muted">
@@ -289,7 +285,7 @@ export default function AvaliacaoPage() {
                                 <h3 className='font-semibold text-lg'>2. Formador(es)</h3>
                                  <Separator />
                                  <div className='p-2 bg-muted rounded-md'>
-                                    {formadores.map(f => <p key={f.id}>{f.nomeCompleto}</p>)}
+                                    {formacao.formadores.map((nome, index) => <p key={index}>{nome}</p>)}
                                  </div>
                             </div>
 
@@ -551,7 +547,6 @@ export default function AvaliacaoPage() {
                                     </FormItem>
                                 )} />
                             </div>
-
 
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
