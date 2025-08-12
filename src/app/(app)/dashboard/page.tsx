@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState([
     { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-blue-500' },
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
-    { title: 'Total de Formações', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
+    { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
   ]);
   const [formacoes, setFormacoes] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,17 +44,16 @@ export default function DashboardPage() {
           const allFormacoesCol = collection(db, 'formacoes');
           const activeFormacoesQuery = query(allFormacoesCol, where('status', '!=', 'arquivado'));
           
-          const [formadoresSnapshot, materiaisSnapshot, allFormacoesSnapshot, activeFormacoesSnapshot] = await Promise.all([
+          const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot] = await Promise.all([
             getCountFromServer(formadoresCol),
             getCountFromServer(materiaisCol),
-            getCountFromServer(allFormacoesCol),
             getDocs(activeFormacoesQuery),
           ]);
           
           setStats([
             { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-blue-500' },
             { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
-            { title: 'Total de Formações', value: allFormacoesSnapshot.data().count.toString(), icon: KanbanSquare, color: 'text-orange-500' },
+            { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500' },
           ]);
 
           const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
