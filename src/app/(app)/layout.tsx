@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -57,7 +57,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       ? [
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { href: '/formadores', label: 'Formadores', icon: Users },
-          { href: '/assessores', label: 'Assessores', icon: Briefcase },
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
           { href: '/quadro', label: 'Acompanhamento', icon: KanbanSquare },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
