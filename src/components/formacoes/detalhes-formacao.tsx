@@ -579,48 +579,88 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         </div>
                      ) : (
-                        <div className="border rounded-lg overflow-hidden">
-                           <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Formador</TableHead>
-                                        <TableHead>Partida</TableHead>
-                                        <TableHead>Ida/Volta</TableHead>
-                                        <TableHead>Hotel</TableHead>
-                                        <TableHead>Check-in/Check-out</TableHead>
-                                        <TableHead className="text-right">Valor Hosp.</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {formacao.logistica.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.formadorNome}</TableCell>
-                                            <TableCell>{item.localPartida || 'N/A'}</TableCell>
-                                            <TableCell>
-                                                <div className='flex items-center gap-1'>
-                                                    <PlaneTakeoff className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataIda)}
-                                                </div>
-                                                <div className='flex items-center gap-1'>
-                                                    <PlaneLanding className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataVolta)}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{item.hotel || 'N/A'}</TableCell>
-                                            <TableCell>
-                                                 <div className='flex items-center gap-1'>
-                                                    <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkin)}
-                                                </div>
-                                                <div className='flex items-center gap-1'>
-                                                    <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right font-medium">
-                                                {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
-                                            </TableCell>
+                        <>
+                            <div className="hidden md:block border rounded-lg overflow-hidden">
+                               <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Formador</TableHead>
+                                            <TableHead>Partida</TableHead>
+                                            <TableHead>Ida/Volta</TableHead>
+                                            <TableHead>Hotel</TableHead>
+                                            <TableHead>Check-in/Check-out</TableHead>
+                                            <TableHead className="text-right">Valor Hosp.</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {formacao.logistica.map((item, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{item.formadorNome}</TableCell>
+                                                <TableCell>{item.localPartida || 'N/A'}</TableCell>
+                                                <TableCell>
+                                                    <div className='flex items-center gap-1'>
+                                                        <PlaneTakeoff className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataIda)}
+                                                    </div>
+                                                    <div className='flex items-center gap-1'>
+                                                        <PlaneLanding className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataVolta)}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{item.hotel || 'N/A'}</TableCell>
+                                                <TableCell>
+                                                     <div className='flex items-center gap-1'>
+                                                        <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkin)}
+                                                    </div>
+                                                    <div className='flex items-center gap-1'>
+                                                        <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="md:hidden space-y-4">
+                                {formacao.logistica.map((item, index) => (
+                                    <Card key={index} className="bg-muted/40">
+                                        <CardHeader className="pb-4">
+                                            <CardTitle className="text-base flex items-center justify-between">
+                                                <span>{item.formadorNome}</span>
+                                                <span className="font-bold text-primary">{item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}</span>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3 text-sm">
+                                            <div className="flex justify-between border-t pt-3">
+                                                <span className="text-muted-foreground flex items-center gap-2"><MapPin className="h-4 w-4" /> Partida</span>
+                                                <span>{item.localPartida || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground flex items-center gap-2"><Hotel className="h-4 w-4" /> Hotel</span>
+                                                <span>{item.hotel || 'N/A'}</span>
+                                            </div>
+                                             <div className="flex justify-between">
+                                                <span className="text-muted-foreground flex items-center gap-2"><PlaneTakeoff className="h-4 w-4" /> Ida</span>
+                                                <span>{formatDate(item.dataIda)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground flex items-center gap-2"><PlaneLanding className="h-4 w-4" /> Volta</span>
+                                                <span>{formatDate(item.dataVolta)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-in</span>
+                                                <span>{formatDate(item.checkin)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-out</span>
+                                                <span>{formatDate(item.checkout)}</span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </>
                      )}
                  </div>
             </TabsContent>
