@@ -233,6 +233,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             dataVolta: l.dataVolta ? Timestamp.fromDate(l.dataVolta) : null,
             checkin: l.checkin ? Timestamp.fromDate(l.checkin) : null,
             checkout: l.checkout ? Timestamp.fromDate(l.checkout) : null,
+            valorHospedagem: l.valorHospedagem || null,
           }))
       };
 
@@ -695,3 +696,5 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
