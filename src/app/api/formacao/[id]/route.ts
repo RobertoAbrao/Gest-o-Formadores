@@ -1,27 +1,9 @@
 
 import { NextResponse } from 'next/server';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { db } from '@/lib/firebase'; 
 import type { Formacao, Formador } from '@/lib/types';
 
-// Variáveis de ambiente para credenciais de serviço do Firebase
-// No ambiente local, você pode usar um arquivo .env.local
-// Na Vercel, você deve configurar as variáveis de ambiente nas configurações do projeto
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-};
-
-// Inicializa o Firebase Admin SDK (apenas uma vez)
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(serviceAccount)
-  });
-}
-
-const dbAdmin = getFirestore();
 
 export async function GET(
   request: Request,
@@ -34,10 +16,10 @@ export async function GET(
   }
 
   try {
-    const formacaoRef = dbAdmin.collection('formacoes').doc(formacaoId);
-    const formacaoSnap = await formacaoRef.get();
+    const formacaoRef = doc(db, 'formacoes', formacaoId);
+    const formacaoSnap = await getDoc(formacaoRef);
 
-    if (!formacaoSnap.exists) {
+    if (!formacaoSnap.exists()) {
       return NextResponse.json({ error: 'Formação não encontrada' }, { status: 404 });
     }
 
@@ -45,8 +27,15 @@ export async function GET(
     let formadoresNomes: string[] = [];
 
     if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-        const formadoresRef = dbAdmin.collection('formadores');
-        const q = query(formadoresRef, where('__name__', 'in', formacaoData.formadoresIds));
+        // Firestore limita 'in' a 30 itens. Se houver mais, precisaria de múltiplas queries.
+        if (formacaoData.formadoresIds.length > 30) {
+            // Lógica de chunking aqui se necessário. Por agora, vamos assumir < 30.
+            console.warn("A busca de formadores está limitada a 30 IDs.");
+        }
+        
+        const formadoresRef = collection(db, 'formadores');
+        const q = query(formadoresRef, where('__name__', 'in', formacaoData.formadoresIds.slice(0, 30)));
+        
         const formadoresSnap = await getDocs(q);
         formadoresNomes = formadoresSnap.docs.map(doc => (doc.data() as Formador).nomeCompleto);
     }
