@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, MapPin, Loader2, Calendar as CalendarIcon, Hash } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay } from 'date-fns';
@@ -28,7 +28,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState([
     { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-blue-500' },
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
-    { title: 'Municípios Cobertos', value: '0', icon: MapPin, color: 'text-orange-500' },
+    { title: 'Total de Formações', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
   ]);
   const [formacoes, setFormacoes] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,21 +41,23 @@ export default function DashboardPage() {
         try {
           const formadoresCol = collection(db, 'formadores');
           const materiaisCol = collection(db, 'materiais');
-          const formacoesCol = collection(db, 'formacoes');
+          const allFormacoesCol = collection(db, 'formacoes');
+          const activeFormacoesQuery = query(allFormacoesCol, where('status', '!=', 'arquivado'));
           
-          const [formadoresSnapshot, materiaisSnapshot, formacoesSnapshot] = await Promise.all([
+          const [formadoresSnapshot, materiaisSnapshot, allFormacoesSnapshot, activeFormacoesSnapshot] = await Promise.all([
             getCountFromServer(formadoresCol),
             getCountFromServer(materiaisCol),
-            getDocs(query(formacoesCol, where('status', '!=', 'arquivado'))),
+            getCountFromServer(allFormacoesCol),
+            getDocs(activeFormacoesQuery),
           ]);
           
           setStats([
             { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-blue-500' },
             { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
-            { title: 'Municípios Cobertos', value: '15', icon: MapPin, color: 'text-orange-500' }, // Mocked for now
+            { title: 'Total de Formações', value: allFormacoesSnapshot.data().count.toString(), icon: KanbanSquare, color: 'text-orange-500' },
           ]);
 
-          const formacoesData = formacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
+          const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
           setFormacoes(formacoesData);
 
         } catch (error) {
