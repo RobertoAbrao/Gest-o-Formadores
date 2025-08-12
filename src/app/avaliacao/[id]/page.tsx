@@ -106,9 +106,7 @@ type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
 interface FormacaoPublica {
     titulo: string;
-    formadores: string[];
-    uf: string;
-    municipio: string;
+    formadorNomes: string[];
 }
 
 export default function AvaliacaoPage() {
@@ -116,8 +114,8 @@ export default function AvaliacaoPage() {
   const { toast } = useToast();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [formacao, setFormacao] = useState<Formacao | null>(null);
-  const [formadorNomes, setFormadorNomes] = useState<string[]>([]);
+  const [formacao, setFormacao] = useState<FormacaoPublica | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
   const form = useForm<AvaliacaoFormValues>({
@@ -142,25 +140,32 @@ export default function AvaliacaoPage() {
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
     setLoading(true);
+    setError(null);
     try {
-        const formacaoRef = doc(db, 'formacoes', formacaoId);
-        const formacaoSnap = await getDoc(formacaoRef);
-
-        if (!formacaoSnap.exists()) {
-            throw new Error('Formação não encontrada.');
+        const response = await fetch(`/api/formacao/${formacaoId}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Falha ao buscar dados da formação');
         }
-
-        const data = formacaoSnap.data() as Formacao;
+        const data: FormacaoPublica = await response.json();
         setFormacao(data);
 
-        form.reset({
-            ...form.getValues(), // keep existing values
-            uf: data.uf,
-            cidade: data.municipio,
-        });
+        // Fetch the full formation doc just for UF and municipio for the form
+        const formacaoDocRef = doc(db, 'formacoes', formacaoId);
+        const formacaoDocSnap = await getDoc(formacaoDocRef);
+        if (formacaoDocSnap.exists()) {
+            const formacaoData = formacaoDocSnap.data() as Formacao;
+            form.reset({
+                ...form.getValues(),
+                uf: formacaoData.uf,
+                cidade: formacaoData.municipio,
+            });
+        }
+
 
     } catch (error: any) {
       console.error('Erro ao buscar dados da formação:', error);
+      setError(error.message);
       toast({ variant: 'destructive', title: 'Erro', description: `Não foi possível carregar os dados: ${error.message}` });
     } finally {
       setLoading(false);
@@ -214,10 +219,10 @@ export default function AvaliacaoPage() {
     );
   }
 
-  if (!formacao) {
+  if (error || !formacao) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <p className="text-xl">Formação não encontrada ou indisponível.</p>
+        <p className="text-xl text-destructive">{error || 'Formação não encontrada ou indisponível.'}</p>
       </div>
     );
   }
@@ -289,7 +294,7 @@ export default function AvaliacaoPage() {
                                 <h3 className='font-semibold text-lg'>2. Formador(es)</h3>
                                  <Separator />
                                  <div className='p-2 bg-muted rounded-md'>
-                                    {formadorNomes.length > 0 ? formadorNomes.map((nome, index) => <p key={index}>{nome}</p>) : <p>Carregando...</p>}
+                                    {formacao.formadorNomes.length > 0 ? formacao.formadorNomes.map((nome, index) => <p key={index}>{nome}</p>) : <p>Nenhum formador associado.</p>}
                                  </div>
                             </div>
 
