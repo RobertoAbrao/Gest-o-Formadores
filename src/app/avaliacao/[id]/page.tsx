@@ -3,7 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { addDoc, Timestamp, collection, doc, getDoc } from 'firebase/firestore';
+import { addDoc, Timestamp, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import type { Formacao } from '@/lib/types';
+import type { Formacao, Formador } from '@/lib/types';
 
 
 const ufs = [
@@ -142,25 +142,32 @@ export default function AvaliacaoPage() {
     setLoading(true);
     setError(null);
     try {
-        const response = await fetch(`/api/formacao/${formacaoId}`);
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Falha ao buscar dados da formação');
-        }
-        const data: FormacaoPublica = await response.json();
-        setFormacao(data);
+        const formacaoRef = doc(db, 'formacoes', formacaoId);
+        const formacaoSnap = await getDoc(formacaoRef);
 
-        // Fetch the full formation doc just for UF and municipio for the form
-        const formacaoDocRef = doc(db, 'formacoes', formacaoId);
-        const formacaoDocSnap = await getDoc(formacaoDocRef);
-        if (formacaoDocSnap.exists()) {
-            const formacaoData = formacaoDocSnap.data() as Formacao;
-            form.reset({
-                ...form.getValues(),
-                uf: formacaoData.uf,
-                cidade: formacaoData.municipio,
-            });
+        if (!formacaoSnap.exists()) {
+            throw new Error('Formação não encontrada ou indisponível.');
         }
+        
+        const formacaoData = formacaoSnap.data() as Formacao;
+
+        let formadorNomes: string[] = [];
+        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
+            const formadoresSnap = await getDocs(qFormadores);
+            formadorNomes = formadoresSnap.docs.map(doc => (doc.data() as Formador).nomeCompleto);
+        }
+
+        setFormacao({
+            titulo: formacaoData.titulo,
+            formadorNomes: formadorNomes,
+        });
+
+        form.reset({
+            ...form.getValues(),
+            uf: formacaoData.uf,
+            cidade: formacaoData.municipio,
+        });
 
 
     } catch (error: any) {
@@ -569,3 +576,5 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
