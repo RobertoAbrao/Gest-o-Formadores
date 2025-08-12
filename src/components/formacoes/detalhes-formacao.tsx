@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -29,8 +29,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DetalhesDespesa } from '../despesas/detalhes-despesa';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Progress } from '../ui/progress';
 
 
 interface DetalhesFormacaoProps {
@@ -84,6 +84,20 @@ type GroupedByFormador = {
         despesasPorTipo: GroupedDespesas;
         total: number;
     }
+}
+
+type AvaliacaoSummary = {
+    total: number;
+    mediaEditora: number;
+    modalidade: Record<string, number>;
+    funcao: Record<string, number>;
+    etapaEnsino: Record<string, number>;
+    materialTema: Record<string, number>;
+    assuntos: Record<string, number>;
+    organizacao: Record<string, number>;
+    relevancia: Record<string, number>;
+    material: Record<string, number>;
+    avaliacaoEditora: Record<string, number>;
 }
 
 
@@ -177,20 +191,47 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     fetchData();
   }, [fetchData]);
 
-  const avaliacaoSummary = useMemo(() => {
-    if (avaliacoes.length === 0) return null;
-    const total = avaliacoes.length;
-    const media = avaliacoes.reduce((sum, aval) => sum + Number(aval.avaliacaoEditora), 0) / total;
-    
-    const countByRating: Record<string, number> = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
-    avaliacoes.forEach(aval => {
-        countByRating[aval.avaliacaoEditora] = (countByRating[aval.avaliacaoEditora] || 0) + 1;
-    });
+    const avaliacaoSummary = useMemo<AvaliacaoSummary | null>(() => {
+        if (avaliacoes.length === 0) return null;
 
-    const pieData = Object.entries(countByRating).map(([name, value]) => ({ name: `${name} Estrela(s)`, value }));
+        const summary: AvaliacaoSummary = {
+            total: avaliacoes.length,
+            mediaEditora: 0,
+            modalidade: {},
+            funcao: {},
+            etapaEnsino: {},
+            materialTema: {},
+            assuntos: {},
+            organizacao: {},
+            relevancia: {},
+            material: {},
+            avaliacaoEditora: {},
+        };
 
-    return { total, media: media.toFixed(1), pieData };
-  }, [avaliacoes]);
+        let totalEditora = 0;
+
+        for (const avaliacao of avaliacoes) {
+            totalEditora += Number(avaliacao.avaliacaoEditora);
+            
+            summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
+            summary.funcao[avaliacao.funcao] = (summary.funcao[avaliacao.funcao] || 0) + 1;
+            summary.etapaEnsino[avaliacao.etapaEnsino] = (summary.etapaEnsino[avaliacao.etapaEnsino] || 0) + 1;
+            
+            for (const tema of avaliacao.materialTema) {
+                summary.materialTema[tema] = (summary.materialTema[tema] || 0) + 1;
+            }
+
+            summary.assuntos[avaliacao.avaliacaoAssuntos] = (summary.assuntos[avaliacao.avaliacaoAssuntos] || 0) + 1;
+            summary.organizacao[avaliacao.avaliacaoOrganizacao] = (summary.organizacao[avaliacao.avaliacaoOrganizacao] || 0) + 1;
+            summary.relevancia[avaliacao.avaliacaoRelevancia] = (summary.relevancia[avaliacao.avaliacaoRelevancia] || 0) + 1;
+            summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
+            summary.avaliacaoEditora[avaliacao.avaliacaoEditora] = (summary.avaliacaoEditora[avaliacao.avaliacaoEditora] || 0) + 1;
+        }
+
+        summary.mediaEditora = totalEditora / summary.total;
+        
+        return summary;
+    }, [avaliacoes]);
 
   const despesasAgrupadas = useMemo(() => {
     return despesas.reduce((acc, despesa) => {
@@ -307,11 +348,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'];
-
-
   return (
-    <ScrollArea className="max-h-[70vh]">
+    <ScrollArea className="max-h-[80vh]">
       <div className='p-1'>
         <Tabs defaultValue="info" className="p-4">
             <TabsList className="grid w-full grid-cols-3">
@@ -432,10 +470,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                         <Separator />
                         {(!formacao.anexos || formacao.anexos.length === 0) ? (
                             <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                                <p>
+                                <div>
                                     <Paperclip className="h-6 w-6 mx-auto mb-2"/>
                                     Nenhum anexo encontrado.
-                                </p>
+                                </div>
                             </div>
                         ) : (
                             <div className="relative pl-6">
@@ -505,10 +543,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     <Separator />
                      {despesas.length === 0 ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <p>
+                            <div>
                                 <DollarSign className="h-6 w-6 mx-auto mb-2"/>
                                 Nenhuma despesa encontrada para esta formação.
-                            </p>
+                            </div>
                         </div>
                      ) : (
                         <Accordion type="multiple" className="w-full space-y-4">
@@ -578,62 +616,188 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                      <Separator />
                       {avaliacoes.length === 0 ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <p>
-                                <Star className="h-6 w-6 mx-auto mb-2"/>
+                            <div>
+                                <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
                                 Nenhuma avaliação recebida para esta formação.
-                            </p>
+                            </div>
                         </div>
                      ) : (
                         <div>
-                            {avaliacaoSummary && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <Card>
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                            <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
-                                            <Users className="h-4 w-4 text-muted-foreground" />
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-bold">{avaliacaoSummary.total}</div>
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                            <CardTitle className="text-sm font-medium">Média da Avaliação</CardTitle>
-                                            <Star className="h-4 w-4 text-muted-foreground" />
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="text-2xl font-bold">{avaliacaoSummary.media} / 5</div>
-                                        </CardContent>
-                                    </Card>
-                                    <div className="md:col-span-2 h-48">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie data={avaliacaoSummary.pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={60} fill="#8884d8" label>
-                                                    {avaliacaoSummary.pieData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip />
-                                            </PieChart>
-                                        </ResponsiveContainer>
+                             {avaliacaoSummary && (
+                                <div className="mb-8 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
+                                                <Users className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{avaliacaoSummary.total}</div>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                <CardTitle className="text-sm font-medium">Média Avaliação da Editora</CardTitle>
+                                                <Star className="h-4 w-4 text-muted-foreground" />
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="text-2xl font-bold">{avaliacaoSummary.mediaEditora.toFixed(1)} / 5</div>
+                                            </CardContent>
+                                        </Card>
                                     </div>
+
+                                    <Card>
+                                        <CardHeader><CardTitle className="text-base">Resumo das Respostas</CardTitle></CardHeader>
+                                        <CardContent className="space-y-6 text-sm">
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Modalidade</p>
+                                                {Object.entries(avaliacaoSummary.modalidade).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Função Pedagógica</p>
+                                                {Object.entries(avaliacaoSummary.funcao).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Etapa de Ensino</p>
+                                                {Object.entries(avaliacaoSummary.etapaEnsino).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Material/Tema da Formação</p>
+                                                {Object.entries(avaliacaoSummary.materialTema).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Assuntos Abordados</p>
+                                                {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Organização do Encontro</p>
+                                                {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                             <div className="space-y-2">
+                                                <p className="font-medium">Relevância para Prática</p>
+                                                {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Material Atende Expectativas</p>
+                                                {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <p className="font-medium">Avaliação da Editora (1-5)</p>
+                                                {Object.entries(avaliacaoSummary.avaliacaoEditora).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span className="flex items-center gap-1">{key} <Star className="h-4 w-4 text-yellow-400" /></span>
+                                                            <span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span>
+                                                        </div>
+                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                        </CardContent>
+                                    </Card>
+                                    <Separator />
                                 </div>
                             )}
+                            
+                            <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
                              <Accordion type="multiple" className="w-full space-y-2">
                                 {avaliacoes.map(avaliacao => (
                                     <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
-                                        <AccordionTrigger className='px-4'>
+                                        <AccordionTrigger className='px-4 hover:no-underline'>
                                             <div className="flex items-center justify-between w-full pr-4">
                                                 <span>{avaliacao.nomeCompleto}</span>
-                                                <div className='flex items-center gap-1'>
-                                                    {avaliacao.avaliacaoEditora} <Star className="h-4 w-4 text-yellow-400" />
-                                                </div>
+                                                <span className="text-xs text-muted-foreground font-normal">
+                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                </span>
                                             </div>
                                         </AccordionTrigger>
                                         <AccordionContent>
-                                            <div className="text-sm space-y-2 p-4 border-t">
-                                                <p><strong>Observações:</strong> {avaliacao.observacoes || 'Nenhuma'}</p>
-                                                <p><strong>Interesse:</strong> {avaliacao.interesseFormacao || 'Nenhum'}</p>
+                                            <div className="text-sm space-y-4 p-4 border-t">
+                                                <div className='space-y-3'>
+                                                    <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                                    <div>
+                                                      <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
+                                                    </div>
+                                                    <div>
+                                                      <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
+                                                    </div>
+                                                    <div>
+                                                        <strong>Avaliação (1-5):</strong>
+                                                        <div className='flex items-center gap-1 mt-1'>
+                                                            {[...Array(5)].map((_, i) => (
+                                                            <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    {avaliacao.interesseFormacao && (
+                                                    <div>
+                                                        <strong>Interesse:</strong>
+                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                                    </div>
+                                                    )}
+                                                    {avaliacao.observacoes && (
+                                                    <div>
+                                                        <strong>Observações:</strong>
+                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                                    </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
@@ -664,3 +828,4 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </ScrollArea>
   );
 }
+
