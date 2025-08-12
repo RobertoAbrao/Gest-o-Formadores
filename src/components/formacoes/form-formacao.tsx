@@ -52,6 +52,10 @@ const logisticaSchema = z.object({
     hotel: z.string().optional(),
     checkin: z.date().optional().nullable(),
     checkout: z.date().optional().nullable(),
+    valorHospedagem: z.preprocess(
+      (a) => a ? parseFloat(String(a).replace(",", ".")) : undefined,
+      z.number().optional()
+    ),
 });
 
 const formSchema = z.object({
@@ -171,6 +175,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           hotel: '',
           checkin: null,
           checkout: null,
+          valorHospedagem: undefined,
         };
       });
       replaceLogistica(newLogistica);
@@ -195,6 +200,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             dataVolta: toNullableDate(l.dataVolta),
             checkin: toNullableDate(l.checkin),
             checkout: toNullableDate(l.checkout),
+            valorHospedagem: l.valorHospedagem || undefined,
         })) || [],
       });
     } else {
@@ -654,6 +660,19 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                                 <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
                                             </PopoverContent>
                                         </Popover>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`logistica.${index}.valorHospedagem`}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Valor Hospedagem (R$)</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" step="0.01" placeholder="Ex: 350,50" {...field} value={field.value ?? ''} />
+                                        </FormControl>
                                         <FormMessage />
                                         </FormItem>
                                     )}

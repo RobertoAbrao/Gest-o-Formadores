@@ -362,6 +362,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   }
   
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
+  const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorHospedagem || 0), 0) || 0;
 
   return (
     <ScrollArea className="max-h-[80vh]">
@@ -562,7 +563,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             </TabsContent>
             <TabsContent value="logistica">
                  <div className="space-y-6 pt-4">
-                    <h4 className="font-semibold text-lg">Passagens e Hospedagem</h4>
+                    <div className="flex justify-between items-center">
+                         <h4 className="font-semibold text-lg">Passagens e Hospedagem</h4>
+                         <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Custo Total de Hospedagem</p>
+                             <p className="text-xl font-bold text-primary">{formatCurrency(totalHospedagem)}</p>
+                         </div>
+                    </div>
                     <Separator />
                      {(!formacao.logistica || formacao.logistica.length === 0) ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
@@ -581,6 +588,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                         <TableHead>Ida/Volta</TableHead>
                                         <TableHead>Hotel</TableHead>
                                         <TableHead>Check-in/Check-out</TableHead>
+                                        <TableHead className="text-right">Valor Hosp.</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -604,6 +612,9 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                 <div className='flex items-center gap-1'>
                                                     <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
                                                 </div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium">
+                                                {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
                                             </TableCell>
                                         </TableRow>
                                     ))}

@@ -63,6 +63,7 @@ export interface LogisticaViagem {
   hotel: string;
   checkin: Timestamp | null;
   checkout: Timestamp | null;
+  valorHospedagem?: number;
 }
 
 export interface Formacao {
