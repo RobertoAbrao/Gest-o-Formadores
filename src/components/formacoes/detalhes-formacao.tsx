@@ -563,9 +563,9 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             </TabsContent>
             <TabsContent value="logistica">
                  <div className="space-y-6 pt-4">
-                    <div className="flex justify-between items-center">
-                         <h4 className="font-semibold text-lg">Passagens e Hospedagem</h4>
-                         <div className="text-right">
+                    <div className="flex flex-wrap justify-between items-center gap-4">
+                         <h4 className="font-semibold text-lg truncate">Passagens e Hospedagem</h4>
+                         <div className="text-right flex-shrink-0">
                             <p className="text-sm text-muted-foreground">Custo Total de Hospedagem</p>
                              <p className="text-xl font-bold text-primary">{formatCurrency(totalHospedagem)}</p>
                          </div>
