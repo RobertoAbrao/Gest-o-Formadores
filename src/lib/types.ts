@@ -67,7 +67,8 @@ export interface Formacao {
   dataFim: Timestamp | null;
   formadoresIds: string[];
   materiaisIds: string[];
-  anexos?: Anexo[]; 
+  anexos?: Anexo[];
+  avaliacoesAbertas?: boolean;
 }
 
 export interface Despesa {

@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -31,6 +31,8 @@ import { DetalhesDespesa } from '../despesas/detalhes-despesa';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Progress } from '../ui/progress';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 
 
 interface DetalhesFormacaoProps {
@@ -328,6 +330,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
     }
   }
+  
+  const handleToggleAvaliacoes = async (checked: boolean) => {
+    if (!formacao) return;
+    try {
+        const formacaoRef = doc(db, 'formacoes', formacao.id);
+        await updateDoc(formacaoRef, { avaliacoesAbertas: checked });
+        setFormacao(prev => prev ? { ...prev, avaliacoesAbertas: checked } : null);
+        toast({ title: "Sucesso", description: `Avaliações ${checked ? 'abertas' : 'fechadas'}.` });
+    } catch (error) {
+        console.error("Erro ao alterar status da avaliação:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status da avaliação." });
+    }
+  }
 
   const openDespesaDetails = (despesa: Despesa) => {
     setSelectedDespesa(despesa);
@@ -517,16 +532,29 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         )}
                     </div>
-                    {!isArchived && formacao.status === 'concluido' && (
+                    {!isArchived && (
                         <div className="space-y-4 pt-4 border-t">
                             <h4 className="font-semibold text-lg">Ações</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Esta formação foi concluída. Você pode arquivá-la para removê-la do quadro principal.
-                            </p>
-                            <Button variant="outline" onClick={handleArchive}>
-                                <Archive className="mr-2 h-4 w-4" />
-                                Arquivar Formação
-                            </Button>
+                            <div className="flex flex-wrap items-center gap-4">
+                                {formacao.status === 'concluido' && (
+                                    <Button variant="outline" onClick={handleArchive}>
+                                        <Archive className="mr-2 h-4 w-4" />
+                                        Arquivar Formação
+                                    </Button>
+                                )}
+                                <div className="flex items-center space-x-2">
+                                    <Switch 
+                                        id="avaliacoes-switch" 
+                                        checked={formacao.avaliacoesAbertas}
+                                        onCheckedChange={handleToggleAvaliacoes}
+                                    />
+                                    <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
+                                        {formacao.avaliacoesAbertas 
+                                            ? <><ToggleRight className="text-green-600"/> Avaliações Abertas</> 
+                                            : <><ToggleLeft/> Avaliações Fechadas</>}
+                                    </Label>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -828,4 +856,3 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </ScrollArea>
   );
 }
-

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { addDoc, Timestamp, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { Loader2, ClipboardCheck, CheckCircle2, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
@@ -104,8 +104,7 @@ const avaliacaoSchema = z.object({
 
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
-interface FormacaoPublica {
-    titulo: string;
+interface FormacaoPublica extends Formacao {
     formadorNomes: string[];
 }
 
@@ -150,6 +149,10 @@ export default function AvaliacaoPage() {
         }
         
         const formacaoData = formacaoSnap.data() as Formacao;
+        
+        if (!formacaoData.avaliacoesAbertas) {
+            throw new Error('As avaliações para esta formação não estão abertas no momento.');
+        }
 
         let formadorNomes: string[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
@@ -159,7 +162,8 @@ export default function AvaliacaoPage() {
         }
 
         setFormacao({
-            titulo: formacaoData.titulo,
+            ...formacaoData,
+            id: formacaoSnap.id,
             formadorNomes: formadorNomes,
         });
 
@@ -173,11 +177,10 @@ export default function AvaliacaoPage() {
     } catch (error: any) {
       console.error('Erro ao buscar dados da formação:', error);
       setError(error.message);
-      toast({ variant: 'destructive', title: 'Erro', description: `Não foi possível carregar os dados: ${error.message}` });
     } finally {
       setLoading(false);
     }
-  }, [formacaoId, toast, form]);
+  }, [formacaoId, form]);
 
   useEffect(() => {
     fetchData();
@@ -226,12 +229,18 @@ export default function AvaliacaoPage() {
     );
   }
 
-  if (error || !formacao) {
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <p className="text-xl text-destructive">{error || 'Formação não encontrada ou indisponível.'}</p>
+      <div className="flex flex-col items-center justify-center h-screen gap-4 text-center">
+        <ShieldOff className="h-16 w-16 text-destructive" />
+        <h1 className="text-2xl font-bold text-destructive">Acesso Negado</h1>
+        <p className="text-muted-foreground max-w-sm">{error}</p>
       </div>
     );
+  }
+
+  if (!formacao) {
+      return null; // Should be covered by loading or error state
   }
 
   return (
@@ -576,5 +585,3 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    

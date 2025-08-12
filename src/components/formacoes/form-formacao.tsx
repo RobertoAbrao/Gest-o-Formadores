@@ -184,6 +184,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             id: newDocRef.id,
             codigo: generateFormationCode(values.municipio),
             status: 'preparacao',
+            avaliacoesAbertas: false,
             dataCriacao: serverTimestamp(),
         });
         toast({ title: 'Sucesso!', description: 'Formação criada com sucesso.' });
