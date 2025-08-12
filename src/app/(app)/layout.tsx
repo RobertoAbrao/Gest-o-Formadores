@@ -122,10 +122,7 @@ const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogo
           </nav>
         </div>
         <div className="mt-auto p-4">
-          <Button size="sm" className="w-full" onClick={onLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          {/* O botão de Sair foi removido daqui para evitar redundância, pois já existe no menu do usuário. */}
         </div>
       </div>
     </div>
