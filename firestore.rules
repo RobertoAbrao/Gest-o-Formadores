@@ -3,56 +3,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is an administrator.
-    function isAdmin() {
-      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-          && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == 'administrador';
+  
+    // Helper function to check if a user is an administrator
+    function isUserAdmin(userId) {
+      return get(/databases/$(database)/documents/usuarios/$(userId)).data.perfil == 'administrador';
     }
-
-    // Helper function to check if the user is authenticated.
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Rules for 'usuarios' collection
+    
+    // Users collection: only admins can create/delete, users can see their own profile
     match /usuarios/{userId} {
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow create: if isAdmin();
-      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId && request.resource.data.perfil == resource.data.perfil);
-      allow delete: if isAdmin();
+      allow read: if request.auth != null && (request.auth.uid == userId || isUserAdmin(request.auth.uid));
+      allow create, delete: if isUserAdmin(request.auth.uid);
+      allow update: if request.auth.uid == userId || isUserAdmin(request.auth.uid);
     }
 
-    // Rules for 'formadores' collection
+    // Trainers collection: only admins can manage trainers
     match /formadores/{formadorId} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
+      allow read: if request.auth != null; // Trainers and Admins can read
+      allow write: if isUserAdmin(request.auth.uid);
     }
     
-    // Rules for 'formacoes' collection
-    match /formacoes/{formacaoId} {
-        // Admins can read/write any formation.
-        // A trainer can only read formations they are assigned to.
-        allow write: if isAdmin();
-        allow read: if isAdmin() || (isSignedIn() && resource.data.formadoresIds.hasAny([request.auth.uid]));
-    }
-    
-    // Rules for 'despesas' collection
-    match /despesas/{despesaId} {
-      // READ: The owner of the expense or an admin can read it.
-      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == resource.data.formadorId);
-
-      // CREATE: The user creating the expense must be the owner.
-      allow create: if isSignedIn() && request.resource.data.formadorId == request.auth.uid;
-      
-      // UPDATE, DELETE: Only the owner of the expense can update or delete it.
-      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.formadorId;
+    // Assessores collection: only admins can manage
+    match /assessores/{assessorId} {
+        allow read: if request.auth != null;
+        allow write: if isUserAdmin(request.auth.uid);
     }
 
-    // Rules for 'materiais' collection
+    // Materials collection: only admins can manage, all authenticated can read
     match /materiais/{materialId} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
+      allow read: if request.auth != null;
+      allow write: if isUserAdmin(request.auth.uid);
+    }
+    
+    // Formations collection: only admins can manage
+    match /formacoes/{formacaoId} {
+        allow read: if request.auth != null;
+        allow write: if isUserAdmin(request.auth.uid);
+    }
+    
+    // Expenses collection: trainers can create for themselves, admins can read all
+    match /despesas/{despesaId} {
+        allow read: if request.auth != null && (isUserAdmin(request.auth.uid) || request.auth.uid == resource.data.formadorId);
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.formadorId;
+        allow update, delete: if request.auth != null && (isUserAdmin(request.auth.uid) || request.auth.uid == resource.data.formadorId);
+    }
+
+    // Projects collection: only admins can manage
+    match /projetos/{projetoId} {
+        allow read, write: if isUserAdmin(request.auth.uid);
+    }
+    
+    // Evaluations collection: anyone can create, only admins can read
+    match /avaliacoes/{avaliacaoId} {
+        allow read: if isUserAdmin(request.auth.uid);
+        allow create: if true; // Public access to submit form
+        allow write: if isUserAdmin(request.auth.uid);
     }
   }
 }
