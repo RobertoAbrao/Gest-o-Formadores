@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye } from 'lucide-react';
 import type { ProjetoImplatancao } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -30,6 +29,7 @@ import { FormProjeto } from '@/components/projetos/form-projeto';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Timestamp } from 'firebase/firestore';
+import { DetalhesProjeto } from '@/components/projetos/detalhes-projeto';
 
 
 const formatDate = (timestamp: Timestamp | null | undefined) => {
@@ -43,7 +43,8 @@ export default function ProjetosPage() {
   const { toast } = useToast();
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedProjeto, setSelectedProjeto] = useState<ProjetoImplatancao | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -72,7 +73,7 @@ export default function ProjetosPage() {
   
   const handleSuccess = () => {
     fetchProjetos();
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     setSelectedProjeto(null);
   }
   
@@ -92,8 +93,20 @@ export default function ProjetosPage() {
 
   const openEditDialog = (projeto: ProjetoImplatancao) => {
     setSelectedProjeto(projeto);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   }
+  
+  const openDetailDialog = (projeto: ProjetoImplatancao) => {
+    setSelectedProjeto(projeto);
+    setIsDetailDialogOpen(true);
+  }
+
+  const handleDialogChange = (setter: React.Dispatch<React.SetStateAction<boolean>>) => (open: boolean) => {
+    setter(open);
+    if (!open) {
+      setSelectedProjeto(null);
+    }
+  };
 
   const filteredProjetos = useMemo(() => {
     return searchTerm
@@ -121,10 +134,7 @@ export default function ProjetosPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gerenciar Projetos</h1>
             <p className="text-muted-foreground">Adicione, edite e acompanhe os projetos de implantação.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) setSelectedProjeto(null);
-        }}>
+        <Dialog open={isFormDialogOpen} onOpenChange={handleDialogChange(setIsFormDialogOpen)}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -179,7 +189,7 @@ export default function ProjetosPage() {
                 </TableHeader>
                 <TableBody>
                     {filteredProjetos.map((projeto) => (
-                    <TableRow key={projeto.id} onClick={() => openEditDialog(projeto)} className="cursor-pointer">
+                    <TableRow key={projeto.id} onClick={() => openDetailDialog(projeto)} className="cursor-pointer">
                         <TableCell className="font-medium">
                             <div>{projeto.municipio}</div>
                             <div className="text-xs text-muted-foreground">{projeto.uf}</div>
@@ -200,6 +210,10 @@ export default function ProjetosPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(projeto)}}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Visualizar
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(projeto)}}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
@@ -217,6 +231,23 @@ export default function ProjetosPage() {
             </Table>
         </div>
       )}
+
+      <Dialog open={isDetailDialogOpen} onOpenChange={handleDialogChange(setIsDetailDialogOpen)}>
+            <DialogContent className="sm:max-w-4xl">
+                <DialogHeader>
+                    <DialogTitle>Detalhes do Projeto de Implantação</DialogTitle>
+                    <DialogDescription>
+                        {selectedProjeto?.municipio} - {selectedProjeto?.uf}
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className='max-h-[80vh]'>
+                    <div className='p-4'>
+                        {selectedProjeto && <DetalhesProjeto projeto={selectedProjeto} />}
+                    </div>
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
+
