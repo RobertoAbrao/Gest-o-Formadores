@@ -58,8 +58,8 @@ const devolutiva4Schema = devolutivaStatusSchema.extend({
 }).omit({ dataInicio: true, dataFim: true });
 
 const linkReuniaoSchema = z.object({
-    url: z.string().url({ message: "Por favor, insira uma URL válida." }).or(z.literal('')),
-    descricao: z.string(),
+    url: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
+    descricao: z.string().optional(),
 });
 
 const reuniaoSchema = z.object({
@@ -127,7 +127,7 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
 
 // Function to remove undefined properties from an object
 const removeUndefinedProps = (obj: any): any => {
-    if (obj === null || obj === undefined) return undefined;
+    if (obj === null || obj === undefined) return obj; // Keep null values
     if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
       return obj;
     }
@@ -142,11 +142,12 @@ const removeUndefinedProps = (obj: any): any => {
         const value = removeUndefinedProps(obj[key]);
         if (value !== undefined) {
           newObj[key] = value;
+        } else {
+          newObj[key] = null; // Or some other default value if you prefer
         }
       }
     }
   
-    if (Object.keys(newObj).length === 0) return undefined;
     return newObj;
   };
 
@@ -184,7 +185,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       },
       reunioes: projeto?.reunioes?.map(r => ({
           data: toDate(r.data),
-          links: r.links || Array(4).fill({ url: '', descricao: '' }),
+          links: r.links ? [...r.links, ...Array(4 - r.links.length).fill({ url: '', descricao: '' })].slice(0, 4) : Array(4).fill({ url: '', descricao: '' }),
       })) || [],
     },
   });
@@ -488,3 +489,5 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
+
+    
