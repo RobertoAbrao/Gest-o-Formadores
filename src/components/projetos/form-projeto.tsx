@@ -47,12 +47,16 @@ const etapaStatusSchema = z.object({
   ok: z.boolean().optional(),
 });
 
-const devolutivaStatusSchema = z.object({
+const periodoStatusSchema = z.object({
   dataInicio: z.date().nullable().optional(),
   dataFim: z.date().nullable().optional(),
-  formador: z.string().optional(),
   ok: z.boolean().optional(),
 });
+
+const devolutivaStatusSchema = periodoStatusSchema.extend({
+  formador: z.string().optional(),
+});
+
 
 const devolutiva4Schema = devolutivaStatusSchema.extend({
   data: z.date().nullable().optional(),
@@ -91,10 +95,10 @@ const formSchema = z.object({
   formadoresOk: z.boolean().optional(),
   diagnostica: etapaStatusSchema,
   simulados: z.object({
-    s1: etapaStatusSchema,
-    s2: etapaStatusSchema,
-    s3: etapaStatusSchema,
-    s4: etapaStatusSchema,
+    s1: periodoStatusSchema,
+    s2: periodoStatusSchema,
+    s3: periodoStatusSchema,
+    s4: periodoStatusSchema,
   }),
   devolutivas: z.object({
     d1: devolutivaStatusSchema,
@@ -126,29 +130,25 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
   return date ? Timestamp.fromDate(date) : null;
 };
 
-// Function to remove undefined properties from an object
-const removeUndefinedProps = (obj: any): any => {
-    if (obj === null || obj === undefined) return obj; // Keep null values
+const cleanObject = (obj: any) => {
+    if (obj === null || obj === undefined) {
+      return null;
+    }
     if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
       return obj;
     }
-  
     if (Array.isArray(obj)) {
-      return obj.map(removeUndefinedProps).filter(v => v !== undefined);
+      return obj.map(cleanObject).filter(v => v !== undefined);
     }
-  
     const newObj: any = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        const value = removeUndefinedProps(obj[key]);
+        const value = obj[key];
         if (value !== undefined) {
-          newObj[key] = value;
-        } else {
-          newObj[key] = null; // Or some other default value if you prefer
+          newObj[key] = cleanObject(value);
         }
       }
     }
-  
     return newObj;
   };
 
@@ -173,10 +173,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       formadoresOk: projeto?.formadoresOk || false,
       diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false },
       simulados: {
-        s1: { data: toDate(projeto?.simulados?.s1?.data), ok: projeto?.simulados?.s1?.ok || false },
-        s2: { data: toDate(projeto?.simulados?.s2?.data), ok: projeto?.simulados?.s2?.ok || false },
-        s3: { data: toDate(projeto?.simulados?.s3?.data), ok: projeto?.simulados?.s3?.ok || false },
-        s4: { data: toDate(projeto?.simulados?.s4?.data), ok: projeto?.simulados?.s4?.ok || false },
+        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false },
+        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false },
+        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false },
+        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false },
       },
       devolutivas: {
         d1: { dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), formador: projeto?.devolutivas?.d1?.formador || '', ok: projeto?.devolutivas?.d1?.ok || false },
@@ -209,10 +209,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             ok: values.diagnostica.ok,
           },
           simulados: {
-            s1: { data: timestampOrNull(values.simulados.s1.data), ok: values.simulados.s1.ok },
-            s2: { data: timestampOrNull(values.simulados.s2.data), ok: values.simulados.s2.ok },
-            s3: { data: timestampOrNull(values.simulados.s3.data), ok: values.simulados.s3.ok },
-            s4: { data: timestampOrNull(values.simulados.s4.data), ok: values.simulados.s4.ok },
+            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok },
+            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok },
+            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok },
+            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok },
           },
           devolutivas: {
             d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok },
@@ -226,7 +226,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           }))
       };
 
-      const cleanedData = removeUndefinedProps(dataToSave);
+      const cleanedData = cleanObject(dataToSave);
 
       if (isEditMode && projeto) {
          await updateDoc(doc(db, 'projetos', projeto.id), cleanedData);
@@ -401,13 +401,14 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
               )}/>
             </div>
             {/* Simulados */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {([1, 2, 3, 4] as const).map(i => (
-                <div key={`s${i}`} className='flex flex-wrap items-end gap-4 p-2 rounded-md border'>
-                  <FormField control={form.control} name={`simulados.s${i}.data`} render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Simulado {i}</FormLabel>
+                <div key={`s${i}`} className='p-2 rounded-md border space-y-3'>
+                  <h4 className='font-medium'>Simulado {i}</h4>
+                  <FormField control={form.control} name={`simulados.s${i}.dataInicio`} render={({ field }) => (
+                    <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
                       <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-[200px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                           {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
@@ -416,8 +417,20 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                       </PopoverContent></Popover><FormMessage />
                     </FormItem>
                   )}/>
-                  <FormField control={form.control} name={`simulados.s${i}.ok`} render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                  <FormField control={form.control} name={`simulados.s${i}.dataFim`} render={({ field }) => (
+                    <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
+                      <Popover><PopoverTrigger asChild><FormControl>
+                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                      </PopoverContent></Popover><FormMessage />
+                    </FormItem>
+                  )}/>
+                   <FormField control={form.control} name={`simulados.s${i}.ok`} render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
                   )}/>
                 </div>
               ))}

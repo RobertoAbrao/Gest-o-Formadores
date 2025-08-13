@@ -169,11 +169,15 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {([1, 2, 3, 4] as const).map(i => (
-                             <div key={`s${i}`} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                                <span className="font-medium text-sm">Simulado {i}</span>
-                                <div className='flex items-center gap-2'>
-                                    <span className="text-sm text-muted-foreground">{formatDate(projeto.simulados?.[`s${i}`]?.data)}</span>
+                             <div key={`s${i}`} className="p-3 rounded-md border">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold text-sm">Simulado {i}</h4>
                                     <StatusIcon ok={projeto.simulados?.[`s${i}`]?.ok} />
+                                </div>
+                                <Separator className="my-2" />
+                                <div className="grid grid-cols-1 gap-x-4 gap-y-2 text-xs">
+                                     <p><strong className="text-muted-foreground">Início:</strong> {formatDate(projeto.simulados?.[`s${i}`]?.dataInicio)}</p>
+                                     <p><strong className="text-muted-foreground">Fim:</strong> {formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}</p>
                                 </div>
                             </div>
                         ))}

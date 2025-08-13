@@ -127,11 +127,14 @@ interface EtapaStatus {
   ok?: boolean;
 }
 
-interface DevolutivaStatus {
+interface PeriodoStatus {
   dataInicio?: Timestamp | null;
   dataFim?: Timestamp | null;
-  formador?: string;
   ok?: boolean;
+}
+
+interface DevolutivaStatus extends PeriodoStatus {
+  formador?: string;
 }
 
 interface LinkReuniao {
@@ -159,10 +162,10 @@ export interface ProjetoImplatancao {
   
   diagnostica: EtapaStatus;
   simulados: {
-    s1: EtapaStatus;
-    s2: EtapaStatus;
-    s3: EtapaStatus;
-    s4: EtapaStatus;
+    s1: PeriodoStatus;
+    s2: PeriodoStatus;
+    s3: PeriodoStatus;
+    s4: PeriodoStatus;
   };
   devolutivas: {
     d1: DevolutivaStatus;
