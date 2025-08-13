@@ -63,7 +63,7 @@ export interface LogisticaViagem {
   hotel: string;
   checkin: Timestamp | null;
   checkout: Timestamp | null;
-  valorHospedagem?: number;
+  valorHospedagem?: number | null;
 }
 
 export interface Formacao {
@@ -100,6 +100,8 @@ export interface Avaliacao {
     id: string;
     formacaoId: string;
     formacaoTitulo: string;
+    formadorId: string;
+    formadorNome: string;
     nomeCompleto: string;
     email: string;
     uf: string;
@@ -118,4 +120,17 @@ export interface Avaliacao {
     avaliacaoEditora: '1' | '2' | '3' | '4' | '5';
     observacoes?: string;
     dataCriacao: Timestamp;
+}
+
+export interface ProjetoImplatancao {
+  id: string;
+  municipio: string;
+  uf: string;
+  detalhesMaterial?: string;
+  formadoresNomes?: string;
+  dataMigracao: Timestamp | null;
+  dataImplantacao: Timestamp | null;
+  qtdAlunos?: number;
+  formacoesPendentes?: number;
+  dataCriacao: Timestamp;
 }
