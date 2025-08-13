@@ -81,7 +81,7 @@ export default function ProjetosPage() {
         return;
     }
     try {
-        await deleteDoc(doc(db, "projetos", projetoId));
+        await deleteDoc(doc(db, "projetos", projectId));
         toast({ title: 'Sucesso!', description: 'Projeto excluído com sucesso.' });
         fetchProjetos();
     } catch (error) {
@@ -179,7 +179,7 @@ export default function ProjetosPage() {
                 </TableHeader>
                 <TableBody>
                     {filteredProjetos.map((projeto) => (
-                    <TableRow key={projeto.id}>
+                    <TableRow key={projeto.id} onClick={() => openEditDialog(projeto)} className="cursor-pointer">
                         <TableCell className="font-medium">
                             <div>{projeto.municipio}</div>
                             <div className="text-xs text-muted-foreground">{projeto.uf}</div>
@@ -194,17 +194,17 @@ export default function ProjetosPage() {
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
+                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                                 <span className="sr-only">Abrir menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(projeto)}>
+                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(projeto)}}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDelete(projeto.id)}>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(projeto.id)}}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
                             </DropdownMenuItem>
