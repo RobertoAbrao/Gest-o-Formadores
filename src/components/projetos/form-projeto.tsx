@@ -114,6 +114,21 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
   return date ? Timestamp.fromDate(date) : null;
 };
 
+// Function to remove undefined properties from an object
+const removeUndefinedProps = (obj: any) => {
+  const newObj: any = {};
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      if (typeof obj[key] === 'object' && obj[key] !== null && ! (obj[key] instanceof Date) && ! (obj[key] instanceof Timestamp)) {
+        newObj[key] = removeUndefinedProps(obj[key]);
+      } else {
+        newObj[key] = obj[key];
+      }
+    }
+  }
+  return newObj;
+};
+
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -152,25 +167,26 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
+      const cleanedValues = removeUndefinedProps(values);
       const dataToSave = {
-          ...values,
-          dataMigracao: timestampOrNull(values.dataMigracao),
-          dataImplantacao: timestampOrNull(values.dataImplantacao),
+          ...cleanedValues,
+          dataMigracao: timestampOrNull(cleanedValues.dataMigracao),
+          dataImplantacao: timestampOrNull(cleanedValues.dataImplantacao),
           diagnostica: {
-            data: timestampOrNull(values.diagnostica.data),
-            ok: values.diagnostica.ok,
+            data: timestampOrNull(cleanedValues.diagnostica.data),
+            ok: cleanedValues.diagnostica.ok,
           },
           simulados: {
-            s1: { data: timestampOrNull(values.simulados.s1.data), ok: values.simulados.s1.ok },
-            s2: { data: timestampOrNull(values.simulados.s2.data), ok: values.simulados.s2.ok },
-            s3: { data: timestampOrNull(values.simulados.s3.data), ok: values.simulados.s3.ok },
-            s4: { data: timestampOrNull(values.simulados.s4.data), ok: values.simulados.s4.ok },
+            s1: { data: timestampOrNull(cleanedValues.simulados.s1.data), ok: cleanedValues.simulados.s1.ok },
+            s2: { data: timestampOrNull(cleanedValues.simulados.s2.data), ok: cleanedValues.simulados.s2.ok },
+            s3: { data: timestampOrNull(cleanedValues.simulados.s3.data), ok: cleanedValues.simulados.s3.ok },
+            s4: { data: timestampOrNull(cleanedValues.simulados.s4.data), ok: cleanedValues.simulados.s4.ok },
           },
           devolutivas: {
-            d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok },
-            d2: { dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim), formador: values.devolutivas.d2.formador, ok: values.devolutivas.d2.ok },
-            d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok },
-            d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok },
+            d1: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d1.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d1.dataFim), formador: cleanedValues.devolutivas.d1.formador, ok: cleanedValues.devolutivas.d1.ok },
+            d2: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d2.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d2.dataFim), formador: cleanedValues.devolutivas.d2.formador, ok: cleanedValues.devolutivas.d2.ok },
+            d3: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d3.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d3.dataFim), formador: cleanedValues.devolutivas.d3.formador, ok: cleanedValues.devolutivas.d3.ok },
+            d4: { data: timestampOrNull(cleanedValues.devolutivas.d4.data), formador: cleanedValues.devolutivas.d4.formador, ok: cleanedValues.devolutivas.d4.ok },
           }
       };
 
