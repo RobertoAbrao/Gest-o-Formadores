@@ -127,21 +127,28 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
 
 // Function to remove undefined properties from an object
 const removeUndefinedProps = (obj: any): any => {
-    if (obj === null || obj === undefined) return obj;
-    if (Array.isArray(obj)) return obj.map(removeUndefinedProps);
-    if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) return obj;
-
+    if (obj === null || obj === undefined) return undefined;
+    if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
+      return obj;
+    }
+  
+    if (Array.isArray(obj)) {
+      return obj.map(removeUndefinedProps).filter(v => v !== undefined);
+    }
+  
     const newObj: any = {};
     for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
-            const value = obj[key];
-            if (value !== undefined) {
-                newObj[key] = removeUndefinedProps(value);
-            }
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const value = removeUndefinedProps(obj[key]);
+        if (value !== undefined) {
+          newObj[key] = value;
         }
+      }
     }
+  
+    if (Object.keys(newObj).length === 0) return undefined;
     return newObj;
-};
+  };
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
@@ -351,10 +358,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         {Array.from({ length: 4 }).map((_, linkIndex) => (
                             <div key={linkIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.url`} render={({ field }) => (
-                                    <FormItem><FormLabel>Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                 )}/>
                                 <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.descricao`} render={({ field }) => (
-                                    <FormItem><FormLabel>Descrição do Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Descrição do Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                 )}/>
                             </div>
                         ))}
@@ -443,7 +450,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     </FormItem>
                   )}/>
                   <FormField control={form.control} name={`devolutivas.d${i}.formador`} render={({ field }) => (
-                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                   )}/>
                    <FormField control={form.control} name={`devolutivas.d${i}.ok`} render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
@@ -465,7 +472,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     </FormItem>
                   )}/>
                   <FormField control={form.control} name="devolutivas.d4.formador" render={({ field }) => (
-                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                   )}/>
                    <FormField control={form.control} name="devolutivas.d4.ok" render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
