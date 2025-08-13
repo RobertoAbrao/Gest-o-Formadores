@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState } from 'react';
-import { Loader2, CalendarIcon, Info } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2 } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import type { ProjetoImplatancao } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -101,7 +101,7 @@ const formSchema = z.object({
     d3: devolutivaStatusSchema,
     d4: devolutiva4Schema,
   }),
-  reuniao: reuniaoSchema.optional(),
+  reunioes: z.array(reuniaoSchema).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -175,26 +175,18 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         d3: { dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), formador: projeto?.devolutivas?.d3?.formador || '', ok: projeto?.devolutivas?.d3?.ok || false },
         d4: { data: toDate(projeto?.devolutivas?.d4?.data), formador: projeto?.devolutivas?.d4?.formador || '', ok: projeto?.devolutivas?.d4?.ok || false },
       },
-      reuniao: {
-          data: toDate(projeto?.reuniao?.data),
-          links: projeto?.reuniao?.links || Array(4).fill({ url: '', descricao: '' }),
-      }
+      reunioes: projeto?.reunioes?.map(r => ({
+          data: toDate(r.data),
+          links: r.links || Array(4).fill({ url: '', descricao: '' }),
+      })) || [],
     },
   });
-  
-  // Ensure 'reuniao.links' has 4 elements for the form
-  React.useEffect(() => {
-    const reuniaoLinks = form.getValues('reuniao.links');
-    if (!reuniaoLinks || reuniaoLinks.length < 4) {
-      const existingLinks = reuniaoLinks || [];
-      const newLinks = [...existingLinks];
-      while (newLinks.length < 4) {
-        newLinks.push({ url: '', descricao: '' });
-      }
-      form.setValue('reuniao.links', newLinks);
-    }
-  }, [form]);
 
+  const { fields: reuniaoFields, append: appendReuniao, remove: removeReuniao } = useFieldArray({
+    control: form.control,
+    name: "reunioes",
+  });
+  
 
   async function onSubmit(values: FormValues) {
     setLoading(true);
@@ -219,10 +211,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok },
             d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok },
           },
-          reuniao: values.reuniao ? {
-              data: timestampOrNull(values.reuniao.data),
-              links: values.reuniao.links?.filter(link => link.url) || [],
-          } : undefined,
+          reunioes: values.reunioes?.map(reuniao => ({
+            data: timestampOrNull(reuniao.data),
+            links: reuniao.links?.filter(link => link.url) || []
+          }))
       };
 
       const cleanedData = removeUndefinedProps(dataToSave);
@@ -328,32 +320,47 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         
         {/* Agendamento de Reunião */}
         <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Agendamento de Reunião</h3>
-            <Separator />
-            <FormField control={form.control} name="reuniao.data" render={({ field }) => (
-              <FormItem className="flex flex-col"><FormLabel>Data da Reunião</FormLabel>
-                <Popover><PopoverTrigger asChild><FormControl>
-                  <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                </PopoverContent></Popover><FormMessage />
-              </FormItem>
-            )}/>
-            <div className="space-y-4">
-                {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <FormField control={form.control} name={`reuniao.links.${index}.url`} render={({ field }) => (
-                            <FormItem><FormLabel>Link {index + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        <FormField control={form.control} name={`reuniao.links.${index}.descricao`} render={({ field }) => (
-                            <FormItem><FormLabel>Descrição do Link {index + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                    </div>
-                ))}
+            <div className='flex justify-between items-center'>
+                <h3 className="font-semibold text-lg">Agendamento de Reuniões</h3>
+                <Button type="button" size="sm" variant="outline" onClick={() => appendReuniao({ data: null, links: Array(4).fill({ url: '', descricao: '' }) })}>
+                    <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Reunião
+                </Button>
             </div>
+            <Separator />
+            {reuniaoFields.map((field, index) => (
+                 <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                    <div className='flex justify-between items-center'>
+                        <h4 className='font-semibold text-base'>Reunião {index + 1}</h4>
+                        <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeReuniao(index)}>
+                            <Trash2 className='h-4 w-4'/>
+                        </Button>
+                    </div>
+                    <FormField control={form.control} name={`reunioes.${index}.data`} render={({ field }) => (
+                        <FormItem className="flex flex-col"><FormLabel>Data da Reunião</FormLabel>
+                            <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                            </PopoverContent></Popover><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <div className="space-y-4">
+                        {Array.from({ length: 4 }).map((_, linkIndex) => (
+                            <div key={linkIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.url`} render={({ field }) => (
+                                    <FormItem><FormLabel>Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.descricao`} render={({ field }) => (
+                                    <FormItem><FormLabel>Descrição do Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
 
 

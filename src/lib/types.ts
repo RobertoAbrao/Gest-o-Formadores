@@ -171,7 +171,7 @@ export interface ProjetoImplatancao {
     d4: DevolutivaStatus & { data?: Timestamp | null }; // Devolutiva 4 only has one date
   };
 
-  reuniao?: Reuniao;
+  reunioes?: Reuniao[];
 
   dataCriacao: Timestamp;
 }

@@ -88,37 +88,41 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                  </CardContent>
             </Card>
 
-            {projeto.reuniao?.data && (
+            {projeto.reunioes && projeto.reunioes.length > 0 && (
                  <Card>
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Users2 className="h-5 w-5 text-muted-foreground" />
-                            Reunião Agendada
+                            Reuniões Agendadas
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                        <div className="flex items-center gap-3">
-                            <Calendar className="h-5 w-5 text-muted-foreground" />
-                            <div>
-                                <p className="font-medium">Data</p>
-                                <p className="text-muted-foreground">{formatDate(projeto.reuniao.data)}</p>
+                    <CardContent className="space-y-4">
+                        {projeto.reunioes.map((reuniao, reuniaoIndex) => (
+                            <div key={reuniaoIndex} className="p-3 border rounded-lg">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <Calendar className="h-5 w-5 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-medium">Data da Reunião {reuniaoIndex + 1}</p>
+                                        <p className="text-muted-foreground text-sm">{formatDate(reuniao.data)}</p>
+                                    </div>
+                                </div>
+                                {reuniao.links && reuniao.links.length > 0 && (
+                                    <div className='space-y-2 text-sm'>
+                                        <p className="font-medium">Links da Reunião</p>
+                                        {reuniao.links.map((link, index) => (
+                                            link.url && (
+                                                <div key={index} className="flex items-center gap-2 text-primary">
+                                                    <LinkIcon className='h-4 w-4' />
+                                                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                                                        {link.descricao || `Link ${index + 1}`}
+                                                    </a>
+                                                </div>
+                                            )
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                         {projeto.reuniao.links && projeto.reuniao.links.length > 0 && (
-                            <div className='space-y-2'>
-                                <p className="font-medium">Links da Reunião</p>
-                                {projeto.reuniao.links.map((link, index) => (
-                                    link.url && (
-                                        <div key={index} className="flex items-center gap-2 text-primary">
-                                            <LinkIcon className='h-4 w-4' />
-                                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                                {link.descricao || `Link ${index + 1}`}
-                                            </a>
-                                        </div>
-                                    )
-                                ))}
-                            </div>
-                        )}
+                        ))}
                     </CardContent>
                 </Card>
             )}
