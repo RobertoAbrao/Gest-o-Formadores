@@ -66,15 +66,15 @@ const formSchema = z.object({
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
   qtdAlunos: z.preprocess(
-    (val) => val ? Number(val) : undefined,
+    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
   ),
   formacoesPendentes: z.preprocess(
-    (val) => val ? Number(val) : undefined,
+    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
   ),
   qtdFormadores: z.preprocess(
-    (val) => val ? Number(val) : undefined,
+    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
   ),
   formadoresOk: z.boolean().optional(),
