@@ -134,6 +134,15 @@ interface DevolutivaStatus {
   ok?: boolean;
 }
 
+interface LinkReuniao {
+    url: string;
+    descricao: string;
+}
+
+interface Reuniao {
+    data: Timestamp | null;
+    links: LinkReuniao[];
+}
 
 export interface ProjetoImplatancao {
   id: string;
@@ -161,6 +170,8 @@ export interface ProjetoImplatancao {
     d3: DevolutivaStatus;
     d4: DevolutivaStatus & { data?: Timestamp | null }; // Devolutiva 4 only has one date
   };
+
+  reuniao?: Reuniao;
 
   dataCriacao: Timestamp;
 }

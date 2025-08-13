@@ -6,7 +6,7 @@ import { Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2 } from 'lucide-react';
 
 interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
@@ -87,6 +87,41 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                     </div>
                  </CardContent>
             </Card>
+
+            {projeto.reuniao?.data && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Users2 className="h-5 w-5 text-muted-foreground" />
+                            Reunião Agendada
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                        <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                                <p className="font-medium">Data</p>
+                                <p className="text-muted-foreground">{formatDate(projeto.reuniao.data)}</p>
+                            </div>
+                        </div>
+                         {projeto.reuniao.links && projeto.reuniao.links.length > 0 && (
+                            <div className='space-y-2'>
+                                <p className="font-medium">Links da Reunião</p>
+                                {projeto.reuniao.links.map((link, index) => (
+                                    link.url && (
+                                        <div key={index} className="flex items-center gap-2 text-primary">
+                                            <LinkIcon className='h-4 w-4' />
+                                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                                {link.descricao || `Link ${index + 1}`}
+                                            </a>
+                                        </div>
+                                    )
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
             
             <Card>
                  <CardHeader>
@@ -154,4 +189,3 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         </div>
     );
 }
-

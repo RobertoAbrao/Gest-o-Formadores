@@ -57,6 +57,16 @@ const devolutiva4Schema = devolutivaStatusSchema.extend({
   data: z.date().nullable().optional(),
 }).omit({ dataInicio: true, dataFim: true });
 
+const linkReuniaoSchema = z.object({
+    url: z.string().url({ message: "Por favor, insira uma URL válida." }).or(z.literal('')),
+    descricao: z.string(),
+});
+
+const reuniaoSchema = z.object({
+    data: z.date().nullable().optional(),
+    links: z.array(linkReuniaoSchema).optional(),
+});
+
 
 const formSchema = z.object({
   municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
@@ -91,6 +101,7 @@ const formSchema = z.object({
     d3: devolutivaStatusSchema,
     d4: devolutiva4Schema,
   }),
+  reuniao: reuniaoSchema.optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -115,18 +126,21 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
 };
 
 // Function to remove undefined properties from an object
-const removeUndefinedProps = (obj: any) => {
-  const newObj: any = {};
-  for (const key in obj) {
-    if (obj[key] !== undefined) {
-      if (typeof obj[key] === 'object' && obj[key] !== null && ! (obj[key] instanceof Date) && ! (obj[key] instanceof Timestamp)) {
-        newObj[key] = removeUndefinedProps(obj[key]);
-      } else {
-        newObj[key] = obj[key];
-      }
+const removeUndefinedProps = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    if (Array.isArray(obj)) return obj.map(removeUndefinedProps);
+    if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) return obj;
+
+    const newObj: any = {};
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const value = obj[key];
+            if (value !== undefined) {
+                newObj[key] = removeUndefinedProps(value);
+            }
+        }
     }
-  }
-  return newObj;
+    return newObj;
 };
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
@@ -160,46 +174,69 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         d2: { dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), formador: projeto?.devolutivas?.d2?.formador || '', ok: projeto?.devolutivas?.d2?.ok || false },
         d3: { dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), formador: projeto?.devolutivas?.d3?.formador || '', ok: projeto?.devolutivas?.d3?.ok || false },
         d4: { data: toDate(projeto?.devolutivas?.d4?.data), formador: projeto?.devolutivas?.d4?.formador || '', ok: projeto?.devolutivas?.d4?.ok || false },
+      },
+      reuniao: {
+          data: toDate(projeto?.reuniao?.data),
+          links: projeto?.reuniao?.links || Array(4).fill({ url: '', descricao: '' }),
       }
     },
   });
+  
+  // Ensure 'reuniao.links' has 4 elements for the form
+  React.useEffect(() => {
+    const reuniaoLinks = form.getValues('reuniao.links');
+    if (!reuniaoLinks || reuniaoLinks.length < 4) {
+      const existingLinks = reuniaoLinks || [];
+      const newLinks = [...existingLinks];
+      while (newLinks.length < 4) {
+        newLinks.push({ url: '', descricao: '' });
+      }
+      form.setValue('reuniao.links', newLinks);
+    }
+  }, [form]);
+
 
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
-      const cleanedValues = removeUndefinedProps(values);
       const dataToSave = {
-          ...cleanedValues,
-          dataMigracao: timestampOrNull(cleanedValues.dataMigracao),
-          dataImplantacao: timestampOrNull(cleanedValues.dataImplantacao),
+          ...values,
+          dataMigracao: timestampOrNull(values.dataMigracao),
+          dataImplantacao: timestampOrNull(values.dataImplantacao),
           diagnostica: {
-            data: timestampOrNull(cleanedValues.diagnostica.data),
-            ok: cleanedValues.diagnostica.ok,
+            data: timestampOrNull(values.diagnostica.data),
+            ok: values.diagnostica.ok,
           },
           simulados: {
-            s1: { data: timestampOrNull(cleanedValues.simulados.s1.data), ok: cleanedValues.simulados.s1.ok },
-            s2: { data: timestampOrNull(cleanedValues.simulados.s2.data), ok: cleanedValues.simulados.s2.ok },
-            s3: { data: timestampOrNull(cleanedValues.simulados.s3.data), ok: cleanedValues.simulados.s3.ok },
-            s4: { data: timestampOrNull(cleanedValues.simulados.s4.data), ok: cleanedValues.simulados.s4.ok },
+            s1: { data: timestampOrNull(values.simulados.s1.data), ok: values.simulados.s1.ok },
+            s2: { data: timestampOrNull(values.simulados.s2.data), ok: values.simulados.s2.ok },
+            s3: { data: timestampOrNull(values.simulados.s3.data), ok: values.simulados.s3.ok },
+            s4: { data: timestampOrNull(values.simulados.s4.data), ok: values.simulados.s4.ok },
           },
           devolutivas: {
-            d1: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d1.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d1.dataFim), formador: cleanedValues.devolutivas.d1.formador, ok: cleanedValues.devolutivas.d1.ok },
-            d2: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d2.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d2.dataFim), formador: cleanedValues.devolutivas.d2.formador, ok: cleanedValues.devolutivas.d2.ok },
-            d3: { dataInicio: timestampOrNull(cleanedValues.devolutivas.d3.dataInicio), dataFim: timestampOrNull(cleanedValues.devolutivas.d3.dataFim), formador: cleanedValues.devolutivas.d3.formador, ok: cleanedValues.devolutivas.d3.ok },
-            d4: { data: timestampOrNull(cleanedValues.devolutivas.d4.data), formador: cleanedValues.devolutivas.d4.formador, ok: cleanedValues.devolutivas.d4.ok },
-          }
+            d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok },
+            d2: { dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim), formador: values.devolutivas.d2.formador, ok: values.devolutivas.d2.ok },
+            d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok },
+            d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok },
+          },
+          reuniao: values.reuniao ? {
+              data: timestampOrNull(values.reuniao.data),
+              links: values.reuniao.links?.filter(link => link.url) || [],
+          } : undefined,
       };
 
+      const cleanedData = removeUndefinedProps(dataToSave);
+
       if (isEditMode && projeto) {
-         await updateDoc(doc(db, 'projetos', projeto.id), dataToSave as any);
+         await updateDoc(doc(db, 'projetos', projeto.id), cleanedData);
          toast({ title: 'Sucesso!', description: 'Projeto atualizado com sucesso.' });
       } else {
         const newDocRef = doc(collection(db, 'projetos'));
         await setDoc(newDocRef, {
-            ...dataToSave,
+            ...cleanedData,
             id: newDocRef.id,
             dataCriacao: serverTimestamp(),
-        } as any);
+        });
         toast({ title: 'Sucesso!', description: 'Projeto criado com sucesso.' });
       }
       onSuccess();
@@ -289,6 +326,37 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           </div>
         </div>
         
+        {/* Agendamento de Reunião */}
+        <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold text-lg">Agendamento de Reunião</h3>
+            <Separator />
+            <FormField control={form.control} name="reuniao.data" render={({ field }) => (
+              <FormItem className="flex flex-col"><FormLabel>Data da Reunião</FormLabel>
+                <Popover><PopoverTrigger asChild><FormControl>
+                  <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                </PopoverContent></Popover><FormMessage />
+              </FormItem>
+            )}/>
+            <div className="space-y-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <FormField control={form.control} name={`reuniao.links.${index}.url`} render={({ field }) => (
+                            <FormItem><FormLabel>Link {index + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <FormField control={form.control} name={`reuniao.links.${index}.descricao`} render={({ field }) => (
+                            <FormItem><FormLabel>Descrição do Link {index + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+
         {/* AVALIAÇÕES E SIMULADOS */}
         <div className="space-y-4 p-4 border rounded-lg">
           <h3 className="font-semibold text-lg">Avaliações e Simulados</h3>
