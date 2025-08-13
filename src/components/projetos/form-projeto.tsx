@@ -40,6 +40,7 @@ import { Calendar } from '../ui/calendar';
 import { Separator } from '../ui/separator';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { ComboboxMateriaisProjeto } from './combobox-materiais-projeto';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -72,7 +73,7 @@ const formSchema = z.object({
   municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
   uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   versao: z.string().optional(),
-  material: z.string().optional(),
+  materialId: z.string().optional(),
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
   qtdAlunos: z.preprocess(
@@ -163,7 +164,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       municipio: projeto?.municipio || '',
       uf: projeto?.uf || '',
       versao: projeto?.versao || '',
-      material: projeto?.material || '',
+      materialId: projeto?.materialId || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
       qtdAlunos: projeto?.qtdAlunos || undefined,
@@ -276,8 +277,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             <FormField control={form.control} name="versao" render={({ field }) => (
               <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
-            <FormField control={form.control} name="material" render={({ field }) => (
-              <FormItem><FormLabel>Material</FormLabel><FormControl><Input placeholder="LP, MAT, CN, CH..." {...field} /></FormControl><FormMessage /></FormItem>
+            <FormField control={form.control} name="materialId" render={({ field }) => (
+              <FormItem><FormLabel>Material</FormLabel>
+                <ComboboxMateriaisProjeto
+                    selected={field.value}
+                    onChange={field.onChange}
+                />
+              <FormMessage /></FormItem>
             )}/>
           </div>
         </div>
@@ -489,5 +495,3 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
-
-    

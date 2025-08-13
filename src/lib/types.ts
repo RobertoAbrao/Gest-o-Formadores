@@ -149,7 +149,7 @@ export interface ProjetoImplatancao {
   municipio: string;
   uf: string;
   versao?: string;
-  material?: string;
+  materialId?: string;
   dataMigracao: Timestamp | null;
   qtdAlunos?: number;
   formacoesPendentes?: number;

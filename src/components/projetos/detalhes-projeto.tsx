@@ -1,12 +1,14 @@
 
 'use client';
 
-import type { ProjetoImplatancao } from '@/lib/types';
-import { Timestamp } from 'firebase/firestore';
+import type { ProjetoImplatancao, Material } from '@/lib/types';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2 } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
 
 interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
@@ -26,6 +28,29 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
 };
 
 export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
+    const [material, setMaterial] = useState<Material | null>(null);
+    const [loadingMaterial, setLoadingMaterial] = useState(false);
+
+    useEffect(() => {
+        const fetchMaterial = async () => {
+            if (!projeto.materialId) return;
+            setLoadingMaterial(true);
+            try {
+                const materialRef = doc(db, 'materiais', projeto.materialId);
+                const materialSnap = await getDoc(materialRef);
+                if (materialSnap.exists()) {
+                    setMaterial({ id: materialSnap.id, ...materialSnap.data() } as Material);
+                }
+            } catch (error) {
+                console.error("Failed to fetch material details:", error);
+            } finally {
+                setLoadingMaterial(false);
+            }
+        };
+
+        fetchMaterial();
+    }, [projeto.materialId]);
+
     return (
         <div className="space-y-6">
             <Card>
@@ -43,7 +68,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                         <BookOpen className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <p className="font-medium">Material</p>
-                            <p className="text-muted-foreground">{projeto.material || 'N/A'}</p>
+                            {loadingMaterial ? <Loader2 className="h-4 w-4 animate-spin"/> : <p className="text-muted-foreground">{material?.titulo || 'N/A'}</p>}
                         </div>
                     </div>
                      <div className="flex items-center gap-3">

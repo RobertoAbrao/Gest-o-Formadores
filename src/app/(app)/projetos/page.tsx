@@ -18,12 +18,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye } from 'lucide-react';
-import type { ProjetoImplatancao } from '@/lib/types';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon } from 'lucide-react';
+import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, orderBy, query, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormProjeto } from '@/components/projetos/form-projeto';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -42,22 +42,35 @@ export default function ProjetosPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
+  const [materiais, setMateriais] = useState<Map<string, Material>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isMaterialDetailOpen, setIsMaterialDetailOpen] = useState(false);
   const [selectedProjeto, setSelectedProjeto] = useState<ProjetoImplatancao | null>(null);
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchProjetos = useCallback(async () => {
+  const fetchProjetosAndMateriais = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const projetosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
+      const [projetosSnapshot, materiaisSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'))),
+        getDocs(collection(db, 'materiais'))
+      ]);
+
+      const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
       setProjetos(projetosData);
+
+      const materiaisMap = new Map<string, Material>();
+      materiaisSnapshot.docs.forEach(doc => {
+        materiaisMap.set(doc.id, { id: doc.id, ...doc.data() } as Material);
+      });
+      setMateriais(materiaisMap);
+
     } catch (error) {
-      console.error("Error fetching projetos:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os projetos.' });
+      console.error("Error fetching data:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados.' });
     } finally {
       setLoading(false);
     }
@@ -67,12 +80,12 @@ export default function ProjetosPage() {
     if (user && user.perfil !== 'administrador') {
       router.replace('/materiais');
     } else if (user?.perfil === 'administrador') {
-      fetchProjetos();
+        fetchProjetosAndMateriais();
     }
-  }, [user, router, fetchProjetos]);
+  }, [user, router, fetchProjetosAndMateriais]);
   
   const handleSuccess = () => {
-    fetchProjetos();
+    fetchProjetosAndMateriais();
     setIsFormDialogOpen(false);
     setSelectedProjeto(null);
   }
@@ -84,7 +97,7 @@ export default function ProjetosPage() {
     try {
         await deleteDoc(doc(db, "projetos", projectId));
         toast({ title: 'Sucesso!', description: 'Projeto excluído com sucesso.' });
-        fetchProjetos();
+        fetchProjetosAndMateriais();
     } catch (error) {
         console.error("Error deleting projeto: ", error);
         toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir o projeto.' });
@@ -108,15 +121,26 @@ export default function ProjetosPage() {
     }
   };
 
+  const openMaterialDetailDialog = (materialId: string | undefined) => {
+    if (!materialId) return;
+    const material = materiais.get(materialId);
+    if (material) {
+        setSelectedMaterial(material);
+        setIsMaterialDetailOpen(true);
+    } else {
+        toast({ variant: 'destructive', title: 'Erro', description: 'Detalhes do material não encontrados.' });
+    }
+  }
+
   const filteredProjetos = useMemo(() => {
     return searchTerm
         ? projetos.filter(p => 
             p.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.uf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.material && p.material.toLowerCase().includes(searchTerm.toLowerCase()))
+            (p.materialId && materiais.get(p.materialId)?.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
           )
         : projetos;
-  }, [projetos, searchTerm]);
+  }, [projetos, searchTerm, materiais]);
 
 
   if (loading) {
@@ -194,7 +218,12 @@ export default function ProjetosPage() {
                             <div>{projeto.municipio}</div>
                             <div className="text-xs text-muted-foreground">{projeto.uf}</div>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-muted-foreground">{projeto.material || 'N/A'}</TableCell>
+                        <TableCell 
+                            className="hidden lg:table-cell text-muted-foreground hover:underline cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); openMaterialDetailDialog(projeto.materialId); }}
+                        >
+                            {projeto.materialId ? (materiais.get(projeto.materialId)?.titulo || 'N/A') : 'N/A'}
+                        </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
                         <TableCell className="hidden sm:table-cell text-center">
                             {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
@@ -247,7 +276,26 @@ export default function ProjetosPage() {
                 </ScrollArea>
             </DialogContent>
         </Dialog>
+        
+        <Dialog open={isMaterialDetailOpen} onOpenChange={setIsMaterialDetailOpen}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2"><BookOpen className="h-6 w-6 text-primary"/>Detalhes do Material</DialogTitle>
+                </DialogHeader>
+                {selectedMaterial && (
+                    <div className="space-y-4 py-4 text-sm">
+                        <h3 className="font-semibold text-lg">{selectedMaterial.titulo}</h3>
+                        <p className="text-muted-foreground">{selectedMaterial.descricao}</p>
+                        <Badge variant="outline">{selectedMaterial.tipoMaterial}</Badge>
+                        <Button variant="outline" className="w-full" asChild>
+                            <a href={selectedMaterial.url} target="_blank" rel="noopener noreferrer">
+                                <LinkIcon className="mr-2 h-4 w-4"/> Acessar material
+                            </a>
+                        </Button>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
-
