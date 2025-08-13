@@ -122,15 +122,45 @@ export interface Avaliacao {
     dataCriacao: Timestamp;
 }
 
+interface EtapaStatus {
+  data?: Timestamp | null;
+  ok?: boolean;
+}
+
+interface DevolutivaStatus {
+  dataInicio?: Timestamp | null;
+  dataFim?: Timestamp | null;
+  formador?: string;
+  ok?: boolean;
+}
+
+
 export interface ProjetoImplatancao {
   id: string;
   municipio: string;
   uf: string;
-  detalhesMaterial?: string;
-  formadoresNomes?: string;
+  versao?: string;
+  material?: string;
   dataMigracao: Timestamp | null;
-  dataImplantacao: Timestamp | null;
   qtdAlunos?: number;
   formacoesPendentes?: number;
+  qtdFormadores?: number;
+  formadoresOk?: boolean;
+  dataImplantacao: Timestamp | null;
+  
+  diagnostica: EtapaStatus;
+  simulados: {
+    s1: EtapaStatus;
+    s2: EtapaStatus;
+    s3: EtapaStatus;
+    s4: EtapaStatus;
+  };
+  devolutivas: {
+    d1: DevolutivaStatus;
+    d2: DevolutivaStatus;
+    d3: DevolutivaStatus;
+    d4: DevolutivaStatus & { data?: Timestamp | null }; // Devolutiva 4 only has one date
+  };
+
   dataCriacao: Timestamp;
 }

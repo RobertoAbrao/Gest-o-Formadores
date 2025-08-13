@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle } from 'lucide-react';
 import type { ProjetoImplatancao } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -32,7 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Timestamp } from 'firebase/firestore';
 
 
-const formatDate = (timestamp: Timestamp | null) => {
+const formatDate = (timestamp: Timestamp | null | undefined) => {
     if (!timestamp) return 'N/A';
     return timestamp.toDate().toLocaleDateString('pt-BR');
 }
@@ -100,7 +100,7 @@ export default function ProjetosPage() {
         ? projetos.filter(p => 
             p.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.uf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.formadoresNomes && p.formadoresNomes.toLowerCase().includes(searchTerm.toLowerCase()))
+            (p.material && p.material.toLowerCase().includes(searchTerm.toLowerCase()))
           )
         : projetos;
   }, [projetos, searchTerm]);
@@ -131,7 +131,7 @@ export default function ProjetosPage() {
               Novo Projeto
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>{selectedProjeto ? 'Editar Projeto' : 'Novo Projeto de Implantação'}</DialogTitle>
               <DialogDescription>
@@ -150,7 +150,7 @@ export default function ProjetosPage() {
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input 
-          placeholder="Buscar por município, estado ou formador..." 
+          placeholder="Buscar por município, estado ou material..." 
           className="pl-8"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -169,10 +169,11 @@ export default function ProjetosPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Município</TableHead>
-                        <TableHead className="hidden lg:table-cell">Formadores</TableHead>
+                        <TableHead className="hidden lg:table-cell">Material</TableHead>
                         <TableHead className="hidden sm:table-cell">Implantação</TableHead>
-                        <TableHead className="hidden md:table-cell">Migração</TableHead>
-                        <TableHead className="hidden sm:table-cell">Alunos</TableHead>
+                        <TableHead className="hidden sm:table-cell">Diagnóstica</TableHead>
+                        <TableHead className="hidden md:table-cell">Alunos</TableHead>
+                        <TableHead className="hidden md:table-cell">Formadores</TableHead>
                         <TableHead className="w-[60px]"></TableHead>
                     </TableRow>
                 </TableHeader>
@@ -183,10 +184,13 @@ export default function ProjetosPage() {
                             <div>{projeto.municipio}</div>
                             <div className="text-xs text-muted-foreground">{projeto.uf}</div>
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell text-muted-foreground">{projeto.formadoresNomes || 'N/A'}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-muted-foreground">{projeto.material || 'N/A'}</TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{formatDate(projeto.dataMigracao)}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-center">
+                            {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdFormadores || 'N/A'}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
