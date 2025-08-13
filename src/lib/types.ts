@@ -100,8 +100,6 @@ export interface Avaliacao {
     id: string;
     formacaoId: string;
     formacaoTitulo: string;
-    formadorId: string;
-    formadorNome: string;
     nomeCompleto: string;
     email: string;
     uf: string;
@@ -120,6 +118,8 @@ export interface Avaliacao {
     avaliacaoEditora: '1' | '2' | '3' | '4' | '5';
     observacoes?: string;
     dataCriacao: Timestamp;
+    formadorId?: string;
+    formadorNome?: string;
 }
 
 interface EtapaStatus {
