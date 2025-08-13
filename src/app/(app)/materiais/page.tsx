@@ -16,10 +16,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2, Eye } from 'lucide-react';
 import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback } from 'react';
@@ -166,7 +167,11 @@ export default function MateriaisPage() {
               const Icon = typeIcons[material.tipoMaterial];
               return (
                 <TableRow key={material.id}>
-                  <TableCell className="font-medium">{material.titulo}</TableCell>
+                  <TableCell className="font-medium">
+                    <a href={material.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {material.titulo}
+                    </a>
+                  </TableCell>
                   <TableCell className="hidden lg:table-cell text-muted-foreground">{material.descricao}</TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className={`font-mono text-xs ${typeColors[material.tipoMaterial]}`}>
@@ -186,9 +191,16 @@ export default function MateriaisPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                           <DropdownMenuItem asChild>
+                             <a href={material.url} target="_blank" rel="noopener noreferrer" className="flex items-center w-full">
+                                <Eye className="mr-2 h-4 w-4" />
+                                Visualizar
+                             </a>
+                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(material)}>
                             <Pencil className="mr-2 h-4 w-4" /> Editar
                           </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(material)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Excluir
                           </DropdownMenuItem>
