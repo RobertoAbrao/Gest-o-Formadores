@@ -513,7 +513,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                         className="flex items-center flex-1 truncate"
                                                     >
                                                         {isImage ? (
-                                                            <img src={anexo.url} alt={anexo.nome} className="h-10 w-10 mr-3 rounded-md object-cover" />
+                                                            <img src={anexo.url} alt={anexo.nome} className="h-16 w-16 mr-3 rounded-md object-cover" />
                                                         ) : (
                                                             <FileIcon className="h-5 w-5 mr-3 text-primary" />
                                                         )}
