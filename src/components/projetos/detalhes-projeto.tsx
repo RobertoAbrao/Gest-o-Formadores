@@ -1,8 +1,8 @@
 
 'use client';
 
-import type { ProjetoImplatancao, Material } from '@/lib/types';
-import { Timestamp, doc, getDoc } from 'firebase/firestore';
+import type { ProjetoImplatancao, Material, Formador } from '@/lib/types';
+import { Timestamp, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
@@ -29,27 +29,42 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
 
 export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
     const [material, setMaterial] = useState<Material | null>(null);
-    const [loadingMaterial, setLoadingMaterial] = useState(false);
+    const [formadores, setFormadores] = useState<Formador[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchMaterial = async () => {
-            if (!projeto.materialId) return;
-            setLoadingMaterial(true);
+        const fetchData = async () => {
+            setLoading(true);
             try {
-                const materialRef = doc(db, 'materiais', projeto.materialId);
-                const materialSnap = await getDoc(materialRef);
-                if (materialSnap.exists()) {
-                    setMaterial({ id: materialSnap.id, ...materialSnap.data() } as Material);
+                if (projeto.materialId) {
+                    const materialRef = doc(db, 'materiais', projeto.materialId);
+                    const materialSnap = await getDoc(materialRef);
+                    if (materialSnap.exists()) {
+                        setMaterial({ id: materialSnap.id, ...materialSnap.data() } as Material);
+                    }
+                }
+                if (projeto.formadoresIds && projeto.formadoresIds.length > 0) {
+                    const q = query(collection(db, 'formadores'), where('__name__', 'in', projeto.formadoresIds));
+                    const formadoresSnap = await getDocs(q);
+                    setFormadores(formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador)));
                 }
             } catch (error) {
-                console.error("Failed to fetch material details:", error);
+                console.error("Failed to fetch project details:", error);
             } finally {
-                setLoadingMaterial(false);
+                setLoading(false);
             }
         };
 
-        fetchMaterial();
-    }, [projeto.materialId]);
+        fetchData();
+    }, [projeto.materialId, projeto.formadoresIds]);
+
+    if (loading) {
+        return (
+            <div className="flex h-48 items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -63,12 +78,12 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                         Versão: {projeto.versao || 'N/A'}
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-3">
                         <BookOpen className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <p className="font-medium">Material</p>
-                            {loadingMaterial ? <Loader2 className="h-4 w-4 animate-spin"/> : <p className="text-muted-foreground">{material?.titulo || 'N/A'}</p>}
+                            <p className="text-muted-foreground">{material?.titulo || 'N/A'}</p>
                         </div>
                     </div>
                      <div className="flex items-center gap-3">
@@ -78,11 +93,15 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                             <p className="text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</p>
                         </div>
                     </div>
-                     <div className="flex items-center gap-3">
-                        <UserCheck className="h-5 w-5 text-muted-foreground" />
+                     <div className="flex items-start gap-3 col-span-full">
+                        <UserCheck className="h-5 w-5 text-muted-foreground mt-1" />
                         <div>
                             <p className="font-medium">Formadores</p>
-                            <p className="text-muted-foreground">{projeto.qtdFormadores || 'N/A'}</p>
+                            {formadores.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {formadores.map(f => <Badge key={f.id} variant="secondary">{f.nomeCompleto}</Badge>)}
+                                </div>
+                            ) : <p className="text-muted-foreground">N/A</p>}
                         </div>
                     </div>
                 </CardContent>

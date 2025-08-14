@@ -11,6 +11,7 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  getDocs,
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
@@ -29,10 +30,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { useState } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2 } from 'lucide-react';
-import { Textarea } from '../ui/textarea';
-import type { ProjetoImplatancao } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X } from 'lucide-react';
+import type { ProjetoImplatancao, Formador } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -41,6 +41,8 @@ import { Separator } from '../ui/separator';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { ComboboxMateriaisProjeto } from './combobox-materiais-projeto';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Badge } from '../ui/badge';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -88,11 +90,7 @@ const formSchema = z.object({
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
   ),
-  qtdFormadores: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
-    z.number().min(0).optional()
-  ),
-  formadoresOk: z.boolean().optional(),
+  formadoresIds: z.array(z.string()).optional(),
   diagnostica: etapaStatusSchema,
   simulados: z.object({
     s1: periodoStatusSchema,
@@ -130,15 +128,15 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
   return date ? Timestamp.fromDate(date) : null;
 };
 
-const cleanObject = (obj: any) => {
-    if (obj === null || obj === undefined) {
-      return null;
+const cleanObject = (obj: any): any => {
+    if (obj === undefined) {
+      return null; // Convert explicit undefined to null for Firestore
     }
-    if (typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
+    if (obj === null || typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
       return obj;
     }
     if (Array.isArray(obj)) {
-      return obj.map(cleanObject).filter(v => v !== undefined);
+      return obj.map(cleanObject);
     }
     const newObj: any = {};
     for (const key in obj) {
@@ -149,14 +147,31 @@ const cleanObject = (obj: any) => {
         }
       }
     }
-    return newObj;
-  };
+    // Return null if the object becomes empty after cleaning
+    return Object.keys(newObj).length > 0 ? newObj : null;
+};
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
+  const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
   
   const isEditMode = !!projeto;
+
+  useEffect(() => {
+    const fetchFormadores = async () => {
+        try {
+            const querySnapshot = await getDocs(collection(db, 'formadores'));
+            const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            setAllFormadores(formadoresData);
+        } catch (error) {
+            console.error("Failed to fetch formadores", error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar a lista de formadores.' });
+        }
+    };
+    fetchFormadores();
+  }, [toast]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -169,8 +184,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       dataImplantacao: toDate(projeto?.dataImplantacao),
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
-      qtdFormadores: projeto?.qtdFormadores || undefined,
-      formadoresOk: projeto?.formadoresOk || false,
+      formadoresIds: projeto?.formadoresIds || [],
       diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false },
       simulados: {
         s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false },
@@ -196,6 +210,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     name: "reunioes",
   });
   
+  const selectedFormadores = allFormadores.filter(f => form.watch('formadoresIds')?.includes(f.id));
 
   async function onSubmit(values: FormValues) {
     setLoading(true);
@@ -323,12 +338,68 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             <FormField control={form.control} name="formacoesPendentes" render={({ field }) => (
               <FormItem><FormLabel>Formações Pendentes</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 2" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )}/>
-            <FormField control={form.control} name="qtdFormadores" render={({ field }) => (
-              <FormItem><FormLabel>Quantidade de Formadores</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 4" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <FormField control={form.control} name="formadoresOk" render={({ field }) => (
-              <FormItem className="flex flex-row items-end space-x-2 pb-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>Formadores OK?</FormLabel></FormItem>
-            )}/>
+            <FormField
+                control={form.control}
+                name="formadoresIds"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Formadores</FormLabel>
+                        <Popover open={formadorPopoverOpen} onOpenChange={setFormadorPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    <span className="truncate">
+                                        {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)`: 'Selecione formadores...'}
+                                    </span>
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar formador..." />
+                                    <CommandList>
+                                        <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
+                                        <CommandGroup>
+                                            {allFormadores.map((formador) => (
+                                                <CommandItem
+                                                    key={formador.id}
+                                                    value={formador.nomeCompleto}
+                                                    onSelect={() => {
+                                                        const currentIds = field.value || [];
+                                                        const newIds = currentIds.includes(formador.id)
+                                                            ? currentIds.filter(id => id !== formador.id)
+                                                            : [...currentIds, formador.id];
+                                                        field.onChange(newIds);
+                                                    }}
+                                                >
+                                                    <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.id) ? 'opacity-100' : 'opacity-0')} />
+                                                    {formador.nomeCompleto}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                        {selectedFormadores.length > 0 && (
+                            <div className="pt-2 flex flex-wrap gap-1">
+                                {selectedFormadores.map(formador => (
+                                <Badge key={formador.id} variant="secondary">
+                                    {formador.nomeCompleto}
+                                    <button
+                                    type="button"
+                                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    onClick={() => field.onChange(field.value?.filter(id => id !== formador.id))}
+                                    >
+                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                    </button>
+                                </Badge>
+                                ))}
+                            </div>
+                        )}
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
           </div>
         </div>
         

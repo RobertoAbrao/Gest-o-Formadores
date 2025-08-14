@@ -229,7 +229,7 @@ export default function ProjetosPage() {
                             {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdFormadores || 'N/A'}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.formadoresIds?.length || 0}</TableCell>
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

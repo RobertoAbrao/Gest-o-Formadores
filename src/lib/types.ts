@@ -156,8 +156,7 @@ export interface ProjetoImplatancao {
   dataMigracao: Timestamp | null;
   qtdAlunos?: number;
   formacoesPendentes?: number;
-  qtdFormadores?: number;
-  formadoresOk?: boolean;
+  formadoresIds?: string[];
   dataImplantacao: Timestamp | null;
   
   diagnostica: EtapaStatus;
