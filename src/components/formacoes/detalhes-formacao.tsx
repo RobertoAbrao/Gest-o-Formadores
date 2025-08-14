@@ -515,34 +515,45 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                 <p className="text-xs text-muted-foreground">
                                                     {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 </p>
-                                                <div className="flex items-center justify-between p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
-                                                    <a 
-                                                        href={anexo.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        download={anexo.nome}
-                                                        className="flex items-center flex-1 truncate"
-                                                    >
-                                                        {isImage ? (
-                                                            <img src={anexo.url} alt={anexo.nome} className="h-32 w-32 mr-3 rounded-md object-cover" />
-                                                        ) : (
-                                                            getFileIcon(anexo.nome)
+                                                <div className="flex flex-col items-start p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <div className="flex items-center flex-1 truncate">
+                                                            {!isImage && getFileIcon(anexo.nome)}
+                                                            <a 
+                                                                href={anexo.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                download={anexo.nome}
+                                                                className="truncate text-sm font-medium hover:underline"
+                                                            >
+                                                                {anexo.nome}
+                                                            </a>
+                                                        </div>
+                                                        {!isArchived && (
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    e.preventDefault();
+                                                                    handleDeleteAnexo(anexo);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                                            </Button>
                                                         )}
-                                                        <span className="truncate text-sm font-medium">{anexo.nome}</span>
-                                                    </a>
-                                                    {!isArchived && (
-                                                        <Button 
-                                                            size="icon" 
-                                                            variant="ghost" 
-                                                            className="h-7 w-7 opacity-50 group-hover:opacity-100"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                e.preventDefault();
-                                                                handleDeleteAnexo(anexo);
-                                                            }}
+                                                    </div>
+                                                    {isImage && (
+                                                        <a 
+                                                            href={anexo.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            download={anexo.nome}
+                                                            className="mt-2 w-full"
                                                         >
-                                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                                        </Button>
+                                                        <img src={anexo.url} alt={anexo.nome} className="w-full rounded-md object-contain" />
+                                                        </a>
                                                     )}
                                                 </div>
                                             </div>
