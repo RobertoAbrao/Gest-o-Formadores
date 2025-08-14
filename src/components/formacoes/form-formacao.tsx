@@ -273,7 +273,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   const handleSelectFormador = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds') || [];
-    const currentNomes = form.getValues('formadoresNomes') || [];
     const formador = formadores.find(f => f.id === formadorId)!;
 
     const newIds = currentIds.includes(formadorId)
@@ -708,3 +707,5 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
