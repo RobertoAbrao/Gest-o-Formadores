@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -113,6 +113,17 @@ export default function DetalhesFormacaoPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (extension === 'pdf') {
+        return <FileText className="h-10 w-10 text-red-500 mr-3" />;
+    }
+    if (extension === 'doc' || extension === 'docx') {
+        return <FileType className="h-10 w-10 text-blue-500 mr-3" />;
+    }
+    return <FileIcon className="h-10 w-10 text-gray-500 mr-3" />;
+  };
+
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
     setLoading(true);
@@ -513,40 +524,47 @@ export default function DetalhesFormacaoPage() {
                         ) : (
                             <div className="relative pl-6">
                                 <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
-                                {formacao.anexos.map((anexo, index) => (
-                                    <div key={index} className="relative mb-8">
-                                        <div className="absolute -left-[34px] top-1.5 h-4 w-4 rounded-full bg-primary border-4 border-background"></div>
-                                        <div className="pl-4">
-                                            <p className="text-xs text-muted-foreground">
-                                                {anexo.dataUpload.toDate().toLocaleString('pt-BR')}
-                                            </p>
-                                            <div className="flex items-center justify-between p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
-                                                <a 
-                                                    href={anexo.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    download={anexo.nome}
-                                                    className="flex items-center flex-1 truncate"
-                                                >
-                                                    <FileIcon className="h-5 w-5 mr-3 text-primary" />
-                                                    <span className="truncate text-sm font-medium">{anexo.nome}</span>
-                                                </a>
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="ghost" 
-                                                    className="h-7 w-7 opacity-50 group-hover:opacity-100 no-print"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        e.preventDefault();
-                                                        handleDeleteAnexo(anexo);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4 text-destructive"/>
-                                                </Button>
+                                {formacao.anexos.map((anexo, index) => {
+                                    const isImage = anexo.url.startsWith('data:image');
+                                    return (
+                                        <div key={index} className="relative mb-8">
+                                            <div className="absolute -left-[34px] top-1.5 h-4 w-4 rounded-full bg-primary border-4 border-background"></div>
+                                            <div className="pl-4">
+                                                <p className="text-xs text-muted-foreground">
+                                                    {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                                <div className="flex items-center justify-between p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
+                                                    <a 
+                                                        href={anexo.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        download={anexo.nome}
+                                                        className="flex items-center flex-1 truncate"
+                                                    >
+                                                        {isImage ? (
+                                                            <img src={anexo.url} alt={anexo.nome} className="h-32 w-auto mr-3 rounded-md object-contain" />
+                                                        ) : (
+                                                            getFileIcon(anexo.nome)
+                                                        )}
+                                                        <span className="truncate text-sm font-medium">{anexo.nome}</span>
+                                                    </a>
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        className="h-7 w-7 opacity-50 group-hover:opacity-100 no-print"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            e.preventDefault();
+                                                            handleDeleteAnexo(anexo);
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -876,4 +894,5 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
+
 
