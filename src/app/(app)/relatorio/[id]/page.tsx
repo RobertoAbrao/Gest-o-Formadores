@@ -542,7 +542,7 @@ export default function DetalhesFormacaoPage() {
                                                         className="flex items-center flex-1 truncate"
                                                     >
                                                         {isImage ? (
-                                                            <img src={anexo.url} alt={anexo.nome} className="h-32 w-auto mr-3 rounded-md object-contain" />
+                                                            <img src={anexo.url} alt={anexo.nome} className="w-[95%] mr-3 rounded-md object-contain" />
                                                         ) : (
                                                             getFileIcon(anexo.nome)
                                                         )}
@@ -894,5 +894,6 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
+
 
 
