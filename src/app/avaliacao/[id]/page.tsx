@@ -181,7 +181,7 @@ export default function AvaliacaoPage() {
     try {
       const { confirmarEmail, ...dataToSave } = data;
       const formadorSelecionadoIndex = formacao?.formadoresIds?.indexOf(data.formadorId);
-      const formadorNome = (formacao?.formadoresNomes && formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex > -1)
+      const formadorNome = (formacao?.formadoresNomes && typeof formadorSelecionadoIndex !== 'undefined' && formadorSelecionadoIndex > -1)
         ? formacao.formadoresNomes[formadorSelecionadoIndex]
         : 'N/A';
 
@@ -329,7 +329,7 @@ export default function AvaliacaoPage() {
                                                             </FormLabel>
                                                         </FormItem>
                                                     ))
-                                                ) : <p>Nenhum formador associado.</p>}
+                                                ) : <p className="text-muted-foreground p-4 text-center">Nenhum formador associado a esta formação.</p>}
                                             </RadioGroup>
                                         </FormControl>
                                         <FormMessage />
@@ -609,5 +609,3 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    

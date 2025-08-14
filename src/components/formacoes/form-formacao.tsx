@@ -707,5 +707,3 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
-
-    
