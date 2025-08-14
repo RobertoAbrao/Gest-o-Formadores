@@ -181,8 +181,8 @@ export default function AvaliacaoPage() {
     try {
       const { confirmarEmail, ...dataToSave } = data;
       const formadorSelecionadoIndex = formacao?.formadoresIds.indexOf(data.formadorId);
-      const formadorNome = formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex !== -1
-        ? formacao?.formadoresNomes[formadorSelecionadoIndex]
+      const formadorNome = (formacao?.formadoresNomes && formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex !== -1)
+        ? formacao.formadoresNomes[formadorSelecionadoIndex]
         : 'N/A';
 
 
@@ -318,7 +318,7 @@ export default function AvaliacaoPage() {
                                                 defaultValue={field.value}
                                                 className="flex flex-col space-y-2"
                                             >
-                                                {formacao.formadoresIds && formacao.formadoresIds.length > 0 ? (
+                                                {formacao.formadoresIds && formacao.formadoresNomes && formacao.formadoresIds.length > 0 ? (
                                                     formacao.formadoresIds.map((formadorId, index) => (
                                                         <FormItem key={formadorId} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
                                                             <FormControl>
@@ -609,3 +609,5 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
