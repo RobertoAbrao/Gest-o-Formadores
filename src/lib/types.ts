@@ -78,6 +78,7 @@ export interface Formacao {
   dataInicio: Timestamp | null;
   dataFim: Timestamp | null;
   formadoresIds: string[];
+  formadoresNomes: string[];
   materiaisIds: string[];
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;

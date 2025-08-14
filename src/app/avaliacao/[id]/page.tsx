@@ -25,7 +25,7 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import type { Formacao, Formador } from '@/lib/types';
+import type { Formacao } from '@/lib/types';
 
 
 const ufs = [
@@ -105,16 +105,13 @@ const avaliacaoSchema = z.object({
 
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
-interface FormacaoPublica extends Formacao {
-    formadores: Formador[];
-}
 
 export default function AvaliacaoPage() {
   const params = useParams();
   const { toast } = useToast();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
-  const [formacao, setFormacao] = useState<FormacaoPublica | null>(null);
+  const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
@@ -156,17 +153,9 @@ export default function AvaliacaoPage() {
             throw new Error('As avaliações para esta formação não estão abertas no momento.');
         }
 
-        let formadores: Formador[] = [];
-        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
-            const formadoresSnap = await getDocs(qFormadores);
-            formadores = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
-        }
-
         setFormacao({
             ...formacaoData,
             id: formacaoSnap.id,
-            formadores: formadores,
         });
 
         form.reset({
@@ -191,13 +180,17 @@ export default function AvaliacaoPage() {
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
       const { confirmarEmail, ...dataToSave } = data;
-      const formadorSelecionado = formacao?.formadores.find(f => f.id === data.formadorId);
+      const formadorSelecionadoIndex = formacao?.formadoresIds.indexOf(data.formadorId);
+      const formadorNome = formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex !== -1
+        ? formacao?.formadoresNomes[formadorSelecionadoIndex]
+        : 'N/A';
+
 
       await addDoc(collection(db, 'avaliacoes'), {
         ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
-        formadorNome: formadorSelecionado?.nomeCompleto || 'N/A',
+        formadorNome: formadorNome,
         dataCriacao: Timestamp.now(),
       });
 
@@ -325,14 +318,14 @@ export default function AvaliacaoPage() {
                                                 defaultValue={field.value}
                                                 className="flex flex-col space-y-2"
                                             >
-                                                {formacao.formadores.length > 0 ? (
-                                                    formacao.formadores.map(formador => (
-                                                        <FormItem key={formador.id} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
+                                                {formacao.formadoresIds && formacao.formadoresIds.length > 0 ? (
+                                                    formacao.formadoresIds.map((formadorId, index) => (
+                                                        <FormItem key={formadorId} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
                                                             <FormControl>
-                                                                <RadioGroupItem value={formador.id} />
+                                                                <RadioGroupItem value={formadorId} />
                                                             </FormControl>
                                                             <FormLabel className="font-normal flex items-center gap-2">
-                                                                <User className="h-4 w-4 text-muted-foreground"/> {formador.nomeCompleto}
+                                                                <User className="h-4 w-4 text-muted-foreground"/> {formacao.formadoresNomes[index]}
                                                             </FormLabel>
                                                         </FormItem>
                                                     ))
