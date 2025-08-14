@@ -12,6 +12,8 @@ import {
   serverTimestamp,
   Timestamp,
   getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
@@ -30,7 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X } from 'lucide-react';
 import type { ProjetoImplatancao, Formador } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -114,24 +116,27 @@ interface FormProjetoProps {
   onSuccess: () => void;
 }
 
+interface Estado {
+    id: number;
+    sigla: string;
+    nome: string;
+}
+
+interface Municipio {
+    id: number;
+    nome: string;
+}
+
 const toDate = (timestamp: Timestamp | null | undefined): Date | null => {
     if (!timestamp) return null;
     return timestamp.toDate();
 };
-
-const ufs = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
-  'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
 
 const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
   return date ? Timestamp.fromDate(date) : null;
 };
 
 const cleanObject = (obj: any): any => {
-    if (obj === undefined) {
-      return null; // Convert explicit undefined to null for Firestore
-    }
     if (obj === null || typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
       return obj;
     }
@@ -147,8 +152,7 @@ const cleanObject = (obj: any): any => {
         }
       }
     }
-    // Return null if the object becomes empty after cleaning
-    return Object.keys(newObj).length > 0 ? newObj : null;
+    return newObj;
 };
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
@@ -156,21 +160,35 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const [loading, setLoading] = useState(false);
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   
   const isEditMode = !!projeto;
 
   useEffect(() => {
-    const fetchFormadores = async () => {
+    const fetchFormadoresAndEstados = async () => {
+        setLoading(true);
         try {
-            const querySnapshot = await getDocs(collection(db, 'formadores'));
-            const formadoresData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            const [formadoresSnap, estadosResponse] = await Promise.all([
+                getDocs(collection(db, 'formadores')),
+                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+            ]);
+            
+            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setAllFormadores(formadoresData);
+
+            const estadosData = await estadosResponse.json();
+            setEstados(estadosData);
+
         } catch (error) {
-            console.error("Failed to fetch formadores", error);
-            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar a lista de formadores.' });
+            console.error("Failed to fetch initial data", error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados necessários.' });
+        } finally {
+            setLoading(false);
         }
     };
-    fetchFormadores();
+    fetchFormadoresAndEstados();
   }, [toast]);
 
   const form = useForm<FormValues>({
@@ -179,7 +197,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       municipio: projeto?.municipio || '',
       uf: projeto?.uf || '',
       versao: projeto?.versao || '',
-      materialId: projeto?.materialId || '',
+      materialId: projeto?.materialId || undefined,
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
       qtdAlunos: projeto?.qtdAlunos || undefined,
@@ -204,6 +222,36 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       })) || [],
     },
   });
+
+  const selectedUf = form.watch('uf');
+
+  useEffect(() => {
+    if (!selectedUf) {
+      setMunicipios([]);
+      return;
+    }
+    const fetchMunicipios = async () => {
+        setLoadingMunicipios(true);
+        try {
+            const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`);
+            const data = await response.json();
+            setMunicipios(data);
+        } catch (error) {
+            console.error('Failed to fetch municipios', error);
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os municípios." });
+        } finally {
+            setLoadingMunicipios(false);
+        }
+    };
+    fetchMunicipios();
+  }, [selectedUf, toast]);
+
+
+  const availableFormadores = useMemo(() => {
+      if (!selectedUf) return [];
+      return allFormadores.filter(f => f.uf === selectedUf);
+  }, [selectedUf, allFormadores]);
+
 
   const { fields: reuniaoFields, append: appendReuniao, remove: removeReuniao } = useFieldArray({
     control: form.control,
@@ -237,7 +285,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           },
           reunioes: values.reunioes?.map(reuniao => ({
             data: timestampOrNull(reuniao.data),
-            links: reuniao.links?.filter(link => link.url) || []
+            links: reuniao.links?.filter(link => link && link.url) || []
           }))
       };
 
@@ -277,20 +325,40 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           <h3 className="font-semibold text-lg">Dados Gerais</h3>
           <Separator />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField control={form.control} name="municipio" render={({ field }) => (
-                  <FormItem><FormLabel>Município</FormLabel><FormControl><Input placeholder="Nome do município" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
               <FormField control={form.control} name="uf" render={({ field }) => (
                   <FormItem><FormLabel>UF</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o estado" /></SelectTrigger></FormControl>
-                          <SelectContent>{ufs.map(uf => (<SelectItem key={uf} value={uf}>{uf}</SelectItem>))}</SelectContent>
+                      <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue('municipio', '');
+                          form.setValue('formadoresIds', []);
+                      }} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione o estado" />
+                            </SelectTrigger>
+                        </FormControl>
+                          <SelectContent>{estados.map(uf => (<SelectItem key={uf.id} value={uf.sigla}>{uf.nome}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage />
+                  </FormItem>
+              )}/>
+               <FormField control={form.control} name="municipio" render={({ field }) => (
+                  <FormItem><FormLabel>Município</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                          <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
+                          </SelectContent>
                       </Select><FormMessage />
                   </FormItem>
               )}/>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField control={form.control} name="versao" render={({ field }) => (
-              <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )}/>
             <FormField control={form.control} name="materialId" render={({ field }) => (
               <FormItem><FormLabel>Material</FormLabel>
@@ -346,7 +414,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <FormLabel>Formadores</FormLabel>
                         <Popover open={formadorPopoverOpen} onOpenChange={setFormadorPopoverOpen}>
                             <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedUf}>
                                     <span className="truncate">
                                         {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)`: 'Selecione formadores...'}
                                     </span>
@@ -357,9 +425,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                 <Command>
                                     <CommandInput placeholder="Buscar formador..." />
                                     <CommandList>
-                                        <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
+                                        <CommandEmpty>Nenhum formador encontrado para este UF.</CommandEmpty>
                                         <CommandGroup>
-                                            {allFormadores.map((formador) => (
+                                            {availableFormadores.map((formador) => (
                                                 <CommandItem
                                                     key={formador.id}
                                                     value={formador.nomeCompleto}
