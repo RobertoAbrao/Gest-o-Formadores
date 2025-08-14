@@ -78,7 +78,7 @@ export interface Formacao {
   dataInicio: Timestamp | null;
   dataFim: Timestamp | null;
   formadoresIds: string[];
-  formadoresNomes: string[];
+  formadoresNomes?: string[];
   materiaisIds: string[];
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;
@@ -100,7 +100,7 @@ export interface Despesa {
 export interface Avaliacao {
     id: string;
     formacaoId: string;
-    formacaoTitulo: string;
+    formacaoTitulo?: string;
     formadorId: string;
     formadorNome: string;
     nomeCompleto: string;
@@ -178,5 +178,7 @@ export interface ProjetoImplatancao {
 
   dataCriacao: Timestamp;
 }
+
+    
 
     

@@ -66,7 +66,6 @@ const formSchema = z.object({
     .string()
     .min(10, { message: 'A descrição deve ter pelo menos 10 caracteres.' }),
   formadoresIds: z.array(z.string()).min(1, { message: 'Selecione ao menos um formador.'}),
-  formadoresNomes: z.array(z.string()).min(1, { message: 'Nomes dos formadores são necessários.'}),
   municipio: z.string().min(1, { message: 'Selecione um município.' }),
   uf: z.string().optional(),
   participantes: z.preprocess(
@@ -118,7 +117,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       titulo: '',
       descricao: '',
       formadoresIds: [],
-      formadoresNomes: [],
       municipio: '',
       uf: '',
       participantes: 1,
@@ -190,7 +188,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
         titulo: formacao.titulo || '',
         descricao: formacao.descricao || '',
         formadoresIds: formacao.formadoresIds || [],
-        formadoresNomes: formacao.formadoresNomes || [],
         municipio: formacao.municipio || '',
         uf: formacao.uf || '',
         participantes: formacao.participantes || 1,
@@ -211,7 +208,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             titulo: '',
             descricao: '',
             formadoresIds: [],
-            formadoresNomes: [],
             municipio: '',
             uf: '',
             participantes: 1,
@@ -227,8 +223,14 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
+      
+      const formadoresNomes = formadores
+        .filter(f => values.formadoresIds.includes(f.id))
+        .map(f => f.nomeCompleto);
+
       const dataToSave = {
           ...values,
+          formadoresNomes,
           dataInicio: values.dataInicio ? Timestamp.fromDate(values.dataInicio) : null,
           dataFim: values.dataFim ? Timestamp.fromDate(values.dataFim) : null,
           logistica: values.logistica?.map(l => ({
@@ -273,18 +275,12 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   const handleSelectFormador = (formadorId: string) => {
     const currentIds = form.getValues('formadoresIds') || [];
-    const formador = formadores.find(f => f.id === formadorId)!;
 
     const newIds = currentIds.includes(formadorId)
       ? currentIds.filter(id => id !== formadorId)
       : [...currentIds, formadorId];
       
-    const newNomes = formadores
-        .filter(f => newIds.includes(f.id))
-        .map(f => f.nomeCompleto);
-
     form.setValue('formadoresIds', newIds, { shouldValidate: true });
-    form.setValue('formadoresNomes', newNomes, { shouldValidate: true });
 
     const currentMunicipio = form.getValues('municipio');
     if (!newIds.some(id => formadores.find(f => f.id === id)?.municipiosResponsaveis.includes(currentMunicipio))) {
@@ -707,3 +703,5 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    

@@ -25,7 +25,7 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import type { Formacao } from '@/lib/types';
+import type { Formacao, Formador } from '@/lib/types';
 
 
 const ufs = [
@@ -112,6 +112,7 @@ export default function AvaliacaoPage() {
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
+  const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
@@ -152,6 +153,13 @@ export default function AvaliacaoPage() {
         if (!formacaoData.avaliacoesAbertas) {
             throw new Error('As avaliações para esta formação não estão abertas no momento.');
         }
+        
+        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const formadoresQuery = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
+            const formadoresSnap = await getDocs(formadoresQuery);
+            const formadoresData = formadoresSnap.docs.map(d => ({id: d.id, ...d.data()} as Formador));
+            setFormadores(formadoresData);
+        }
 
         setFormacao({
             ...formacaoData,
@@ -180,17 +188,13 @@ export default function AvaliacaoPage() {
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
       const { confirmarEmail, ...dataToSave } = data;
-      const formadorSelecionadoIndex = formacao?.formadoresIds?.indexOf(data.formadorId);
-      const formadorNome = (formacao?.formadoresNomes && typeof formadorSelecionadoIndex !== 'undefined' && formadorSelecionadoIndex > -1)
-        ? formacao.formadoresNomes[formadorSelecionadoIndex]
-        : 'N/A';
-
+      const formadorSelecionado = formadores.find(f => f.id === data.formadorId);
 
       await addDoc(collection(db, 'avaliacoes'), {
         ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
-        formadorNome: formadorNome,
+        formadorNome: formadorSelecionado?.nomeCompleto || 'N/A',
         dataCriacao: Timestamp.now(),
       });
 
@@ -318,14 +322,14 @@ export default function AvaliacaoPage() {
                                                 defaultValue={field.value}
                                                 className="flex flex-col space-y-2"
                                             >
-                                                {formacao.formadoresIds && formacao.formadoresNomes && formacao.formadoresIds.length > 0 ? (
-                                                    formacao.formadoresIds.map((formadorId, index) => (
-                                                        <FormItem key={formadorId} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
+                                                {formadores.length > 0 ? (
+                                                    formadores.map((formador) => (
+                                                        <FormItem key={formador.id} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
                                                             <FormControl>
-                                                                <RadioGroupItem value={formadorId} />
+                                                                <RadioGroupItem value={formador.id} />
                                                             </FormControl>
                                                             <FormLabel className="font-normal flex items-center gap-2">
-                                                                <User className="h-4 w-4 text-muted-foreground"/> {(formacao.formadoresNomes && formacao.formadoresNomes[index]) || 'Nome não encontrado'}
+                                                                <User className="h-4 w-4 text-muted-foreground"/> {formador.nomeCompleto}
                                                             </FormLabel>
                                                         </FormItem>
                                                     ))
@@ -609,3 +613,5 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
+
+    
