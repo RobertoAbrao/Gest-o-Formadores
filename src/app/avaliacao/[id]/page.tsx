@@ -112,7 +112,6 @@ export default function AvaliacaoPage() {
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
-  const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
@@ -148,23 +147,13 @@ export default function AvaliacaoPage() {
             throw new Error('Formação não encontrada ou indisponível.');
         }
         
-        const formacaoData = formacaoSnap.data() as Formacao;
+        const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         
         if (!formacaoData.avaliacoesAbertas) {
             throw new Error('As avaliações para esta formação não estão abertas no momento.');
         }
         
-        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const formadoresQuery = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
-            const formadoresSnap = await getDocs(formadoresQuery);
-            const formadoresData = formadoresSnap.docs.map(d => ({id: d.id, ...d.data()} as Formador));
-            setFormadores(formadoresData);
-        }
-
-        setFormacao({
-            ...formacaoData,
-            id: formacaoSnap.id,
-        });
+        setFormacao(formacaoData);
 
         form.reset({
             ...form.getValues(),
@@ -188,13 +177,15 @@ export default function AvaliacaoPage() {
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
       const { confirmarEmail, ...dataToSave } = data;
-      const formadorSelecionado = formadores.find(f => f.id === data.formadorId);
+      const formadorNome = formacao?.formadoresNomes?.find(
+        (_, index) => formacao?.formadoresIds[index] === data.formadorId
+      ) || 'N/A';
 
       await addDoc(collection(db, 'avaliacoes'), {
         ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
-        formadorNome: formadorSelecionado?.nomeCompleto || 'N/A',
+        formadorNome: formadorNome,
         dataCriacao: Timestamp.now(),
       });
 
@@ -322,14 +313,14 @@ export default function AvaliacaoPage() {
                                                 defaultValue={field.value}
                                                 className="flex flex-col space-y-2"
                                             >
-                                                {formadores.length > 0 ? (
-                                                    formadores.map((formador) => (
-                                                        <FormItem key={formador.id} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
+                                                {formacao.formadoresIds && formacao.formadoresNomes && formacao.formadoresIds.length > 0 ? (
+                                                    formacao.formadoresIds.map((formadorId, index) => (
+                                                        <FormItem key={formadorId} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
                                                             <FormControl>
-                                                                <RadioGroupItem value={formador.id} />
+                                                                <RadioGroupItem value={formadorId} />
                                                             </FormControl>
                                                             <FormLabel className="font-normal flex items-center gap-2">
-                                                                <User className="h-4 w-4 text-muted-foreground"/> {formador.nomeCompleto}
+                                                                <User className="h-4 w-4 text-muted-foreground"/> {formacao.formadoresNomes?.[index] || 'Formador sem nome'}
                                                             </FormLabel>
                                                         </FormItem>
                                                     ))
