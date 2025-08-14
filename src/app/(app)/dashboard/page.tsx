@@ -14,6 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { Formacao, ProjetoImplatancao } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 const statusColors: Record<Formacao['status'], string> = {
     preparacao: 'bg-yellow-100 text-yellow-800',
