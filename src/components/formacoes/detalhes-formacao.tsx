@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -116,6 +116,17 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (extension === 'pdf') {
+        return <FileText className="h-10 w-10 text-red-500 mr-3" />;
+    }
+    if (extension === 'doc' || extension === 'docx') {
+        return <FileType className="h-10 w-10 text-blue-500 mr-3" />;
+    }
+    return <FileIcon className="h-10 w-10 text-gray-500 mr-3" />;
+  };
+
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
     setLoading(true);
@@ -515,7 +526,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                         {isImage ? (
                                                             <img src={anexo.url} alt={anexo.nome} className="h-16 w-16 mr-3 rounded-md object-cover" />
                                                         ) : (
-                                                            <FileIcon className="h-5 w-5 mr-3 text-primary" />
+                                                            getFileIcon(anexo.nome)
                                                         )}
                                                         <span className="truncate text-sm font-medium">{anexo.nome}</span>
                                                     </a>
