@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -16,9 +15,9 @@ service cloud.firestore {
       allow update: if request.auth.uid == userId || isUserAdmin(request.auth.uid);
     }
 
-    // Trainers collection: only admins can manage trainers
+    // Trainers collection: Public read for evaluation form, only admins can write.
     match /formadores/{formadorId} {
-      allow read: if request.auth != null; // Trainers and Admins can read
+      allow read: if true;
       allow write: if isUserAdmin(request.auth.uid);
     }
     
