@@ -204,7 +204,7 @@ export default function DashboardPage() {
                                        {event.details}
                                     </p>
                                 </div>
-                                <Separator />
+                                {index < selectedDayEvents.length - 1 && <Separator />}
                             </div>
                         ))}
                     </div>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                 )}
             </CardContent>
         </Card>
-        <Card className="flex justify-center items-center p-4">
+        <Card className="flex flex-col justify-center items-center p-4 gap-4">
           <Calendar
             mode="single"
             selected={date}
@@ -225,6 +225,20 @@ export default function DashboardPage() {
             modifiers={modifiers}
             modifiersStyles={modifiersStyles}
           />
+           <div className="w-full space-y-2 text-sm p-2">
+                <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles.formacao.backgroundColor, border: `1px solid ${modifiersStyles.formacao.color}` }} />
+                    <span className="text-muted-foreground">Formações</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles['projeto-marco'].backgroundColor, border: `1px solid ${modifiersStyles['projeto-marco'].color}` }}/>
+                    <span className="text-muted-foreground">Marcos de Projeto</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles['projeto-acompanhamento'].backgroundColor, border: `1px solid ${modifiersStyles['projeto-acompanhamento'].color}` }}/>
+                    <span className="text-muted-foreground">Acompanhamentos</span>
+                </div>
+            </div>
         </Card>
       </div>
     </div>
