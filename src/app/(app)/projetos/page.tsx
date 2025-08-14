@@ -121,26 +121,15 @@ export default function ProjetosPage() {
     }
   };
 
-  const openMaterialDetailDialog = (materialId: string | undefined) => {
-    if (!materialId) return;
-    const material = materiais.get(materialId);
-    if (material) {
-        setSelectedMaterial(material);
-        setIsMaterialDetailOpen(true);
-    } else {
-        toast({ variant: 'destructive', title: 'Erro', description: 'Detalhes do material não encontrados.' });
-    }
-  }
-
   const filteredProjetos = useMemo(() => {
     return searchTerm
         ? projetos.filter(p => 
             p.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.uf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.materialId && materiais.get(p.materialId)?.titulo.toLowerCase().includes(searchTerm.toLowerCase()))
+            (p.material && p.material.toLowerCase().includes(searchTerm.toLowerCase()))
           )
         : projetos;
-  }, [projetos, searchTerm, materiais]);
+  }, [projetos, searchTerm]);
 
 
   if (loading) {
@@ -219,10 +208,9 @@ export default function ProjetosPage() {
                             <div className="text-xs text-muted-foreground">{projeto.uf}</div>
                         </TableCell>
                         <TableCell 
-                            className="hidden lg:table-cell text-muted-foreground hover:underline cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); openMaterialDetailDialog(projeto.materialId); }}
+                            className="hidden lg:table-cell text-muted-foreground"
                         >
-                            {projeto.materialId ? (materiais.get(projeto.materialId)?.titulo || 'N/A') : 'N/A'}
+                            {projeto.material || 'N/A'}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
                         <TableCell className="hidden sm:table-cell text-center">

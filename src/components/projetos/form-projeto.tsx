@@ -42,7 +42,6 @@ import { Calendar } from '../ui/calendar';
 import { Separator } from '../ui/separator';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { ComboboxMateriaisProjeto } from './combobox-materiais-projeto';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
 
@@ -81,7 +80,7 @@ const formSchema = z.object({
   municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
   uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   versao: z.string().optional(),
-  materialId: z.string().optional(),
+  material: z.string().optional(),
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
   qtdAlunos: z.preprocess(
@@ -197,7 +196,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       municipio: projeto?.municipio || '',
       uf: projeto?.uf || '',
       versao: projeto?.versao || '',
-      materialId: projeto?.materialId || undefined,
+      material: projeto?.material || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
       qtdAlunos: projeto?.qtdAlunos || undefined,
@@ -360,13 +359,14 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             <FormField control={form.control} name="versao" render={({ field }) => (
               <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )}/>
-            <FormField control={form.control} name="materialId" render={({ field }) => (
-              <FormItem><FormLabel>Material</FormLabel>
-                <ComboboxMateriaisProjeto
-                    selected={field.value}
-                    onChange={field.onChange}
-                />
-              <FormMessage /></FormItem>
+            <FormField control={form.control} name="material" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Material</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
             )}/>
           </div>
         </div>

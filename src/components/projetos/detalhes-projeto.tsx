@@ -28,7 +28,6 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
 };
 
 export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
-    const [material, setMaterial] = useState<Material | null>(null);
     const [formadores, setFormadores] = useState<Formador[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -36,13 +35,6 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         const fetchData = async () => {
             setLoading(true);
             try {
-                if (projeto.materialId) {
-                    const materialRef = doc(db, 'materiais', projeto.materialId);
-                    const materialSnap = await getDoc(materialRef);
-                    if (materialSnap.exists()) {
-                        setMaterial({ id: materialSnap.id, ...materialSnap.data() } as Material);
-                    }
-                }
                 if (projeto.formadoresIds && projeto.formadoresIds.length > 0) {
                     const q = query(collection(db, 'formadores'), where('__name__', 'in', projeto.formadoresIds));
                     const formadoresSnap = await getDocs(q);
@@ -56,7 +48,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         };
 
         fetchData();
-    }, [projeto.materialId, projeto.formadoresIds]);
+    }, [projeto.formadoresIds]);
 
     if (loading) {
         return (
@@ -83,7 +75,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                         <BookOpen className="h-5 w-5 text-muted-foreground" />
                         <div>
                             <p className="font-medium">Material</p>
-                            <p className="text-muted-foreground">{material?.titulo || 'N/A'}</p>
+                            <p className="text-muted-foreground">{projeto.material || 'N/A'}</p>
                         </div>
                     </div>
                      <div className="flex items-center gap-3">
