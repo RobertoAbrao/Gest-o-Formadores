@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { addDoc, Timestamp, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Loader2, ClipboardCheck, CheckCircle2, ShieldOff } from 'lucide-react';
+import { Loader2, ClipboardCheck, CheckCircle2, ShieldOff, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
@@ -72,6 +72,7 @@ const avaliacaoSchema = z.object({
     confirmarEmail: z.string().email('A confirmação de e-mail é obrigatória.'),
     uf: z.string().min(2, 'O estado (UF) é obrigatório.'),
     cidade: z.string().min(2, 'A cidade é obrigatória.'),
+    formadorId: z.string({ required_error: 'Selecione o formador que você está avaliando.'}),
     modalidade: z.enum(['Presencial', 'On-line'], { required_error: 'Selecione a modalidade.'}),
     funcao: z.string({ required_error: 'Selecione sua função pedagógica.'}),
     dataFormacao: z.date({ required_error: 'A data da formação é obrigatória.'}),
@@ -105,7 +106,7 @@ const avaliacaoSchema = z.object({
 type AvaliacaoFormValues = z.infer<typeof avaliacaoSchema>;
 
 interface FormacaoPublica extends Formacao {
-    formadorNomes: string[];
+    formadores: Formador[];
 }
 
 export default function AvaliacaoPage() {
@@ -126,6 +127,7 @@ export default function AvaliacaoPage() {
         confirmarEmail: '',
         uf: '',
         cidade: '',
+        formadorId: undefined,
         materialTema: [],
         motivoMaterialNaoAtende: '',
         interesseFormacao: '',
@@ -154,17 +156,17 @@ export default function AvaliacaoPage() {
             throw new Error('As avaliações para esta formação não estão abertas no momento.');
         }
 
-        let formadorNomes: string[] = [];
+        let formadores: Formador[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(qFormadores);
-            formadorNomes = formadoresSnap.docs.map(doc => (doc.data() as Formador).nomeCompleto);
+            formadores = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
         }
 
         setFormacao({
             ...formacaoData,
             id: formacaoSnap.id,
-            formadorNomes: formadorNomes,
+            formadores: formadores,
         });
 
         form.reset({
@@ -189,10 +191,13 @@ export default function AvaliacaoPage() {
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
       const { confirmarEmail, ...dataToSave } = data;
+      const formadorSelecionado = formacao?.formadores.find(f => f.id === data.formadorId);
+
       await addDoc(collection(db, 'avaliacoes'), {
         ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
+        formadorNome: formadorSelecionado?.nomeCompleto || 'N/A',
         dataCriacao: Timestamp.now(),
       });
 
@@ -307,11 +312,37 @@ export default function AvaliacaoPage() {
                             </div>
                            
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>2. Formador(es)</h3>
+                                <h3 className='font-semibold text-lg'>2. Qual formador você está avaliando?</h3>
                                  <Separator />
-                                 <div className='p-2 bg-muted rounded-md'>
-                                    {formacao.formadorNomes.length > 0 ? formacao.formadorNomes.map((nome, index) => <p key={index}>{nome}</p>) : <p>Nenhum formador associado.</p>}
-                                 </div>
+                                 <FormField
+                                    control={form.control}
+                                    name="formadorId"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                        <FormControl>
+                                            <RadioGroup
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                                className="flex flex-col space-y-2"
+                                            >
+                                                {formacao.formadores.length > 0 ? (
+                                                    formacao.formadores.map(formador => (
+                                                        <FormItem key={formador.id} className="flex items-center space-x-3 space-y-0 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary transition-colors">
+                                                            <FormControl>
+                                                                <RadioGroupItem value={formador.id} />
+                                                            </FormControl>
+                                                            <FormLabel className="font-normal flex items-center gap-2">
+                                                                <User className="h-4 w-4 text-muted-foreground"/> {formador.nomeCompleto}
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    ))
+                                                ) : <p>Nenhum formador associado.</p>}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                    />
                             </div>
 
                             <div className="space-y-4 p-4 border rounded-lg">
