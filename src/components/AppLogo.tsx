@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 type AppLogoProps = {
   className?: string;
@@ -10,8 +11,14 @@ const logoDataUri = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYAAAAGACAMAA
 
 export default function AppLogo({ className, iconClassName, textClassName }: AppLogoProps) {
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <img src={logoDataUri} alt="Editora LT Logo" className={cn('h-8 w-8', iconClassName)} />
+    <div className={cn("flex items-center gap-2", className)}>
+      <Image 
+        src="/Imagem_do_WhatsApp_de_2025-08-14_à_s__17.07.16_9af64c95-removebg-preview.png" 
+        alt="Editora LT Logo"
+        width={48} // Defina a largura apropriada
+        height={48} // Defina a altura apropriada
+        className={cn("h-8 w-8", iconClassName)}
+      />
       <h1 className={cn('text-2xl font-bold text-primary font-headline', textClassName)}>
         Gestão de Formadores
       </h1>
