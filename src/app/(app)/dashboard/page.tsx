@@ -2,16 +2,16 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
-import type { Formacao } from '@/lib/types';
+import type { Formacao, ProjetoImplatancao } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
@@ -23,6 +23,14 @@ const statusColors: Record<Formacao['status'], string> = {
     arquivado: 'bg-gray-100 text-gray-800',
 };
 
+type CalendarEvent = {
+    date: Date;
+    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento';
+    title: string;
+    details: string;
+    relatedId: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState([
@@ -30,7 +38,7 @@ export default function DashboardPage() {
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
     { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
   ]);
-  const [formacoes, setFormacoes] = useState<Formacao[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
 
@@ -41,13 +49,16 @@ export default function DashboardPage() {
         try {
           const formadoresCol = collection(db, 'formadores');
           const materiaisCol = collection(db, 'materiais');
-          const allFormacoesCol = collection(db, 'formacoes');
-          const activeFormacoesQuery = query(allFormacoesCol, where('status', '!=', 'arquivado'));
+          const formacoesCol = collection(db, 'formacoes');
+          const projetosCol = collection(db, 'projetos');
+
+          const activeFormacoesQuery = query(formacoesCol, where('status', '!=', 'arquivado'));
           
-          const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot] = await Promise.all([
+          const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot] = await Promise.all([
             getCountFromServer(formadoresCol),
             getCountFromServer(materiaisCol),
             getDocs(activeFormacoesQuery),
+            getDocs(projetosCol)
           ]);
           
           setStats([
@@ -55,9 +66,32 @@ export default function DashboardPage() {
             { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
             { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500' },
           ]);
+            
+          const allEvents: CalendarEvent[] = [];
 
           const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
-          setFormacoes(formacoesData);
+          formacoesData.forEach(formacao => {
+            if (formacao.dataInicio) allEvents.push({ date: formacao.dataInicio.toDate(), type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}`, relatedId: formacao.id });
+            if (formacao.dataFim) allEvents.push({ date: formacao.dataFim.toDate(), type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}`, relatedId: formacao.id });
+          });
+
+          const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
+          projetosData.forEach(projeto => {
+            if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao.toDate(), type: 'projeto-marco', title: `Migração de Dados: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+            if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+            
+            Object.values(projeto.simulados).forEach((simulado, i) => {
+              if (simulado.dataInicio) allEvents.push({ date: simulado.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+              if (simulado.dataFim) allEvents.push({ date: simulado.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+            });
+            Object.values(projeto.devolutivas).forEach((devolutiva, i) => {
+              if ((devolutiva as any).data) allEvents.push({ date: (devolutiva as any).data.toDate(), type: 'projeto-acompanhamento', title: `Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+              if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+              if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+            });
+          });
+
+          setEvents(allEvents);
 
         } catch (error) {
           console.error("Error fetching data:", error);
@@ -70,30 +104,38 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const eventDays = useMemo(() => {
-    return formacoes.reduce((acc, formacao) => {
-        if (formacao.dataInicio) acc.push(formacao.dataInicio.toDate());
-        if (formacao.dataFim) acc.push(formacao.dataFim.toDate());
+  const eventDaysByType = useMemo(() => {
+    return events.reduce((acc, event) => {
+        if (!acc[event.type]) {
+            acc[event.type] = [];
+        }
+        acc[event.type].push(startOfDay(event.date));
         return acc;
-    }, [] as Date[]);
-  }, [formacoes]);
+    }, {} as Record<CalendarEvent['type'], Date[]>);
+  }, [events]);
 
   const selectedDayEvents = useMemo(() => {
     if (!date) return [];
-    return formacoes.filter(f => 
-        (f.dataInicio && isSameDay(f.dataInicio.toDate(), date)) || 
-        (f.dataFim && isSameDay(f.dataFim.toDate(), date))
-    ).sort((a,b) => a.dataInicio!.toMillis() - b.dataInicio!.toMillis());
-  }, [date, formacoes]);
+    return events
+        .filter(event => isSameDay(event.date, date))
+        .sort((a,b) => a.date.getTime() - b.date.getTime());
+  }, [date, events]);
 
   const modifiers = {
-    event: eventDays,
+    formacao: eventDaysByType['formacao'] || [],
+    'projeto-marco': eventDaysByType['projeto-marco'] || [],
+    'projeto-acompanhamento': eventDaysByType['projeto-acompanhamento'] || [],
   };
 
   const modifiersStyles = {
-    event: {
-      border: '2px solid hsl(var(--primary))',
-      borderRadius: 'var(--radius)',
+    formacao: {
+      borderColor: 'hsl(var(--primary))',
+    },
+    'projeto-marco': {
+      borderColor: 'hsl(var(--accent))',
+    },
+    'projeto-acompanhamento': {
+      borderColor: 'hsl(var(--chart-4))',
     },
   };
 
@@ -131,7 +173,7 @@ export default function DashboardPage() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <CalendarIcon className="h-5 w-5" />
-                    Agenda de Formações
+                    Agenda de Eventos
                 </CardTitle>
                 <CardDescription>
                     Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
@@ -140,17 +182,22 @@ export default function DashboardPage() {
             <CardContent>
                 {selectedDayEvents.length > 0 ? (
                     <div className="space-y-4">
-                        {selectedDayEvents.map(formacao => (
-                            <div key={formacao.id} className="space-y-2">
+                        {selectedDayEvents.map((event, index) => (
+                            <div key={index} className="space-y-2">
                                 <div>
-                                    <div className="flex justify-between items-start">
-                                        <h4 className="font-semibold">{formacao.titulo}</h4>
-                                        <Badge variant="outline" className={statusColors[formacao.status]}>
-                                            {formacao.status}
+                                    <div className="flex justify-between items-start gap-2">
+                                        <h4 className="font-semibold">{event.title}</h4>
+                                        <Badge variant="outline" className={cn(
+                                            event.type === 'formacao' && 'border-primary text-primary',
+                                            event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
+                                            event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4'
+                                        )}>
+                                            {event.type === 'formacao' ? 'Formação' : 'Projeto'}
                                         </Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                        <Hash className="h-3 w-3" /> {formacao.codigo} - {formacao.municipio}
+                                       {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : <Milestone className='h-3 w-3'/>}
+                                       {event.details}
                                     </p>
                                 </div>
                                 <Separator />
@@ -159,7 +206,7 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">
-                        Nenhuma formação para o dia selecionado.
+                        Nenhum evento para o dia selecionado.
                     </p>
                 )}
             </CardContent>
@@ -172,10 +219,17 @@ export default function DashboardPage() {
             className="rounded-md border"
             locale={ptBR}
             modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
+            modifiersStyles={{
+              ...modifiersStyles,
+              day: {
+                borderWidth: '2px',
+                borderRadius: 'var(--radius)',
+              }
+            }}
           />
         </Card>
       </div>
     </div>
   );
 }
+
