@@ -34,10 +34,10 @@ service cloud.firestore {
       allow write: if isUserAdmin(request.auth.uid);
     }
     
-    // Formations collection: only admins can manage
+    // Formations collection: Admins can manage, anyone can read a single formation for the evaluation form.
     match /formacoes/{formacaoId} {
-        allow read: if request.auth != null;
-        allow write: if isUserAdmin(request.auth.uid);
+        allow get: if true;
+        allow list, write: if isUserAdmin(request.auth.uid);
     }
     
     // Expenses collection: trainers can create for themselves, admins can read all

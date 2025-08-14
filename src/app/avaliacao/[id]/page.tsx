@@ -180,8 +180,8 @@ export default function AvaliacaoPage() {
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
       const { confirmarEmail, ...dataToSave } = data;
-      const formadorSelecionadoIndex = formacao?.formadoresIds.indexOf(data.formadorId);
-      const formadorNome = (formacao?.formadoresNomes && formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex !== -1)
+      const formadorSelecionadoIndex = formacao?.formadoresIds?.indexOf(data.formadorId);
+      const formadorNome = (formacao?.formadoresNomes && formadorSelecionadoIndex !== undefined && formadorSelecionadoIndex > -1)
         ? formacao.formadoresNomes[formadorSelecionadoIndex]
         : 'N/A';
 
@@ -325,7 +325,7 @@ export default function AvaliacaoPage() {
                                                                 <RadioGroupItem value={formadorId} />
                                                             </FormControl>
                                                             <FormLabel className="font-normal flex items-center gap-2">
-                                                                <User className="h-4 w-4 text-muted-foreground"/> {formacao.formadoresNomes[index]}
+                                                                <User className="h-4 w-4 text-muted-foreground"/> {(formacao.formadoresNomes && formacao.formadoresNomes[index]) || 'Nome não encontrado'}
                                                             </FormLabel>
                                                         </FormItem>
                                                     ))
