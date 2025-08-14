@@ -130,13 +130,16 @@ export default function DashboardPage() {
 
   const modifiersStyles = {
     formacao: {
-      borderColor: 'hsl(var(--primary))',
+      backgroundColor: 'hsl(var(--primary) / 0.1)',
+      color: 'hsl(var(--primary))',
     },
     'projeto-marco': {
-      borderColor: 'hsl(var(--accent))',
+      backgroundColor: 'hsl(var(--accent) / 0.1)',
+      color: 'hsl(var(--accent-foreground))',
     },
     'projeto-acompanhamento': {
-      borderColor: 'hsl(var(--chart-4))',
+      backgroundColor: 'hsl(var(--chart-4) / 0.1)',
+       color: 'hsl(var(--chart-4))',
     },
   };
 
@@ -220,17 +223,10 @@ export default function DashboardPage() {
             className="rounded-md border"
             locale={ptBR}
             modifiers={modifiers}
-            modifiersStyles={{
-              ...modifiersStyles,
-              day: {
-                borderWidth: '2px',
-                borderRadius: 'var(--radius)',
-              }
-            }}
+            modifiersStyles={modifiersStyles}
           />
         </Card>
       </div>
     </div>
   );
 }
-
