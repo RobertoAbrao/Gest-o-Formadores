@@ -827,60 +827,62 @@ export default function DetalhesFormacaoPage() {
                                 </div>
                             )}
                             
-                            <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
-                             <Accordion type="multiple" className="w-full space-y-2">
-                                {avaliacoes.map(avaliacao => (
-                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
-                                        <AccordionTrigger className='px-4 hover:no-underline'>
-                                            <div className="flex items-center justify-between w-full pr-4">
-                                                <span>{avaliacao.nomeCompleto}</span>
-                                                <span className="text-xs text-muted-foreground font-normal">
-                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="text-sm space-y-4 p-4 border-t">
-                                                <div className='space-y-3'>
-                                                    <div><strong>Função:</strong> {avaliacao.funcao}</div>
-                                                    <div>
-                                                      <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
-                                                    </div>
-                                                    <div>
-                                                        <strong>Avaliação (1-5):</strong>
-                                                        <div className='flex items-center gap-1 mt-1'>
-                                                            {[...Array(5)].map((_, i) => (
-                                                            <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    {avaliacao.interesseFormacao && (
-                                                    <div>
-                                                        <strong>Interesse:</strong>
-                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
-                                                    </div>
-                                                    )}
-                                                    {avaliacao.observacoes && (
-                                                    <div>
-                                                        <strong>Observações:</strong>
-                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
-                                                    </div>
-                                                    )}
+                            <div className="no-print">
+                                <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
+                                <Accordion type="multiple" className="w-full space-y-2">
+                                    {avaliacoes.map(avaliacao => (
+                                        <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
+                                            <AccordionTrigger className='px-4 hover:no-underline'>
+                                                <div className="flex items-center justify-between w-full pr-4">
+                                                    <span>{avaliacao.nomeCompleto}</span>
+                                                    <span className="text-xs text-muted-foreground font-normal">
+                                                        {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
                                                 </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="text-sm space-y-4 p-4 border-t">
+                                                    <div className='space-y-3'>
+                                                        <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                                        <div>
+                                                        <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
+                                                        </div>
+                                                        <div>
+                                                        <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
+                                                        </div>
+                                                        <div>
+                                                        <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
+                                                        </div>
+                                                        <div>
+                                                        <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
+                                                        </div>
+                                                        <div>
+                                                            <strong>Avaliação (1-5):</strong>
+                                                            <div className='flex items-center gap-1 mt-1'>
+                                                                {[...Array(5)].map((_, i) => (
+                                                                <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {avaliacao.interesseFormacao && (
+                                                        <div>
+                                                            <strong>Interesse:</strong>
+                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                                        </div>
+                                                        )}
+                                                        {avaliacao.observacoes && (
+                                                        <div>
+                                                            <strong>Observações:</strong>
+                                                            <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                                        </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    ))}
+                                </Accordion>
+                            </div>
                         </div>
                      )}
                  </div>
@@ -905,7 +907,3 @@ export default function DetalhesFormacaoPage() {
     </div>
   );
 }
-
-
-
-
