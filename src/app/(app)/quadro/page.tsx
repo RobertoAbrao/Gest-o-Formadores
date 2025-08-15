@@ -306,13 +306,13 @@ export default function QuadroPage() {
                                 Editar
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/relatorio/${formacao.id}`} className="flex items-center w-full">
+                                <Link href={`/relatorio/${formacao.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center w-full">
                                   <Printer className="mr-2 h-4 w-4" />
                                   Ver Relatório
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
-                                <Link href={`/avaliacao/${formacao.id}`} target="_blank" className="flex items-center w-full">
+                                <Link href={`/avaliacao/${formacao.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
                                   <ClipboardCheck className="mr-2 h-4 w-4" />
                                   Formulário de Avaliação
                                 </Link>
