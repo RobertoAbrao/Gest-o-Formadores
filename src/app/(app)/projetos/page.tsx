@@ -286,5 +286,4 @@ export default function ProjetosPage() {
         </Dialog>
     </div>
   );
-
-    
+}
