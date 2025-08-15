@@ -118,7 +118,7 @@ export default function AvaliacaoPage() {
   
   const form = useForm<AvaliacaoFormValues>({
     resolver: zodResolver(avaliacaoSchema),
-    shouldFocusError: true,
+    shouldFocusError: false,
     defaultValues: {
         nomeCompleto: '',
         email: '',
@@ -181,6 +181,14 @@ export default function AvaliacaoPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const onInvalid = () => {
+    toast({
+        variant: 'destructive',
+        title: "Erro de Validação",
+        description: "Por favor, verifique os campos em vermelho e tente novamente.",
+    });
+  }
 
   const onSubmit = async (data: AvaliacaoFormValues) => {
     try {
@@ -257,7 +265,7 @@ export default function AvaliacaoPage() {
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                             <div className="space-y-4 p-4 border rounded-lg">
                                 <h3 className='font-semibold text-lg'>1. Identificação</h3>
                                 <Separator />
@@ -612,3 +620,5 @@ export default function AvaliacaoPage() {
 }
 
     
+
+  
