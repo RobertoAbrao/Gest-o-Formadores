@@ -95,7 +95,7 @@ export default function ProjetosPage() {
         return;
     }
     try {
-        await deleteDoc(doc(db, "projetos", projectId));
+        await deleteDoc(doc(db, "projetos", projetoId));
         toast({ title: 'Sucesso!', description: 'Projeto excluído com sucesso.' });
         fetchProjetosAndMateriais();
     } catch (error) {
@@ -286,4 +286,5 @@ export default function ProjetosPage() {
         </Dialog>
     </div>
   );
-}
+
+    
