@@ -99,6 +99,14 @@ export interface Despesa {
     comprovanteUrl?: string; // URL para o comprovante
 }
 
+export interface Lembrete {
+    id: string;
+    titulo: string;
+    data: Timestamp;
+    concluido: boolean;
+    dataCriacao: Timestamp;
+}
+
 export interface Avaliacao {
     id: string;
     formacaoId: string;
