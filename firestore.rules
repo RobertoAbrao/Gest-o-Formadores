@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -56,6 +57,11 @@ service cloud.firestore {
         allow read: if isUserAdmin(request.auth.uid);
         allow create: if true; // Public access to submit form
         allow write: if isUserAdmin(request.auth.uid);
+    }
+
+    // Reminders collection: only admins can manage
+    match /lembretes/{lembreteId} {
+        allow read, write: if isUserAdmin(request.auth.uid);
     }
   }
 }
