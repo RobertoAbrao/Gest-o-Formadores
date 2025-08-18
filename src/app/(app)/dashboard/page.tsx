@@ -55,6 +55,10 @@ export default function DashboardPage() {
 
   const form = useForm<LembreteFormValues>({
     resolver: zodResolver(lembreteSchema),
+    defaultValues: {
+      titulo: '',
+      data: undefined,
+    }
   });
 
   const fetchData = async () => {
