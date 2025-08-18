@@ -2,10 +2,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, startOfDay } from 'date-fns';
+import { format, isSameDay, startOfDay, subDays } from 'date-fns';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
@@ -26,7 +26,7 @@ const statusColors: Record<Formacao['status'], string> = {
 
 type CalendarEvent = {
     date: Date;
-    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento';
+    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento' | 'lembrete';
     title: string;
     details: string;
     relatedId: string;
@@ -74,6 +74,22 @@ export default function DashboardPage() {
           formacoesData.forEach(formacao => {
             if (formacao.dataInicio) allEvents.push({ date: formacao.dataInicio.toDate(), type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}`, relatedId: formacao.id });
             if (formacao.dataFim) allEvents.push({ date: formacao.dataFim.toDate(), type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}`, relatedId: formacao.id });
+          
+            if(formacao.logistica) {
+              formacao.logistica.forEach(item => {
+                if(item.alertaLembrete && item.diasLembrete && item.checkin) {
+                   const alertDate = subDays(item.checkin.toDate(), item.diasLembrete);
+                   allEvents.push({
+                     date: alertDate,
+                     type: 'lembrete',
+                     title: item.alertaLembrete,
+                     details: `Lembrete para ${item.formadorNome} na formação ${formacao.titulo}`,
+                     relatedId: formacao.id
+                   })
+                }
+              })
+            }
+          
           });
 
           const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
@@ -126,6 +142,7 @@ export default function DashboardPage() {
     formacao: eventDaysByType['formacao'] || [],
     'projeto-marco': eventDaysByType['projeto-marco'] || [],
     'projeto-acompanhamento': eventDaysByType['projeto-acompanhamento'] || [],
+    lembrete: eventDaysByType['lembrete'] || [],
   };
 
   const modifiersStyles = {
@@ -140,6 +157,10 @@ export default function DashboardPage() {
     'projeto-acompanhamento': {
       backgroundColor: 'hsl(var(--chart-4) / 0.1)',
        color: 'hsl(var(--chart-4))',
+    },
+     lembrete: {
+      backgroundColor: 'hsl(var(--chart-3) / 0.1)',
+      color: 'hsl(var(--chart-3))',
     },
   };
 
@@ -194,13 +215,14 @@ export default function DashboardPage() {
                                         <Badge variant="outline" className={cn(
                                             event.type === 'formacao' && 'border-primary text-primary',
                                             event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
-                                            event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4'
+                                            event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
+                                            event.type === 'lembrete' && 'border-chart-3 text-chart-3'
                                         )}>
-                                            {event.type === 'formacao' ? 'Formação' : 'Projeto'}
+                                            {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
                                         </Badge>
                                     </div>
                                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                       {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : <Milestone className='h-3 w-3'/>}
+                                       {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : <Milestone className='h-3 w-3'/>}
                                        {event.details}
                                     </p>
                                 </div>
@@ -237,6 +259,10 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                     <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles['projeto-acompanhamento'].backgroundColor, border: `1px solid ${modifiersStyles['projeto-acompanhamento'].color}` }}/>
                     <span className="text-muted-foreground">Acompanhamentos</span>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles.lembrete.backgroundColor, border: `1px solid ${modifiersStyles.lembrete.color}` }}/>
+                    <span className="text-muted-foreground">Lembretes</span>
                 </div>
             </div>
         </Card>

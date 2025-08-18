@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
-import { Loader2, Check, ChevronsUpDown, CalendarIcon, X } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown, CalendarIcon, X, Bell } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import type { Formacao, Formador, LogisticaViagem } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -55,6 +55,11 @@ const logisticaSchema = z.object({
     valorHospedagem: z.preprocess(
       (a) => a ? parseFloat(String(a).replace(",", ".")) : undefined,
       z.number().optional()
+    ),
+    alertaLembrete: z.string().optional(),
+    diasLembrete: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
+      z.number().min(0, "Deve ser um número positivo.").optional()
     ),
 });
 
@@ -176,6 +181,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           checkin: null,
           checkout: null,
           valorHospedagem: undefined,
+          alertaLembrete: '',
+          diasLembrete: undefined,
         };
       });
       replaceLogistica(newLogistica);
@@ -201,6 +208,8 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             checkin: toNullableDate(l.checkin),
             checkout: toNullableDate(l.checkout),
             valorHospedagem: l.valorHospedagem || undefined,
+            alertaLembrete: l.alertaLembrete || '',
+            diasLembrete: l.diasLembrete || undefined,
         })) || [],
       });
     } else {
@@ -240,6 +249,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             checkin: l.checkin ? Timestamp.fromDate(l.checkin) : null,
             checkout: l.checkout ? Timestamp.fromDate(l.checkout) : null,
             valorHospedagem: l.valorHospedagem || null,
+            diasLembrete: l.diasLembrete || null,
           }))
       };
 
@@ -685,6 +695,35 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                         </FormItem>
                                     )}
                                 />
+                                <div className="md:col-span-2 space-y-4 pt-4 border-t mt-4">
+                                     <FormField
+                                        control={form.control}
+                                        name={`logistica.${index}.alertaLembrete`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="flex items-center gap-2"><Bell className="h-4 w-4" /> Alerta de Lembrete</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Ex: Confirmar pagamento da diária" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name={`logistica.${index}.diasLembrete`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Lembrar com antecedência de (dias)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" min="0" placeholder="Ex: 3" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormDescription>Deixe em branco para não criar lembrete.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                              </div>
                         </div>
                     ))}

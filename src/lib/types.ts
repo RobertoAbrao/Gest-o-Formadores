@@ -64,6 +64,8 @@ export interface LogisticaViagem {
   checkin: Timestamp | null;
   checkout: Timestamp | null;
   valorHospedagem?: number | null;
+  alertaLembrete?: string;
+  diasLembrete?: number;
 }
 
 export interface Formacao {
