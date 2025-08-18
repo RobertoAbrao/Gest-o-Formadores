@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, startOfDay, subDays } from 'date-fns';
@@ -24,6 +24,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const lembreteSchema = z.object({
   titulo: z.string().min(3, 'O título é obrigatório.'),
@@ -49,6 +50,7 @@ export default function DashboardPage() {
     { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
   ]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
@@ -139,6 +141,11 @@ export default function DashboardPage() {
       })
 
       setEvents(allEvents);
+      
+      const today = new Date();
+      const todaysEvents = allEvents.filter(event => isSameDay(event.date, today));
+      setTodayEvents(todaysEvents);
+
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -239,6 +246,21 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
+
+       {todayEvents.length > 0 && (
+            <Alert>
+                <BellRing className="h-4 w-4" />
+                <AlertTitle>Você tem {todayEvents.length} {todayEvents.length === 1 ? 'evento' : 'eventos'} hoje!</AlertTitle>
+                <AlertDescription>
+                    <ul className='list-disc list-inside mt-2'>
+                        {todayEvents.slice(0, 3).map((event, index) => <li key={index} className='truncate'>{event.title}</li>)}
+                    </ul>
+                    {todayEvents.length > 3 && <p className='mt-1'>E mais {todayEvents.length - 3}...</p>}
+                    <p className='mt-2'>Clique no dia de hoje no calendário para ver todos os detalhes.</p>
+                </AlertDescription>
+            </Alert>
+        )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
