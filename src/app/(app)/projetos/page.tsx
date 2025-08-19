@@ -16,9 +16,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare } from 'lucide-react';
 import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -30,6 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Timestamp } from 'firebase/firestore';
 import { DetalhesProjeto } from '@/components/projetos/detalhes-projeto';
+import Link from 'next/link';
 
 
 const formatDate = (timestamp: Timestamp | null | undefined) => {
@@ -229,12 +231,19 @@ export default function ProjetosPage() {
                             <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(projeto)}}>
                                 <Eye className="mr-2 h-4 w-4" />
-                                Visualizar
+                                Visualizar Detalhes
                             </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/projeto-relatorio/${projeto.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center w-full">
+                                  <GanttChartSquare className="mr-2 h-4 w-4" />
+                                  Ver Linha do Tempo
+                                </Link>
+                              </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(projeto)}}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Editar
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(projeto.id)}}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Excluir
