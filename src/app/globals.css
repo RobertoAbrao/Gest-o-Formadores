@@ -89,7 +89,9 @@ body {
 
 @media print {
   body {
-    background-color: #fff;
+    background-color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   
   body * {
