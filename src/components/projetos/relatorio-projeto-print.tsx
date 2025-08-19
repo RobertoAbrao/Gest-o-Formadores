@@ -160,7 +160,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-200">
         <AppLogo textClassName='text-3xl' iconClassName='h-10 w-10' />
         <div className='text-right'>
-            <h2 className="text-2xl font-bold">Linha do Tempo do Projeto</h2>
+            <h2 className="text-2xl font-bold">Linha do Tempo</h2>
             <p className="text-sm text-gray-500">Data de Emissão: {dataEmissao}</p>
         </div>
       </header>
