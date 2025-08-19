@@ -93,25 +93,6 @@ export default function ProjetoRelatorioPage() {
                 />
             </div>
         </div>
-
-        <style jsx global>{`
-            @media print {
-                .no-print {
-                    display: none;
-                }
-                body {
-                    background-color: #fff;
-                }
-                .printable-area {
-                    margin: 0;
-                    padding: 0;
-                }
-            }
-            @page {
-                size: A4;
-                margin: 0.5in;
-            }
-        `}</style>
     </div>
   );
 }

@@ -88,13 +88,19 @@ body {
 }
 
 @media print {
+  body {
+    background-color: #fff;
+  }
+  
   body * {
     visibility: hidden;
   }
-  .print-container, .print-container * {
+  
+  .printable-area, .printable-area * {
     visibility: visible;
   }
-  .print-container {
+  
+  .printable-area {
     position: absolute;
     left: 0;
     top: 0;
@@ -103,13 +109,8 @@ body {
     padding: 1rem;
     margin: 0;
   }
+
   .no-print {
     display: none !important;
-  }
-  .print-only {
-      display: block !important;
-  }
-  .tabs-content-print {
-    display: block !important;
   }
 }

@@ -137,25 +137,6 @@ export default function PrintPage() {
                 />
             </div>
         </div>
-
-        <style jsx global>{`
-            @media print {
-                .no-print {
-                    display: none;
-                }
-                body {
-                    background-color: #fff;
-                }
-                .printable-area {
-                    margin: 0;
-                    padding: 0;
-                }
-            }
-            @page {
-                size: auto;
-                margin: 0.5in;
-            }
-        `}</style>
     </div>
   );
 }
