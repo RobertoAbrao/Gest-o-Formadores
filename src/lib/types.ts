@@ -136,12 +136,14 @@ export interface Avaliacao {
 interface EtapaStatus {
   data?: Timestamp | null;
   ok?: boolean;
+  detalhes?: string;
 }
 
 interface PeriodoStatus {
   dataInicio?: Timestamp | null;
   dataFim?: Timestamp | null;
   ok?: boolean;
+  detalhes?: string;
 }
 
 interface DevolutivaStatus extends PeriodoStatus {

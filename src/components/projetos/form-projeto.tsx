@@ -44,16 +44,19 @@ import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
+import { Textarea } from '../ui/textarea';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
   ok: z.boolean().optional(),
+  detalhes: z.string().optional(),
 });
 
 const periodoStatusSchema = z.object({
   dataInicio: z.date().nullable().optional(),
   dataFim: z.date().nullable().optional(),
   ok: z.boolean().optional(),
+  detalhes: z.string().optional(),
 });
 
 const devolutivaStatusSchema = periodoStatusSchema.extend({
@@ -202,18 +205,18 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
-      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false },
+      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '' },
       simulados: {
-        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false },
-        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false },
-        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false },
-        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false },
+        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '' },
+        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '' },
+        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '' },
+        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '' },
       },
       devolutivas: {
-        d1: { dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), formador: projeto?.devolutivas?.d1?.formador || '', ok: projeto?.devolutivas?.d1?.ok || false },
-        d2: { dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), formador: projeto?.devolutivas?.d2?.formador || '', ok: projeto?.devolutivas?.d2?.ok || false },
-        d3: { dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), formador: projeto?.devolutivas?.d3?.formador || '', ok: projeto?.devolutivas?.d3?.ok || false },
-        d4: { data: toDate(projeto?.devolutivas?.d4?.data), formador: projeto?.devolutivas?.d4?.formador || '', ok: projeto?.devolutivas?.d4?.ok || false },
+        d1: { dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), formador: projeto?.devolutivas?.d1?.formador || '', ok: projeto?.devolutivas?.d1?.ok || false, detalhes: projeto?.devolutivas?.d1?.detalhes || '' },
+        d2: { dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), formador: projeto?.devolutivas?.d2?.formador || '', ok: projeto?.devolutivas?.d2?.ok || false, detalhes: projeto?.devolutivas?.d2?.detalhes || '' },
+        d3: { dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), formador: projeto?.devolutivas?.d3?.formador || '', ok: projeto?.devolutivas?.d3?.ok || false, detalhes: projeto?.devolutivas?.d3?.detalhes || '' },
+        d4: { data: toDate(projeto?.devolutivas?.d4?.data), formador: projeto?.devolutivas?.d4?.formador || '', ok: projeto?.devolutivas?.d4?.ok || false, detalhes: projeto?.devolutivas?.d4?.detalhes || '' },
       },
       reunioes: projeto?.reunioes?.map(r => ({
           data: toDate(r.data),
@@ -269,18 +272,19 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           diagnostica: {
             data: timestampOrNull(values.diagnostica.data),
             ok: values.diagnostica.ok,
+            detalhes: values.diagnostica.detalhes,
           },
           simulados: {
-            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok },
-            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok },
-            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok },
-            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok },
+            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes },
+            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes },
+            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes },
+            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes },
           },
           devolutivas: {
-            d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok },
-            d2: { dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim), formador: values.devolutivas.d2.formador, ok: values.devolutivas.d2.ok },
-            d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok },
-            d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok },
+            d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok, detalhes: values.devolutivas.d1.detalhes },
+            d2: { dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim), formador: values.devolutivas.d2.formador, ok: values.devolutivas.d2.ok, detalhes: values.devolutivas.d2.detalhes },
+            d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok, detalhes: values.devolutivas.d3.detalhes },
+            d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok, detalhes: values.devolutivas.d4.detalhes },
           },
           reunioes: values.reunioes?.map(reuniao => ({
             data: timestampOrNull(reuniao.data),
@@ -522,21 +526,26 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           <h3 className="font-semibold text-lg">Avaliações e Simulados</h3>
           <Separator />
             {/* Diagnóstica */}
-            <div className='flex flex-wrap items-end gap-4 p-2 rounded-md border'>
-              <FormField control={form.control} name="diagnostica.data" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Avaliação Diagnóstica</FormLabel>
-                  <Popover><PopoverTrigger asChild><FormControl>
-                    <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                      {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                  </PopoverContent></Popover><FormMessage />
-                </FormItem>
-              )}/>
-              <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+            <div className='flex flex-col gap-4 p-2 rounded-md border'>
+              <div className='flex flex-wrap items-end gap-4'>
+                <FormField control={form.control} name="diagnostica.data" render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>Avaliação Diagnóstica</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl>
+                      <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                    </PopoverContent></Popover><FormMessage />
+                  </FormItem>
+                )}/>
+                <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                )}/>
+              </div>
+              <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
+                  <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )}/>
             </div>
             {/* Simulados */}
@@ -570,6 +579,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                   )}/>
                    <FormField control={form.control} name={`simulados.s${i}.ok`} render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                  )}/>
+                  <FormField control={form.control} name={`simulados.s${i}.detalhes`} render={({ field }) => (
+                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                   )}/>
                 </div>
               ))}
@@ -614,6 +626,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                    <FormField control={form.control} name={`devolutivas.d${i}.ok`} render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
                   )}/>
+                  <FormField control={form.control} name={`devolutivas.d${i}.detalhes`} render={({ field }) => (
+                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                  )}/>
                 </div>
               ))}
                 <div key="d4" className='p-2 rounded-md border space-y-3'>
@@ -635,6 +650,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                   )}/>
                    <FormField control={form.control} name="devolutivas.d4.ok" render={({ field }) => (
                     <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                  )}/>
+                  <FormField control={form.control} name={`devolutivas.d4.detalhes`} render={({ field }) => (
+                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                   )}/>
                 </div>
             </div>
