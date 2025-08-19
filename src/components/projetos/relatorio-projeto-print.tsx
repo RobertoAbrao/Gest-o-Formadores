@@ -156,7 +156,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes do Projeto</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p><strong>Município:</strong> {projeto.municipio}</p>
-            <p><strong>UF:</strong> <Badge variant="outline" className="text-sm">{projeto.uf}</Badge></p>
+            <div><strong>UF:</strong> <Badge variant="outline" className="text-sm">{projeto.uf}</Badge></div>
             <p><strong>Versão:</strong> {projeto.versao || 'N/A'}</p>
             <p><strong>Material:</strong> {projeto.material || 'N/A'}</p>
             <p><strong>Alunos:</strong> {projeto.qtdAlunos || 'N/A'}</p>
