@@ -40,23 +40,37 @@ const MilestoneCard = ({
 }) => {
     const Icon = icon;
     return (
-        <div className="flex items-start gap-4 relative">
-            <div className="flex flex-col items-center">
+         <div className="flex justify-center relative">
+            {/* Linha da timeline */}
+            {!isLast && 
                 <div className={cn(
-                    "flex items-center justify-center w-12 h-12 rounded-full z-10",
+                    "w-0.5 h-full absolute top-12",
+                    isComplete ? 'bg-primary' : 'bg-border'
+                )}></div>
+            }
+
+            {/* Conteúdo */}
+            <div className="flex w-full items-start">
+                {/* Lado Esquerdo: Título */}
+                <div className="w-1/2 pr-8 text-right">
+                    <h4 className="font-bold text-lg mt-3">{title}</h4>
+                </div>
+                
+                {/* Centro: Ícone */}
+                <div className={cn(
+                    "flex items-center justify-center w-12 h-12 rounded-full z-10 shrink-0",
                     isComplete ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                 )}>
                     <Icon className="w-6 h-6" />
                 </div>
-                 {!isLast && <div className={cn(
-                    "w-0.5 h-full min-h-[6rem] mt-[-2px]",
-                     isComplete ? 'bg-primary' : 'bg-border'
-                 )}></div>}
-            </div>
-            <div className={cn("pt-3 flex-1", isFirst && "pt-0")}>
-                <p className="text-xs text-gray-500">{date}</p>
-                <h4 className="font-bold text-lg">{title}</h4>
-                {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+                
+                {/* Lado Direito: Data e Descrição */}
+                <div className="w-1/2 pl-8">
+                     <div className='mt-3'>
+                        <p className="text-xs text-gray-500">{date}</p>
+                        {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+                    </div>
+                </div>
             </div>
         </div>
     )
@@ -94,7 +108,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 1',
-        date: `Formador: ${projeto.devolutivas?.d1?.formador || 'N/A'}`,
+        description: `Formador: ${projeto.devolutivas?.d1?.formador || 'N/A'}`,
         isComplete: !!projeto.devolutivas?.d1?.ok,
     },
     {
@@ -106,7 +120,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 2',
-        date: `Formador: ${projeto.devolutivas?.d2?.formador || 'N/A'}`,
+        description: `Formador: ${projeto.devolutivas?.d2?.formador || 'N/A'}`,
         isComplete: !!projeto.devolutivas?.d2?.ok,
     },
     {
@@ -118,7 +132,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 3',
-        date: `Formador: ${projeto.devolutivas?.d3?.formador || 'N/A'}`,
+        description: `Formador: ${projeto.devolutivas?.d3?.formador || 'N/A'}`,
         isComplete: !!projeto.devolutivas?.d3?.ok,
     },
      {
@@ -130,7 +144,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 4',
-        date: `Formador: ${projeto.devolutivas?.d4?.formador || 'N/A'}`,
+        description: `Formador: ${projeto.devolutivas?.d4?.formador || 'N/A'}`,
         isComplete: !!projeto.devolutivas?.d4?.ok,
     },
      {
@@ -139,7 +153,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         description: 'Todas as etapas foram finalizadas com sucesso.',
         isComplete: true,
     },
-  ].filter(m => m.date || m.title === 'Projeto Concluído');
+  ].filter(m => m.date || m.description || m.title === 'Projeto Concluído');
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
@@ -166,7 +180,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         
         <section>
              <h3 className="text-xl font-semibold mb-6 pb-2 border-b">Marcos e Atividades</h3>
-             <div>
+             <div className='space-y-4'>
                 {milestones.map((milestone, index) => (
                     <MilestoneCard 
                         key={index}
