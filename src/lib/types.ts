@@ -148,6 +148,14 @@ interface PeriodoStatus {
 
 interface DevolutivaStatus extends PeriodoStatus {
   formador?: string;
+  detalhes?: string;
+}
+
+interface Devolutiva4Status {
+    data?: Timestamp | null;
+    ok?: boolean;
+    formador?: string;
+    detalhes?: string;
 }
 
 interface LinkReuniao {
@@ -183,14 +191,10 @@ export interface ProjetoImplatancao {
     d1: DevolutivaStatus;
     d2: DevolutivaStatus;
     d3: DevolutivaStatus;
-    d4: DevolutivaStatus & { data?: Timestamp | null }; // Devolutiva 4 only has one date
+    d4: Devolutiva4Status;
   };
 
   reunioes?: Reuniao[];
 
   dataCriacao: Timestamp;
 }
-
-    
-
-    

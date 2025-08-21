@@ -5,7 +5,27 @@ import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Star } from 'lucide-react';
+import { Star, Users } from 'lucide-react';
+import { Progress } from '../ui/progress';
+
+type AvaliacaoSummary = {
+    total: number;
+    mediaEditora: number;
+    modalidade: Record<string, number>;
+    funcao: Record<string, number>;
+    etapaEnsino: Record<string, number>;
+    materialTema: Record<string, number>;
+    assuntos: Record<string, number>;
+    organizacao: Record<string, number>;
+    relevancia: Record<string, number>;
+    material: Record<string, number>;
+    avaliacaoEditora: Record<string, number>;
+    respostasAbertas: {
+        motivos: string[];
+        interesses: string[];
+        observacoes: string[];
+    }
+}
 
 interface RelatorioProps {
   formacao: Formacao;
@@ -13,6 +33,7 @@ interface RelatorioProps {
   anexos: Anexo[];
   despesas: Despesa[];
   avaliacoes: Avaliacao[];
+  summary: AvaliacaoSummary | null;
 }
 
 const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
@@ -29,7 +50,38 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
-export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, avaliacoes }: RelatorioProps) {
+const QuestionSummary = ({ title, data, total }: {title: string, data: Record<string, number>, total: number}) => (
+    <div className="space-y-2">
+        <p className="font-medium">{title}</p>
+        {Object.entries(data).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => (
+            <div key={key}>
+                <div className="flex justify-between mb-1 text-xs">
+                    <span>{key}</span>
+                    <span>{value} ({((value / total) * 100).toFixed(0)}%)</span>
+                </div>
+                <Progress value={(value / total) * 100} className="h-1.5" />
+            </div>
+        ))}
+    </div>
+)
+
+const OpenEndedResponses = ({ title, responses }: { title: string, responses: string[] }) => (
+    <div>
+        <h4 className="font-semibold text-sm mb-1">{title}</h4>
+        {responses.length > 0 ? (
+            <ul className="list-disc list-inside space-y-2 text-xs text-gray-700 pl-2">
+                {responses.map((resp, i) => (
+                    <li key={i} className="italic">"{resp}"</li>
+                ))}
+            </ul>
+        ) : (
+            <p className="text-xs text-gray-500 italic">Nenhuma resposta.</p>
+        )}
+    </div>
+);
+
+
+export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, avaliacoes, summary }: RelatorioProps) {
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
@@ -48,7 +100,7 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, a
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes da Formação</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p><strong>Formação:</strong> {formacao.titulo}</p>
-            <div><strong>Status:</strong> <Badge variant="outline" className="text-sm">{formacao.status}</Badge></div>
+            <div><strong>Status:</strong> <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold">{formacao.status}</span></div>
             <p><strong>Município:</strong> {formacao.municipio} - {formacao.uf}</p>
              <p><strong>Período:</strong> {formatDate(formacao.dataInicio, {dateStyle: 'short'})} a {formatDate(formacao.dataFim, {dateStyle: 'short'})}</p>
             {formacao.participantes && (
@@ -128,50 +180,52 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, a
         </section>
         
         <section className="break-before-page">
-          <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Avaliações Detalhadas</h3>
-           {avaliacoes.length > 0 ? (
-                <div className="space-y-4">
-                    {avaliacoes.map((avaliacao, index) => (
-                        <Card key={avaliacao.id} className="break-inside-avoid">
-                            <CardHeader>
-                                <CardTitle className="text-base">Avaliação de: {avaliacao.nomeCompleto}</CardTitle>
-                                <p className="text-xs text-gray-500">{avaliacao.email} - {formatDate(avaliacao.dataCriacao, {dateStyle: 'full'})}</p>
+          <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Resumo das Avaliações</h3>
+           {avaliacoes.length > 0 && summary ? (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                         <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
+                                <Users className="h-4 w-4 text-gray-500" />
                             </CardHeader>
-                            <CardContent className="text-sm space-y-3">
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                    <p><strong>Formador Avaliado:</strong> {avaliacao.formadorNome}</p>
-                                    <p><strong>Modalidade:</strong> {avaliacao.modalidade}</p>
-                                    <p><strong>Função:</strong> {avaliacao.funcao}</p>
-                                    <p><strong>Etapa de Ensino:</strong> {avaliacao.etapaEnsino}</p>
-                                    <p><strong>Avaliação (1-5):</strong> 
-                                        <span className="flex items-center gap-1">{[...Array(5)].map((_, i) => (
-                                          <Star key={i} className={`h-4 w-4 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}/>
-                                        ))}</span>
-                                    </p>
-                                </div>
-                                
-                                <div>
-                                    <p><strong>Material/Tema:</strong> {avaliacao.materialTema.join(', ')}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                     <p><strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></p>
-                                    <p><strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></p>
-                                    <p><strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></p>
-                                    <p><strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></p>
-                                </div>
-
-                                {avaliacao.motivoMaterialNaoAtende && (
-                                    <div><strong>Motivo (Material):</strong><p className="pl-2 border-l-2 ml-1 text-gray-600 italic">{avaliacao.motivoMaterialNaoAtende}</p></div>
-                                )}
-                                {avaliacao.interesseFormacao && (
-                                    <div><strong>Interesse:</strong><p className="pl-2 border-l-2 ml-1 text-gray-600 italic">{avaliacao.interesseFormacao}</p></div>
-                                )}
-                                {avaliacao.observacoes && (
-                                    <div><strong>Observações:</strong><p className="pl-2 border-l-2 ml-1 text-gray-600 italic">{avaliacao.observacoes}</p></div>
-                                )}
+                            <CardContent>
+                                <div className="text-2xl font-bold">{summary.total}</div>
                             </CardContent>
                         </Card>
-                    ))}
+                         <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Média da Editora (1-5)</CardTitle>
+                                <Star className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{summary.mediaEditora.toFixed(1)}</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Respostas Quantitativas</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-x-8 gap-y-6 text-sm">
+                           <QuestionSummary title="Modalidade" data={summary.modalidade} total={summary.total}/>
+                           <QuestionSummary title="Função Pedagógica" data={summary.funcao} total={summary.total}/>
+                           <QuestionSummary title="Etapa de Ensino" data={summary.etapaEnsino} total={summary.total}/>
+                           <QuestionSummary title="Assuntos Abordados" data={summary.assuntos} total={summary.total}/>
+                           <QuestionSummary title="Organização do Encontro" data={summary.organizacao} total={summary.total}/>
+                           <QuestionSummary title="Relevância para Prática" data={summary.relevancia} total={summary.total}/>
+                           <QuestionSummary title="Material Atende Expectativas" data={summary.material} total={summary.total}/>
+                           <QuestionSummary title="Avaliação da Editora (1-5)" data={summary.avaliacaoEditora} total={summary.total}/>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Respostas Abertas</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                           <OpenEndedResponses title="Motivos (Material não atende)" responses={summary.respostasAbertas.motivos} />
+                           <OpenEndedResponses title="Principais Interesses na Formação" responses={summary.respostasAbertas.interesses} />
+                           <OpenEndedResponses title="Observações e Sugestões" responses={summary.respostasAbertas.observacoes} />
+                        </CardContent>
+                    </Card>
                 </div>
            ) : (
                 <p className="text-sm text-gray-500 italic">Nenhuma avaliação recebida para esta formação.</p>

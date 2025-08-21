@@ -36,53 +36,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { RelatorioFormacaoPrint } from '@/components/formacoes/relatorio-formacao-print';
 
-const fileToDataURL = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
-
-const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
-const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
-
-const typeIcons: Record<TipoDespesa, React.ElementType> = {
-  'Alimentação': Utensils,
-  'Transporte': Car,
-  'Hospedagem': Building,
-  'Material Didático': Book,
-  'Outros': Grip,
-};
-
-const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
-    if (!timestamp) return 'N/A';
-    const defaultOptions: Intl.DateTimeFormatOptions = {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    };
-    return timestamp.toDate().toLocaleDateString('pt-BR', options || defaultOptions);
-}
-
-
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
-
-type GroupedDespesas = {
-    [key in TipoDespesa]?: Despesa[];
-}
-
-type GroupedByFormador = {
-    [formadorId: string]: {
-        formadorNome: string;
-        despesasPorTipo: GroupedDespesas;
-        total: number;
-    }
-}
-
 type AvaliacaoSummary = {
     total: number;
     mediaEditora: number;
@@ -95,6 +48,11 @@ type AvaliacaoSummary = {
     relevancia: Record<string, number>;
     material: Record<string, number>;
     avaliacaoEditora: Record<string, number>;
+    respostasAbertas: {
+        motivos: string[];
+        interesses: string[];
+        observacoes: string[];
+    }
 }
 
 
@@ -166,6 +124,57 @@ export default function DetalhesFormacaoPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  
+  const avaliacaoSummary = useMemo<AvaliacaoSummary | null>(() => {
+    if (avaliacoes.length === 0) return null;
+
+    const summary: AvaliacaoSummary = {
+        total: avaliacoes.length,
+        mediaEditora: 0,
+        modalidade: {},
+        funcao: {},
+        etapaEnsino: {},
+        materialTema: {},
+        assuntos: {},
+        organizacao: {},
+        relevancia: {},
+        material: {},
+        avaliacaoEditora: {},
+        respostasAbertas: {
+            motivos: [],
+            interesses: [],
+            observacoes: []
+        }
+    };
+
+    let totalEditora = 0;
+
+    for (const avaliacao of avaliacoes) {
+        totalEditora += Number(avaliacao.avaliacaoEditora);
+        
+        summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
+        summary.funcao[avaliacao.funcao] = (summary.funcao[avaliacao.funcao] || 0) + 1;
+        summary.etapaEnsino[avaliacao.etapaEnsino] = (summary.etapaEnsino[avaliacao.etapaEnsino] || 0) + 1;
+        
+        for (const tema of avaliacao.materialTema) {
+            summary.materialTema[tema] = (summary.materialTema[tema] || 0) + 1;
+        }
+
+        summary.assuntos[avaliacao.avaliacaoAssuntos] = (summary.assuntos[avaliacao.avaliacaoAssuntos] || 0) + 1;
+        summary.organizacao[avaliacao.avaliacaoOrganizacao] = (summary.organizacao[avaliacao.avaliacaoOrganizacao] || 0) + 1;
+        summary.relevancia[avaliacao.avaliacaoRelevancia] = (summary.relevancia[avaliacao.avaliacaoRelevancia] || 0) + 1;
+        summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
+        summary.avaliacaoEditora[avaliacao.avaliacaoEditora] = (summary.avaliacaoEditora[avaliacao.avaliacaoEditora] || 0) + 1;
+
+        if (avaliacao.motivoMaterialNaoAtende) summary.respostasAbertas.motivos.push(avaliacao.motivoMaterialNaoAtende);
+        if (avaliacao.interesseFormacao) summary.respostasAbertas.interesses.push(avaliacao.interesseFormacao);
+        if (avaliacao.observacoes) summary.respostasAbertas.observacoes.push(avaliacao.observacoes);
+    }
+
+    summary.mediaEditora = totalEditora / summary.total;
+    
+    return summary;
+}, [avaliacoes]);
 
   if (loading) {
     return (
@@ -240,6 +249,7 @@ export default function DetalhesFormacaoPage() {
                         anexos={anexos}
                         despesas={despesas}
                         avaliacoes={avaliacoes}
+                        summary={avaliacaoSummary}
                     />
                 </div>
             </div>
