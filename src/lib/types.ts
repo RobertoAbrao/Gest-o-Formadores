@@ -134,7 +134,7 @@ export interface Avaliacao {
 }
 
 interface EtapaStatus {
-  data?: Timestamp | null;
+  data: Timestamp | null;
   ok?: boolean;
   detalhes?: string;
 }

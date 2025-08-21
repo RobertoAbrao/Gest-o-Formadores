@@ -29,7 +29,7 @@ type AvaliacaoSummary = {
 
 interface RelatorioProps {
   formacao: Formacao;
-  formador: Formador | null;
+  formadores: Formador[];
   anexos: Anexo[];
   despesas: Despesa[];
   avaliacoes: Avaliacao[];
@@ -82,7 +82,7 @@ const OpenEndedResponses = ({ title, responses }: { title: string, responses: st
 );
 
 
-export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, avaliacoes, summary }: RelatorioProps) {
+export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas, avaliacoes, summary }: RelatorioProps) {
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
@@ -110,14 +110,18 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas, a
           </div>
         </section>
 
-        {formador && (
+        {formadores && formadores.length > 0 && (
             <section>
-                <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Dados do Formador</h3>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                    <p><strong>Nome:</strong> {formador.nomeCompleto}</p>
-                    <p><strong>Email:</strong> {formador.email}</p>
-                    <p><strong>CPF:</strong> {formador.cpf}</p>
-                    <p><strong>Telefone:</strong> {formador.telefone}</p>
+                <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Dados dos Formadores</h3>
+                <div className="space-y-4">
+                  {formadores.map(formador => (
+                    <div key={formador.id} className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm pt-2 border-b last:border-b-0 pb-2">
+                        <p><strong>Nome:</strong> {formador.nomeCompleto}</p>
+                        <p><strong>Email:</strong> {formador.email}</p>
+                        <p><strong>CPF:</strong> {formador.cpf}</p>
+                        <p><strong>Telefone:</strong> {formador.telefone}</p>
+                    </div>
+                  ))}
                 </div>
             </section>
         )}

@@ -198,8 +198,6 @@ export default function DetalhesFormacaoPage() {
         </div>
     );
   }
-  
-  const formadorPrincipal = formadores.length > 0 ? formadores[0] : null;
 
   return (
     <>
@@ -245,7 +243,7 @@ export default function DetalhesFormacaoPage() {
                 <div className="printable-area">
                     <RelatorioFormacaoPrint 
                         formacao={formacao}
-                        formador={formadorPrincipal}
+                        formadores={formadores}
                         anexos={anexos}
                         despesas={despesas}
                         avaliacoes={avaliacoes}
