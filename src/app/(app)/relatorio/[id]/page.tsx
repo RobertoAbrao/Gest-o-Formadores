@@ -107,6 +107,7 @@ export default function DetalhesFormacaoPage() {
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const { toast } = useToast();
   
   const fetchData = useCallback(async () => {
@@ -148,6 +149,11 @@ export default function DetalhesFormacaoPage() {
             allDespesas.sort((a, b) => a.data.toMillis() - b.data.toMillis());
             setDespesas(allDespesas);
         }
+        
+        const qAvaliacoes = query(collection(db, 'avaliacoes'), where('formacaoId', '==', formacaoId));
+        const avaliacoesSnap = await getDocs(qAvaliacoes);
+        const avaliacoesData = avaliacoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Avaliacao));
+        setAvaliacoes(avaliacoesData);
 
     } catch (error) {
         console.error('Erro ao buscar detalhes da formação: ', error);
@@ -233,6 +239,7 @@ export default function DetalhesFormacaoPage() {
                         formador={formadorPrincipal}
                         anexos={anexos}
                         despesas={despesas}
+                        avaliacoes={avaliacoes}
                     />
                 </div>
             </div>
