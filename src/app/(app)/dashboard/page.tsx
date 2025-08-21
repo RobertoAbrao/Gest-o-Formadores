@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
+
 
 const lembreteSchema = z.object({
   titulo: z.string().min(3, 'O título é obrigatório.'),
@@ -54,6 +56,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
+  const { setNotificationFavicon, clearNotificationFavicon } = useDynamicFavicon();
+
 
   const form = useForm<LembreteFormValues>({
     resolver: zodResolver(lembreteSchema),
@@ -146,7 +150,6 @@ export default function DashboardPage() {
       const todaysEvents = allEvents.filter(event => isSameDay(event.date, today));
       setTodayEvents(todaysEvents);
 
-
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -157,6 +160,15 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [user]);
+
+  useEffect(() => {
+    if (todayEvents.length > 0) {
+      setNotificationFavicon();
+    } else {
+      clearNotificationFavicon();
+    }
+  }, [todayEvents, setNotificationFavicon, clearNotificationFavicon]);
+
 
   const onLembreteSubmit = async (values: LembreteFormValues) => {
     try {

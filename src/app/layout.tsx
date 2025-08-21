@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/auth-provider';
@@ -6,6 +7,9 @@ import { Toaster } from '@/components/ui/toaster';
 export const metadata: Metadata = {
   title: 'Gestão de Formadores',
   description: 'Portal de Apoio Pedagógico',
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({
