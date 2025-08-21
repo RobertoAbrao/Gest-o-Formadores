@@ -116,27 +116,51 @@ export default function PrintPage() {
   }
 
   return (
-    <div className="bg-background min-h-screen p-4 sm:p-8">
-        <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-start mb-8 no-print">
-                <div>
-                    <AppLogo />
-                    <p className="text-muted-foreground mt-1">Pré-visualização do Relatório</p>
-                </div>
-                <Button onClick={() => window.print()}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Imprimir
-                </Button>
-            </div>
-            <div className="printable-area">
-                <RelatorioFormacaoPrint 
-                    formacao={formacao}
-                    formador={formador}
-                    anexos={anexos}
-                    despesas={despesas}
-                />
-            </div>
-        </div>
-    </div>
+    <>
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .printable-report, .printable-report * {
+            visibility: visible;
+          }
+          .printable-report {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            padding: 1rem;
+            margin: 0;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="bg-background min-h-screen p-4 sm:p-8">
+          <div className="max-w-4xl mx-auto">
+              <div className="flex justify-between items-start mb-8 no-print">
+                  <div>
+                      <AppLogo />
+                      <p className="text-muted-foreground mt-1">Pré-visualização do Relatório</p>
+                  </div>
+                  <Button onClick={() => window.print()}>
+                      <Printer className="mr-2 h-4 w-4" />
+                      Imprimir
+                  </Button>
+              </div>
+              <div className="printable-report">
+                  <RelatorioFormacaoPrint 
+                      formacao={formacao}
+                      formador={formador}
+                      anexos={anexos}
+                      despesas={despesas}
+                  />
+              </div>
+          </div>
+      </div>
+    </>
   );
 }
