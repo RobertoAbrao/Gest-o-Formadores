@@ -248,7 +248,7 @@ export default function DashboardPage() {
       </div>
 
        {todayEvents.length > 0 && (
-            <Alert>
+            <Alert className='bg-warning/10 border-warning/20 text-warning-foreground [&>svg]:text-yellow-600'>
                 <BellRing className="h-4 w-4 animate-pulse text-destructive" />
                 <AlertTitle>Você tem {todayEvents.length} {todayEvents.length === 1 ? 'evento' : 'eventos'} hoje!</AlertTitle>
                 <AlertDescription>
