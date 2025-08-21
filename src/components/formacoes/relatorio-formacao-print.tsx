@@ -45,7 +45,7 @@ export function RelatorioFormacaoPrint({ formacao, formador, anexos, despesas }:
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes da Formação</h3>
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p><strong>Formação:</strong> {formacao.titulo}</p>
-            <p><strong>Status:</strong> <Badge variant="outline" className="text-sm">{formacao.status}</Badge></p>
+            <div><strong>Status:</strong> <Badge variant="outline" className="text-sm">{formacao.status}</Badge></div>
             <p><strong>Município:</strong> {formacao.municipio} - {formacao.uf}</p>
              <p><strong>Período:</strong> {formatDate(formacao.dataInicio, {dateStyle: 'short'})} a {formatDate(formacao.dataFim, {dateStyle: 'short'})}</p>
             {formacao.participantes && (
