@@ -102,7 +102,7 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
             <p><strong>Formação:</strong> {formacao.titulo}</p>
             <div><strong>Status:</strong> <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-100 px-2.5 py-0.5 text-xs font-semibold">{formacao.status}</span></div>
-            <p><strong>Município:</strong> {formacao.municipio} - {formacao.uf}</p>
+            <p><strong>Município:</strong> {formacao.municipio}</p>
              <p><strong>Período:</strong> {formatDate(formacao.dataInicio, {dateStyle: 'short'})} a {formatDate(formacao.dataFim, {dateStyle: 'short'})}</p>
             {formacao.participantes && (
                 <p><strong>Nº de Participantes:</strong> {formacao.participantes}</p>
@@ -246,3 +246,5 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
     </div>
   );
 }
+
+    
