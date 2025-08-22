@@ -176,41 +176,6 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
             </section>
         )}
 
-        <section>
-          <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Relatório de Despesas</h3>
-            {despesas.length > 0 ? (
-                <>
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {despesas.map((despesa) => (
-                        <TableRow key={despesa.id}>
-                        <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>{despesa.tipo}</TableCell>
-                        <TableCell>{despesa.descricao}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
-                 <div className="flex justify-end mt-4">
-                    <div className="text-right">
-                        <p className="text-gray-600">Total Geral:</p>
-                        <p className="text-2xl font-bold">{formatCurrency(totalDespesas)}</p>
-                    </div>
-                </div>
-                </>
-            ) : (
-                <p className="text-sm text-gray-500 italic">Nenhuma despesa registrada para o período desta formação.</p>
-            )}
-        </section>
         
         <section className="break-before-page">
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Resumo das Avaliações</h3>
