@@ -203,6 +203,15 @@ export default function DetalhesFormacaoPage() {
     <>
       <style jsx global>{`
         @media print {
+          body {
+            background-color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .print-container {
+            padding: 0;
+            margin: 0;
+          }
           body * {
             visibility: hidden;
           }
@@ -215,7 +224,7 @@ export default function DetalhesFormacaoPage() {
             top: 0;
             width: 100%;
             height: auto;
-            padding: 1rem;
+            padding: 0;
             margin: 0;
           }
           .no-print {
@@ -223,7 +232,7 @@ export default function DetalhesFormacaoPage() {
           }
         }
       `}</style>
-        <div className="bg-background min-h-screen p-4 sm:p-8">
+        <div className="bg-background min-h-screen p-4 sm:p-8 print-container">
             <div className="max-w-4xl mx-auto">
                 <div className="flex justify-between items-start mb-8 no-print">
                     <div>
