@@ -5,7 +5,7 @@ import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Star, Users } from 'lucide-react';
+import { Star, Users, File as FileIcon, FileType, FileText } from 'lucide-react';
 import { Progress } from '../ui/progress';
 
 type AvaliacaoSummary = {
@@ -86,6 +86,17 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
+  const getFileIcon = (fileName: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    if (extension === 'pdf') {
+        return <FileText className="h-6 w-6 text-red-500 mr-2 shrink-0" />;
+    }
+    if (extension === 'doc' || extension === 'docx') {
+        return <FileType className="h-6 w-6 text-blue-500 mr-2 shrink-0" />;
+    }
+    return <FileIcon className="h-6 w-6 text-gray-500 mr-2 shrink-0" />;
+  };
+
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-200">
@@ -133,16 +144,25 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                 <TableHeader>
                     <TableRow>
                     <TableHead>Data de Upload</TableHead>
-                    <TableHead>Nome do Arquivo</TableHead>
+                    <TableHead>Arquivo</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {anexos.map((anexo, index) => (
-                    <TableRow key={index}>
-                        <TableCell>{formatDate(anexo.dataUpload, { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-                        <TableCell>{anexo.nome}</TableCell>
-                    </TableRow>
-                    ))}
+                    {anexos.map((anexo, index) => {
+                        const isImage = anexo.url.startsWith('data:image');
+                        return (
+                             <TableRow key={index}>
+                                <TableCell className="w-[150px]">{formatDate(anexo.dataUpload, { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+                                <TableCell>
+                                    <div className='flex items-center gap-2'>
+                                        {!isImage && getFileIcon(anexo.nome)}
+                                        <span className='truncate'>{anexo.nome}</span>
+                                    </div>
+                                    {isImage && <img src={anexo.url} alt={anexo.nome} className="max-w-xs rounded-md mt-2 border p-1" />}
+                                </TableCell>
+                            </TableRow>
+                        )
+                    })}
                 </TableBody>
             </Table>
           </section>
@@ -173,6 +193,35 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                         ))}
                     </TableBody>
                 </Table>
+            </section>
+        )}
+        
+         {despesas.length > 0 && (
+            <section>
+                <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Relatório de Despesas</h3>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Formador</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Descrição</TableHead>
+                            <TableHead className='text-right'>Valor</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {despesas.map((despesa) => (
+                            <TableRow key={despesa.id}>
+                                <TableCell>{formatDate(despesa.data, {dateStyle: 'short'})}</TableCell>
+                                <TableCell>{despesa.formadorNome}</TableCell>
+                                <TableCell>{despesa.tipo}</TableCell>
+                                <TableCell>{despesa.descricao}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(despesa.valor)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+                <div className="text-right mt-2 font-bold pr-4">Total Despesas: {formatCurrency(totalDespesas)}</div>
             </section>
         )}
 
@@ -246,5 +295,3 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
     </div>
   );
 }
-
-    
