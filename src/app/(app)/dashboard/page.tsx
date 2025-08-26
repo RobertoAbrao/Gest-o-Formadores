@@ -121,15 +121,29 @@ export default function DashboardPage() {
         if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao.toDate(), type: 'projeto-marco', title: `Migração de Dados: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
         if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
         
-        Object.values(projeto.simulados || {}).forEach((simulado, i) => {
-          if (simulado.dataInicio) allEvents.push({ date: simulado.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-          if (simulado.dataFim) allEvents.push({ date: simulado.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-        });
-        Object.values(projeto.devolutivas || {}).forEach((devolutiva, i) => {
-          if ((devolutiva as any).data) allEvents.push({ date: (devolutiva as any).data.toDate(), type: 'projeto-acompanhamento', title: `Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-          if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-          if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-        });
+        if (projeto.simulados) {
+            Object.keys(projeto.simulados).forEach(key => {
+                const simuladoKey = key as keyof typeof projeto.simulados;
+                const simulado = projeto.simulados![simuladoKey];
+                const numero = simuladoKey.replace('s', '');
+                if (simulado && simulado.dataInicio) allEvents.push({ date: simulado.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+                if (simulado && simulado.dataFim) allEvents.push({ date: simulado.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+            });
+        }
+        if (projeto.devolutivas) {
+            Object.keys(projeto.devolutivas).forEach(key => {
+                const devolutivaKey = key as keyof typeof projeto.devolutivas;
+                const devolutiva = projeto.devolutivas![devolutivaKey];
+                const numero = devolutivaKey.replace('d', '');
+
+                if (devolutiva && (devolutiva as any).data) { // For d4
+                    allEvents.push({ date: (devolutiva as any).data.toDate(), type: 'projeto-acompanhamento', title: `Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+                } else if (devolutiva) { // For d1, d2, d3
+                    if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+                    if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+                }
+            });
+        }
       });
       
       const lembretesData = lembretesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Lembrete));
