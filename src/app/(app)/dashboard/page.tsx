@@ -121,11 +121,11 @@ export default function DashboardPage() {
         if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao.toDate(), type: 'projeto-marco', title: `Migração de Dados: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
         if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
         
-        Object.values(projeto.simulados).forEach((simulado, i) => {
+        Object.values(projeto.simulados || {}).forEach((simulado, i) => {
           if (simulado.dataInicio) allEvents.push({ date: simulado.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
           if (simulado.dataFim) allEvents.push({ date: simulado.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Simulado ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
         });
-        Object.values(projeto.devolutivas).forEach((devolutiva, i) => {
+        Object.values(projeto.devolutivas || {}).forEach((devolutiva, i) => {
           if ((devolutiva as any).data) allEvents.push({ date: (devolutiva as any).data.toDate(), type: 'projeto-acompanhamento', title: `Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
           if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
           if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Devolutiva ${i+1}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
@@ -158,7 +158,10 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    if(user?.perfil === 'administrador'){
+        fetchData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -202,10 +205,11 @@ export default function DashboardPage() {
 
   const eventDaysByType = useMemo(() => {
     return events.reduce((acc, event) => {
-        if (!acc[event.type]) {
-            acc[event.type] = [];
+        const eventType = event.type;
+        if (!acc[eventType]) {
+            acc[eventType] = [];
         }
-        acc[event.type].push(startOfDay(event.date));
+        acc[eventType].push(startOfDay(event.date));
         return acc;
     }, {} as Record<CalendarEvent['type'], Date[]>);
   }, [events]);
@@ -410,4 +414,5 @@ export default function DashboardPage() {
   );
 }
 
+    
     
