@@ -235,9 +235,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     const fetchMunicipios = async () => {
         setLoadingMunicipios(true);
         try {
-            const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`);
+            const response = await fetch(`/api/municipios/${selectedUf}`);
             const data = await response.json();
-            setMunicipios(data);
+            if (response.ok) {
+                setMunicipios(data);
+            } else {
+                throw new Error(data.error || 'Erro ao buscar municípios');
+            }
         } catch (error) {
             console.error('Failed to fetch municipios', error);
             toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os municípios." });
