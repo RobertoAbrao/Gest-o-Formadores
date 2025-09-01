@@ -20,7 +20,7 @@ export default function PowerBIPage() {
                 Dashboard interativo incorporado do Power BI.
             </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 p-0">
+        <CardContent className="flex-grow p-0">
             <iframe 
                 title="Duque de Caxias - Resultados" 
                 width="100%" 
