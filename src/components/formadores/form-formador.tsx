@@ -47,7 +47,7 @@ const disciplinas = [
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
-  email: z.string().email({ message: 'Por favor, insira um email válido.' }),
+  email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional(),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
   cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
@@ -129,14 +129,22 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
     },
   });
 
+  const generateCredentials = (nome: string) => {
+    const baseName = nome.toLowerCase().replace(/\s+/g, '');
+    const email = `${baseName}_editoralt@editoralt.com.br`;
+    const password = 'sabe123';
+    return { email, password };
+  };
+
   const createFormador = async (data: FormValues) => {
-    if (!data.password) throw new Error("Senha é obrigatória para criar um novo formador.");
+    const { email, password } = generateCredentials(data.nomeCompleto);
+
     if (!adminUser?.email || !adminUser?.adminPassword) {
         throw new Error("Credenciais do administrador não estão disponíveis. Faça login novamente.");
     }
 
     // 1. Create user in Firebase Auth. This will log in the new user.
-    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const newUser = userCredential.user;
 
     try {
@@ -146,14 +154,15 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
         // 3. With admin re-authenticated, create user profile in 'usuarios' collection
         await setDoc(doc(db, 'usuarios', newUser.uid), {
             nome: data.nomeCompleto,
-            email: data.email,
+            email: email,
             perfil: 'formador',
         });
 
         // 4. Create trainer details in 'formadores' collection
-        const { password, ...formData } = data;
+        const { password: oldPassword, email: oldEmail, ...formData } = data;
         const formadorData = {
             ...formData,
+            email,
             cpf: formData.cpf.replace(/\D/g, ''),
             telefone: formData.telefone.replace(/\D/g, ''),
         };
@@ -183,7 +192,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             await createFormador(values);
             toast({
                 title: 'Sucesso!',
-                description: 'Formador criado com sucesso.',
+                description: 'Formador criado com sucesso. Email e senha padrão foram definidos.',
             });
         }
         onSuccess();
@@ -223,33 +232,10 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="email@exemplo.com" {...field} disabled={isEditMode} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         {!isEditMode && (
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Senha</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="Crie uma senha forte" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormDescription>
+                O email será gerado automaticamente como NOME_editoralt@editoralt.com.br e a senha padrão será "sabe123".
+            </FormDescription>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
