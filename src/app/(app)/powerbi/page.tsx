@@ -2,7 +2,6 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2 } from "lucide-react";
 
 export default function PowerBIPage() {
   return (
@@ -14,21 +13,23 @@ export default function PowerBIPage() {
         </div>
       </div>
 
-      <Card className="h-full min-h-[70vh]">
+      <Card className="h-full min-h-[80vh] flex flex-col">
         <CardHeader>
-            <CardTitle>Dashboard Interativo</CardTitle>
+            <CardTitle>Duque de Caxias - Resultados</CardTitle>
             <CardDescription>
-                Esta é uma área reservada para a incorporação de um relatório do Power BI.
+                Dashboard interativo incorporado do Power BI.
             </CardDescription>
         </CardHeader>
-        <CardContent className="h-full">
-            <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg p-8 text-center">
-                <BarChart2 className="w-16 h-16 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">Espaço para Relatório do Power BI</h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                    Para exibir seu relatório aqui, você precisará obter o código de incorporação (iframe) do Power BI e colá-lo neste arquivo.
-                </p>
-            </div>
+        <CardContent className="flex-1 p-0">
+            <iframe 
+                title="Duque de Caxias - Resultados" 
+                width="100%" 
+                height="100%" 
+                src="https://app.powerbi.com/reportEmbed?reportId=d344eeef-1a02-4680-a68b-aef2f280654f&autoAuth=true&ctid=3923eeac-37fc-448a-96b0-374510edd804" 
+                frameBorder="0" 
+                allowFullScreen={true}
+                className="border-none rounded-b-lg"
+            ></iframe>
         </CardContent>
       </Card>
     </div>
