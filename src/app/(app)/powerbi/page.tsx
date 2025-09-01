@@ -20,7 +20,7 @@ export default function PowerBIPage() {
                 Dashboard interativo incorporado do Power BI.
             </CardDescription>
         </CardHeader>
-        <CardContent className="flex-grow p-0">
+        <CardContent className="flex-grow">
             <iframe 
                 title="Duque de Caxias - Resultados" 
                 width="100%" 
@@ -28,7 +28,7 @@ export default function PowerBIPage() {
                 src="https://app.powerbi.com/reportEmbed?reportId=d344eeef-1a02-4680-a68b-aef2f280654f&autoAuth=true&ctid=3923eeac-37fc-448a-96b0-374510edd804" 
                 frameBorder="0" 
                 allowFullScreen={true}
-                className="border-none rounded-b-lg"
+                className="border-none rounded-b-lg w-full h-full"
             ></iframe>
         </CardContent>
       </Card>
