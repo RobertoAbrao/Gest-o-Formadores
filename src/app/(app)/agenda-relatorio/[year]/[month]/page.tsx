@@ -46,64 +46,84 @@ export default function AgendaRelatorioPage() {
     setError(null);
     try {
         const startDate = Timestamp.fromDate(new Date(year, month - 1, 1));
-        const endDate = Timestamp.fromDate(new Date(year, month, 0, 23, 59, 59));
+        const endDate = Timestamp.fromDate(new Date(year, month, 1)); // First day of next month
 
         const formacoesCol = collection(db, 'formacoes');
         const projetosCol = collection(db, 'projetos');
         const lembretesCol = collection(db, 'lembretes');
-
-        const [formacoesSnap, projetosSnap, lembretesSnap] = await Promise.all([
-            getDocs(query(formacoesCol, where('status', '!=', 'arquivado'))),
-            getDocs(projetosCol),
-            getDocs(query(lembretesCol, where('data', '>=', startDate), where('data', '<=', endDate)))
-        ]);
-
+        
         const allEvents: CalendarEvent[] = [];
-        const startDateTime = startDate.toMillis();
-        const endDateTime = endDate.toMillis();
 
-        // Process Formações
-        formacoesSnap.docs.forEach(doc => {
+        // Fetch formations with dataInicio in the month
+        const formacoesInicioQuery = query(formacoesCol, 
+            where('status', '!=', 'arquivado'), 
+            where('dataInicio', '>=', startDate), 
+            where('dataInicio', '<', endDate)
+        );
+        const formacoesInicioSnap = await getDocs(formacoesInicioQuery);
+        formacoesInicioSnap.forEach(doc => {
             const formacao = { id: doc.id, ...doc.data() } as Formacao;
-            if (formacao.dataInicio && formacao.dataInicio.toMillis() >= startDateTime && formacao.dataInicio.toMillis() <= endDateTime) {
-                allEvents.push({ date: formacao.dataInicio, type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}` });
+            allEvents.push({ date: formacao.dataInicio!, type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}` });
+        });
+
+        // Fetch formations with dataFim in the month
+        const formacoesFimQuery = query(formacoesCol, 
+            where('status', '!=', 'arquivado'), 
+            where('dataFim', '>=', startDate), 
+            where('dataFim', '<', endDate)
+        );
+        const formacoesFimSnap = await getDocs(formacoesFimQuery);
+        formacoesFimSnap.forEach(doc => {
+            const formacao = { id: doc.id, ...doc.data() } as Formacao;
+            // Avoid duplicates if a formation starts and ends in the same month
+            if (!allEvents.some(e => e.type === 'formacao' && e.title === formacao.titulo && e.details.includes('Fim'))) {
+                 allEvents.push({ date: formacao.dataFim!, type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}` });
             }
-            if (formacao.dataFim && formacao.dataFim.toMillis() >= startDateTime && formacao.dataFim.toMillis() <= endDateTime) {
-                allEvents.push({ date: formacao.dataFim, type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}` });
+        });
+
+        // Fetch projects - Requires client-side filtering as Firestore can't query on multiple different date fields
+        const projetosSnap = await getDocs(projetosCol);
+        projetosSnap.forEach(doc => {
+            const projeto = { id: doc.id, ...doc.data() } as ProjetoImplatancao;
+            const startMillis = startDate.toMillis();
+            const endMillis = endDate.toMillis();
+
+            if (projeto.dataMigracao && projeto.dataMigracao.toMillis() >= startMillis && projeto.dataMigracao.toMillis() < endMillis) {
+                allEvents.push({ date: projeto.dataMigracao, type: 'projeto-marco', title: `Migração: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
             }
-             if(formacao.logistica) {
+            if (projeto.dataImplantacao && projeto.dataImplantacao.toMillis() >= startMillis && projeto.dataImplantacao.toMillis() < endMillis) {
+                allEvents.push({ date: projeto.dataImplantacao, type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+            }
+        });
+        
+        // Fetch Lembretes for the month
+        const lembretesQuery = query(lembretesCol, where('data', '>=', startDate), where('data', '<', endDate));
+        const lembretesSnap = await getDocs(lembretesQuery);
+        lembretesSnap.forEach(doc => {
+            const lembrete = { id: doc.id, ...doc.data() } as Lembrete;
+            allEvents.push({ date: lembrete.data, type: 'lembrete', title: lembrete.titulo, details: 'Lembrete Pessoal' });
+        });
+
+        // Fetch logistic reminders (client-side check as it involves date manipulation)
+         const allFormationsSnap = await getDocs(query(formacoesCol, where('status', '!=', 'arquivado')));
+         allFormationsSnap.forEach(doc => {
+            const formacao = { id: doc.id, ...doc.data() } as Formacao;
+            if(formacao.logistica) {
               formacao.logistica.forEach(item => {
                 if(item.alertaLembrete && item.diasLembrete && item.checkin) {
                   const alertDate = subDays(item.checkin.toDate(), item.diasLembrete);
-                  if (alertDate.getTime() >= startDateTime && alertDate.getTime() <= endDateTime) {
+                  if (alertDate.getTime() >= startDate.toMillis() && alertDate.getTime() < endDate.toMillis()) {
                       allEvents.push({
                           date: Timestamp.fromDate(alertDate),
                           type: 'lembrete',
                           title: item.alertaLembrete,
                           details: `Lembrete para ${item.formadorNome} na formação ${formacao.titulo}`
-                      })
+                      });
                   }
                 }
-              })
+              });
             }
-        });
-
-        // Process Projetos
-        projetosSnap.docs.forEach(doc => {
-            const projeto = { id: doc.id, ...doc.data() } as ProjetoImplatancao;
-             if (projeto.dataMigracao && projeto.dataMigracao.toMillis() >= startDateTime && projeto.dataMigracao.toMillis() <= endDateTime) {
-                allEvents.push({ date: projeto.dataMigracao, type: 'projeto-marco', title: `Migração: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
-            }
-             if (projeto.dataImplantacao && projeto.dataImplantacao.toMillis() >= startDateTime && projeto.dataImplantacao.toMillis() <= endDateTime) {
-                allEvents.push({ date: projeto.dataImplantacao, type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
-            }
-        });
-        
-        // Process Lembretes
-        lembretesSnap.docs.forEach(doc => {
-            const lembrete = { id: doc.id, ...doc.data() } as Lembrete;
-            allEvents.push({ date: lembrete.data, type: 'lembrete', title: lembrete.titulo, details: 'Lembrete Pessoal' });
-        });
+         });
         
         allEvents.sort((a, b) => a.date.toMillis() - b.date.toMillis());
         setEvents(allEvents);
@@ -158,7 +178,7 @@ export default function AgendaRelatorioPage() {
             top: 0;
             width: 100%;
             height: auto;
-            padding: 0;
+            padding: 1rem;
             margin: 0;
           }
           .no-print {
