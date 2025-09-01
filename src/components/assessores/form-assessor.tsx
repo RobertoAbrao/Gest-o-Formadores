@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
 import type { Assessor } from '@/lib/types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { ComboboxMunicipios } from '../formadores/combobox-municipios';
 import { Separator } from '../ui/separator';
@@ -47,7 +47,7 @@ const disciplinas = [
 
 const formSchema = z.object({
   nomeCompleto: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
-  email: z.string().email({ message: 'Por favor, insira um email válido.' }).optional(),
+  email: z.string().email({ message: 'Por favor, insira um email válido.' }),
   password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }).optional().or(z.literal('')),
   cpf: z.string().refine(value => value.replace(/\D/g, '').length === 11, { message: 'O CPF deve ter 11 dígitos.' }),
   telefone: z.string().min(10, { message: 'O telefone deve ter pelo menos 10 dígitos.' }),
@@ -128,23 +128,31 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
       pix: assessor?.pix || '',
     },
   });
+  
+  const nomeCompleto = form.watch('nomeCompleto');
 
-  const generateCredentials = (nome: string) => {
-    const baseName = nome.toLowerCase().replace(/\s+/g, '');
-    const email = `${baseName}_editoralt@editoralt.com.br`;
-    const password = 'sabe123';
-    return { email, password };
-  };
+  useEffect(() => {
+    if (!isEditMode && nomeCompleto) {
+        const baseName = nomeCompleto.toLowerCase().replace(/\s+/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const email = `${baseName}_editoralt@editoralt.com.br`;
+        const password = 'sabe123';
+        form.setValue('email', email);
+        form.setValue('password', password);
+    }
+  }, [nomeCompleto, isEditMode, form]);
+
 
   const createAssessor = async (data: FormValues) => {
-    const { email, password } = generateCredentials(data.nomeCompleto);
+    if (!data.email || !data.password) {
+        throw new Error("Email e senha são obrigatórios para criar um novo assessor.");
+    }
 
     if (!adminUser?.email || !adminUser?.adminPassword) {
         throw new Error("Credenciais do administrador não estão disponíveis. Faça login novamente.");
     }
 
     // 1. Create user in Firebase Auth. This will log in the new user.
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
     const newUser = userCredential.user;
 
     try {
@@ -154,15 +162,14 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
         // 3. With admin re-authenticated, create user profile in 'usuarios' collection
         await setDoc(doc(db, 'usuarios', newUser.uid), {
             nome: data.nomeCompleto,
-            email: email,
+            email: data.email,
             perfil: 'assessor',
         });
 
         // 4. Create trainer details in 'assessores' collection
-        const { password: oldPassword, email: oldEmail, ...formData } = data;
+        const { password, ...formData } = data;
         const assessorData = {
             ...formData,
-            email,
             cpf: formData.cpf.replace(/\D/g, ''),
             telefone: formData.telefone.replace(/\D/g, ''),
         };
@@ -182,7 +189,7 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
     setLoading(true);
     try {
         if(isEditMode && assessor) {
-            const { password, email, ...updateData } = values;
+            const { password, ...updateData } = values;
             await updateAssessor(assessor.id, updateData);
             toast({
                 title: 'Sucesso!',
@@ -192,7 +199,7 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
             await createAssessor(values);
             toast({
                 title: 'Sucesso!',
-                description: 'Assessor criado com sucesso. Email e senha padrão foram definidos.',
+                description: 'Assessor criado com sucesso.',
             });
         }
         onSuccess();
@@ -232,10 +239,35 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
             </FormItem>
           )}
         />
-        {!isEditMode && (
-            <FormDescription>
-                O email será gerado automaticamente como NOME_editoralt@editoralt.com.br e a senha padrão será "sabe123".
-            </FormDescription>
+         {!isEditMode && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Email de login" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
@@ -423,5 +455,3 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
     </Form>
   );
 }
-
-    
