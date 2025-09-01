@@ -45,9 +45,6 @@ export default function AgendaRelatorioPage() {
     setLoading(true);
     setError(null);
     try {
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 1);
-
         const formacoesCol = collection(db, 'formacoes');
         const projetosCol = collection(db, 'projetos');
         const lembretesCol = collection(db, 'lembretes');
@@ -86,6 +83,30 @@ export default function AgendaRelatorioPage() {
             const projeto = { id: doc.id, ...doc.data() } as ProjetoImplatancao;
             if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao, type: 'projeto-marco', title: `Migração: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
             if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao, type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+            
+            if (projeto.simulados) {
+              Object.keys(projeto.simulados).forEach(key => {
+                  const simuladoKey = key as keyof typeof projeto.simulados;
+                  const simulado = projeto.simulados![simuladoKey];
+                  const numero = simuladoKey.replace('s', '');
+                  if (simulado && simulado.dataInicio) allEvents.push({ date: simulado.dataInicio, type: 'projeto-acompanhamento', title: `Início Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+                  if (simulado && simulado.dataFim) allEvents.push({ date: simulado.dataFim, type: 'projeto-acompanhamento', title: `Fim Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+              });
+            }
+            if (projeto.devolutivas) {
+                Object.keys(projeto.devolutivas).forEach(key => {
+                    const devolutivaKey = key as keyof typeof projeto.devolutivas;
+                    const devolutiva = projeto.devolutivas![devolutivaKey];
+                    const numero = devolutivaKey.replace('d', '');
+
+                    if (devolutiva && (devolutiva as any).data) { // For d4
+                        allEvents.push({ date: (devolutiva as any).data, type: 'projeto-acompanhamento', title: `Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+                    } else if (devolutiva) { // For d1, d2, d3
+                        if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio, type: 'projeto-acompanhamento', title: `Início Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+                        if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim, type: 'projeto-acompanhamento', title: `Fim Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+                    }
+                });
+            }
         });
         
         // Fetch all non-concluded reminders
