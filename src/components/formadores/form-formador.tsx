@@ -134,7 +134,7 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
   useEffect(() => {
     if (!isEditMode && nomeCompleto) {
         const baseName = nomeCompleto.toLowerCase().replace(/\s+/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const email = `${baseName}_editoralt@editoralt.com.br`;
+        const email = `${baseName}@editoralt.com.br`;
         const password = 'sabe123';
         form.setValue('email', email);
         form.setValue('password', password);
@@ -238,36 +238,34 @@ export function FormFormador({ formador, onSuccess }: FormFormadorProps) {
             </FormItem>
           )}
         />
-        {!isEditMode && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
+                control={form.control}
+                name="email"
+                render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
                     <Input placeholder="Email de login" {...field} />
-                  </FormControl>
-                  <FormMessage />
+                    </FormControl>
+                    <FormMessage />
                 </FormItem>
-              )}
+                )}
             />
             <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
+                control={form.control}
+                name="password"
+                render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
                     <Input type="password" {...field} />
-                  </FormControl>
-                  <FormMessage />
+                    </FormControl>
+                    <FormMessage />
                 </FormItem>
-              )}
+                )}
             />
-          </div>
-        )}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
             control={form.control}

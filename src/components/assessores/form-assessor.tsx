@@ -134,7 +134,7 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
   useEffect(() => {
     if (!isEditMode && nomeCompleto) {
         const baseName = nomeCompleto.toLowerCase().replace(/\s+/g, '').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const email = `${baseName}_editoralt@editoralt.com.br`;
+        const email = `${baseName}@editoralt.com.br`;
         const password = 'sabe123';
         form.setValue('email', email);
         form.setValue('password', password);
@@ -239,7 +239,6 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
             </FormItem>
           )}
         />
-         {!isEditMode && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -268,7 +267,6 @@ export function FormAssessor({ assessor, onSuccess }: FormAssessorProps) {
               )}
             />
           </div>
-        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
             control={form.control}
