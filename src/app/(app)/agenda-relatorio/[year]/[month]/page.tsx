@@ -56,19 +56,19 @@ export default function AgendaRelatorioPage() {
 
         // Fetch formations with dataInicio in the month
         const formacoesInicioQuery = query(formacoesCol, 
-            where('status', '!=', 'arquivado'), 
             where('dataInicio', '>=', startDate), 
             where('dataInicio', '<', endDate)
         );
         const formacoesInicioSnap = await getDocs(formacoesInicioQuery);
         formacoesInicioSnap.forEach(doc => {
             const formacao = { id: doc.id, ...doc.data() } as Formacao;
-            allEvents.push({ date: formacao.dataInicio!, type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}` });
+            if(formacao.status !== 'arquivado') {
+              allEvents.push({ date: formacao.dataInicio!, type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}` });
+            }
         });
 
         // Fetch formations with dataFim in the month
         const formacoesFimQuery = query(formacoesCol, 
-            where('status', '!=', 'arquivado'), 
             where('dataFim', '>=', startDate), 
             where('dataFim', '<', endDate)
         );
@@ -76,8 +76,10 @@ export default function AgendaRelatorioPage() {
         formacoesFimSnap.forEach(doc => {
             const formacao = { id: doc.id, ...doc.data() } as Formacao;
             // Avoid duplicates if a formation starts and ends in the same month
-            if (!allEvents.some(e => e.type === 'formacao' && e.title === formacao.titulo && e.details.includes('Fim'))) {
-                 allEvents.push({ date: formacao.dataFim!, type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}` });
+            if(formacao.status !== 'arquivado') {
+              if (!allEvents.some(e => e.type === 'formacao' && e.title === formacao.titulo && e.details.includes('Fim'))) {
+                   allEvents.push({ date: formacao.dataFim!, type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}` });
+              }
             }
         });
 
