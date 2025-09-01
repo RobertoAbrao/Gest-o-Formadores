@@ -2,10 +2,11 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, startOfDay, subDays } from 'date-fns';
+import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
@@ -270,6 +271,9 @@ export default function DashboardPage() {
     );
   }
 
+  const reportYear = date ? date.getFullYear() : new Date().getFullYear();
+  const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
+
   return (
     <div className="flex flex-col gap-8 py-6">
       <div>
@@ -308,47 +312,54 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2">
             <CardHeader>
-                <div className='flex justify-between items-center'>
+                <div className='flex justify-between items-center gap-2 flex-wrap'>
                      <CardTitle className="flex items-center gap-2">
                         <CalendarIcon className="h-5 w-5" />
                         Agenda de Eventos
                     </CardTitle>
-                    <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                                <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className='sm:max-w-md'>
-                            <DialogHeader>
-                                <DialogTitle>Criar Novo Lembrete</DialogTitle>
-                                <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
-                            </DialogHeader>
-                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
-                                     <FormField control={form.control} name="titulo" render={({ field }) => (
-                                        <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="data" render={({ field }) => (
-                                        <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                                            <Popover><PopoverTrigger asChild><FormControl>
-                                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                            </PopoverContent></Popover><FormMessage />
-                                        </FormItem>
-                                    )}/>
-                                    <Button type='submit' disabled={form.formState.isSubmitting}>
-                                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                        Salvar Lembrete
-                                    </Button>
-                                </form>
-                             </Form>
-                        </DialogContent>
-                    </Dialog>
+                    <div className='flex items-center gap-2'>
+                        <Button size="sm" variant="outline" asChild>
+                            <Link href={`/agenda-relatorio/${reportYear}/${reportMonth}`} target='_blank'>
+                                <Printer className='mr-2 h-4 w-4' /> Imprimir Mês
+                            </Link>
+                        </Button>
+                        <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline">
+                                    <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className='sm:max-w-md'>
+                                <DialogHeader>
+                                    <DialogTitle>Criar Novo Lembrete</DialogTitle>
+                                    <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
+                                </DialogHeader>
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
+                                        <FormField control={form.control} name="titulo" render={({ field }) => (
+                                            <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="data" render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                        <Button type='submit' disabled={form.formState.isSubmitting}>
+                                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                            Salvar Lembrete
+                                        </Button>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
                 <CardDescription>
                     Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
