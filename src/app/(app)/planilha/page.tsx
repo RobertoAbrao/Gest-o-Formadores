@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import * as XLSX from 'xlsx';
 
 interface Activity {
   date: Date;
@@ -128,6 +129,31 @@ export default function PlanilhaPage() {
     }, {} as Record<string, Activity[]>);
 
   }, [projetos]);
+
+  const handleExport = (activities: Activity[], monthYear: string) => {
+    const dataToExport = activities.map(activity => ({
+      'Data/Período': activity.endDate ? formatPeriod(activity.date, activity.endDate) : formatDate(activity.date),
+      'Município (UF)': `${activity.municipio} (${activity.uf})`,
+      'Atividade': activity.atividade,
+      'Observações': activity.observacoes
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Atividades");
+    
+    // Auto-size columns
+    const cols = Object.keys(dataToExport[0]);
+    const colWidths = cols.map(col => ({
+        wch: Math.max(
+            col.length,
+            ...dataToExport.map(row => row[col as keyof typeof row]?.toString().length ?? 0)
+        )
+    }));
+    worksheet["!cols"] = colWidths;
+    
+    XLSX.writeFile(workbook, `Planilha Atividades - ${monthYear}.xlsx`);
+  };
   
   if (loading) {
     return (
@@ -186,7 +212,7 @@ export default function PlanilhaPage() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button variant="outline">
+                        <Button variant="outline" onClick={() => handleExport(activities, monthYear)}>
                             <Sheet className="mr-2 h-4 w-4" />
                             Exportar para as Planilhas
                         </Button>
