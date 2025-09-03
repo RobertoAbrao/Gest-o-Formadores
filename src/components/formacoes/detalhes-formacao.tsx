@@ -13,10 +13,11 @@ import {
   arrayRemove,
   Timestamp,
 } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -354,6 +355,37 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status da avaliação." });
     }
   }
+
+  const handleExportAvaliacoes = () => {
+    if (!formacao || avaliacoes.length === 0) {
+        toast({ variant: 'destructive', title: 'Nenhum dado para exportar', description: 'Não há avaliações para esta formação.' });
+        return;
+    }
+
+    const dataToExport = avaliacoes.map(avaliacao => ({
+      'Nome Completo': avaliacao.nomeCompleto,
+      'Email': avaliacao.email,
+      'Formação': formacao.titulo,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Participantes");
+
+    // Auto-size columns
+    const cols = Object.keys(dataToExport[0]);
+    const colWidths = cols.map(col => ({
+        wch: Math.max(
+            col.length,
+            ...dataToExport.map(row => row[col as keyof typeof row]?.toString().length ?? 0)
+        )
+    }));
+    worksheet["!cols"] = colWidths;
+
+    XLSX.writeFile(workbook, `Participantes - ${formacao.titulo}.xlsx`);
+    toast({ title: 'Sucesso', description: 'O download da lista de participantes foi iniciado.' });
+  };
+
 
   const openDespesaDetails = (despesa: Despesa) => {
     setSelectedDespesa(despesa);
@@ -774,7 +806,18 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             </TabsContent>
             <TabsContent value="avaliacoes">
                  <div className="space-y-6 pt-4">
-                     <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                     <div className='flex justify-between items-center'>
+                        <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleExportAvaliacoes}
+                            disabled={avaliacoes.length === 0}
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Exportar para CSV
+                        </Button>
+                     </div>
                      <Separator />
                       {avaliacoes.length === 0 ? (
                         <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
@@ -990,3 +1033,4 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </ScrollArea>
   );
 }
+
