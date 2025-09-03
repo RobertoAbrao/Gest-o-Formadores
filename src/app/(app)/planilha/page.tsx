@@ -80,7 +80,7 @@ export default function PlanilhaPage() {
                 municipio: p.municipio,
                 uf: p.uf,
                 atividade: "Implantação",
-                observacoes: p.formadoresIds && p.formadoresIds.length > 0 ? `Formador(es) associado(s)` : ''
+                observacoes: p.diagnostica?.detalhes || ''
             });
         }
         if (p.dataMigracao) {
@@ -92,7 +92,20 @@ export default function PlanilhaPage() {
                 observacoes: ''
             });
         }
-        // Add more activities from simulados and devolutivas
+        if (p.simulados) {
+            Object.entries(p.simulados).forEach(([key, simulado]) => {
+                if (simulado.dataInicio) {
+                     allActivities.push({
+                        date: (simulado.dataInicio as Timestamp).toDate(),
+                        endDate: simulado.dataFim ? (simulado.dataFim as Timestamp).toDate() : undefined,
+                        municipio: p.municipio,
+                        uf: p.uf,
+                        atividade: `Simulado ${key.replace('s','')}`,
+                        observacoes: simulado.detalhes || ''
+                    });
+                }
+            })
+        }
         if (p.devolutivas) {
             Object.entries(p.devolutivas).forEach(([key, devolutiva]) => {
                 if ('data' in devolutiva && devolutiva.data) {
@@ -101,7 +114,7 @@ export default function PlanilhaPage() {
                         municipio: p.municipio,
                         uf: p.uf,
                         atividade: `Devolutiva ${key.replace('d','')}`,
-                        observacoes: devolutiva.formador ? `Formador: ${devolutiva.formador}` : ''
+                        observacoes: devolutiva.detalhes || (devolutiva.formador ? `Formador: ${devolutiva.formador}` : '')
                     });
                 } else if ('dataInicio' in devolutiva && devolutiva.dataInicio) {
                     allActivities.push({
@@ -110,7 +123,7 @@ export default function PlanilhaPage() {
                         municipio: p.municipio,
                         uf: p.uf,
                         atividade: `Devolutiva ${key.replace('d','')}`,
-                        observacoes: devolutiva.formador ? `Formador: ${devolutiva.formador}` : ''
+                        observacoes: devolutiva.detalhes || (devolutiva.formador ? `Formador: ${devolutiva.formador}` : '')
                     });
                 }
             })
