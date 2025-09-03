@@ -71,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
           { href: '/quadro', label: 'Acompanhamento', icon: KanbanSquare },
           { href: '/projetos', label: 'Projetos', icon: ClipboardList },
-          { href: '/planilha', label: 'Planilha', icon: SheetIcon },
+          { href: '/planilha', label: 'Planilha Projetos', icon: SheetIcon },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
         ]

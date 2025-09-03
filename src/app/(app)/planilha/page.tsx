@@ -180,7 +180,7 @@ export default function PlanilhaPage() {
     <div className="flex flex-col gap-8 py-6 h-full">
       <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Planilha de Atividades</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Planilha de Projetos</h1>
             <p className="text-muted-foreground">Visualize todas as atividades dos projetos em um único lugar.</p>
         </div>
       </div>
