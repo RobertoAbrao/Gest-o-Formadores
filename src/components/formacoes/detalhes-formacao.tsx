@@ -366,6 +366,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       'Nome Completo': avaliacao.nomeCompleto,
       'Email': avaliacao.email,
       'Formação': formacao.titulo,
+      'Data da Formação': formatDate(avaliacao.dataFormacao, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      'Modalidade': avaliacao.modalidade,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
