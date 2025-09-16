@@ -146,7 +146,7 @@ interface PeriodoStatus {
   detalhes?: string;
 }
 
-interface DevolutivaLink {
+export interface DevolutivaLink {
   formacaoId?: string;
   formacaoTitulo?: string;
   dataInicio?: Timestamp | null;
@@ -177,6 +177,7 @@ export interface ProjetoImplatancao {
   formacoesPendentes?: number;
   formadoresIds?: string[];
   dataImplantacao: Timestamp | null;
+  implantacaoFormacaoId?: string;
   
   diagnostica: EtapaStatus;
   simulados: {

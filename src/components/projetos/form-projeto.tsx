@@ -90,6 +90,7 @@ const formSchema = z.object({
   material: z.string().optional(),
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
+  implantacaoFormacaoId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
@@ -206,6 +207,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       material: projeto?.material || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
+      implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
@@ -327,30 +329,35 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   }
   
-  const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
-    const { municipio, uf, formadoresIds, devolutivas } = form.getValues();
-    const devolutivaData = devolutivas[`d${devolutivaNumber}`];
-    
+  const handleCreateFormation = async (title: string, dataInicio: Date | null, dataFim: Date | null, details: string | undefined, formadorNomes: string[]) => {
+    const { municipio, uf, formadoresIds } = form.getValues();
     if (!municipio || !uf) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
-      return;
+      return null;
     }
-    
+
     setLoading(true);
     try {
-      const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
+      let finalFormadoresIds: string[] = [];
+      if (formadorNomes && formadorNomes.length > 0) {
+        finalFormadoresIds = allFormadores.filter(f => formadorNomes.includes(f.nomeCompleto)).map(f => f.id);
+      } else {
+        finalFormadoresIds = formadoresIds || [];
+      }
+
+
       const newFormationData: Omit<Formacao, 'id'> = {
         titulo: title,
-        descricao: devolutivaData.detalhes || `Devolutiva referente ao projeto de implantação em ${municipio}.`,
+        descricao: details || `Atividade referente ao projeto de implantação em ${municipio}.`,
         status: 'preparacao',
         municipio,
         uf,
         codigo: generateFormationCode(municipio),
-        formadoresIds: devolutivaData.formador ? allFormadores.filter(f => f.nomeCompleto === devolutivaData.formador).map(f => f.id) : (formadoresIds || []),
+        formadoresIds: finalFormadoresIds,
         materiaisIds: [],
         avaliacoesAbertas: false,
-        dataInicio: devolutivaData.dataInicio ? Timestamp.fromDate(devolutivaData.dataInicio) : null,
-        dataFim: devolutivaData.dataFim ? Timestamp.fromDate(devolutivaData.dataFim) : null,
+        dataInicio: dataInicio ? Timestamp.fromDate(dataInicio) : null,
+        dataFim: dataFim ? Timestamp.fromDate(dataFim) : null,
       };
       
       const docRef = await addDoc(collection(db, "formacoes"), {
@@ -358,16 +365,46 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           dataCriacao: serverTimestamp(),
       });
       
-      form.setValue(`devolutivas.d${devolutivaNumber}.formacaoId`, docRef.id);
-      form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
-      
-      toast({ title: 'Sucesso!', description: `Formação para a Devolutiva ${devolutivaNumber} criada.` });
+      toast({ title: 'Sucesso!', description: `Formação "${title}" criada.` });
+      return docRef.id;
 
     } catch (error) {
-      console.error("Error creating devolutiva formation:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação para a devolutiva.' });
+      console.error("Error creating formation:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação.' });
+      return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateImplantacaoFormation = async () => {
+    const { dataImplantacao, municipio, formadoresIds } = form.getValues();
+    const title = `Implantação: ${municipio}`;
+    const formadores = allFormadores.filter(f => formadoresIds?.includes(f.id)).map(f => f.nomeCompleto);
+
+    const newFormationId = await handleCreateFormation(title, dataImplantacao, dataImplantacao, 'Formação referente à implantação do sistema.', formadores);
+
+    if (newFormationId) {
+        form.setValue('implantacaoFormacaoId', newFormationId);
+    }
+  }
+
+  const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
+    const { municipio, devolutivas } = form.getValues();
+    const devolutivaData = devolutivas[`d${devolutivaNumber}`];
+    const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
+    
+    const newFormationId = await handleCreateFormation(
+        title, 
+        devolutivaData.dataInicio, 
+        devolutivaData.dataFim, 
+        devolutivaData.detalhes,
+        devolutivaData.formador ? [devolutivaData.formador] : []
+    );
+      
+    if (newFormationId) {
+      form.setValue(`devolutivas.d${devolutivaNumber}.formacaoId`, newFormationId);
+      form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
     }
   };
 
@@ -445,18 +482,29 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 </PopoverContent></Popover><FormMessage />
               </FormItem>
             )}/>
-            <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
-              <FormItem className="flex flex-col"><FormLabel>Data de Implantação</FormLabel>
-                <Popover><PopoverTrigger asChild><FormControl>
-                  <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                </PopoverContent></Popover><FormMessage />
-              </FormItem>
-            )}/>
+            <div className="space-y-2">
+                <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
+                  <FormItem className="flex flex-col"><FormLabel>Data de Implantação</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl>
+                      <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                    </PopoverContent></Popover><FormMessage />
+                  </FormItem>
+                )}/>
+                 {form.watch("implantacaoFormacaoId") ? (
+                    <div className="text-sm text-green-600 flex items-center gap-2">
+                        <Check className="h-4 w-4" /> Formação de implantação criada.
+                    </div>
+                ) : (
+                    <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao')}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
+                    </Button>
+                )}
+            </div>
             <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
               <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )}/>
