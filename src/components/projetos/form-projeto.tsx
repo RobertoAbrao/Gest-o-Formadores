@@ -14,6 +14,7 @@ import {
   getDocs,
   query,
   where,
+  addDoc,
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
@@ -34,7 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X } from 'lucide-react';
-import type { ProjetoImplatancao, Formador } from '@/lib/types';
+import type { ProjetoImplatancao, Formador, Formacao } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -45,6 +46,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { generateFormationCode } from '@/lib/utils';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -59,14 +61,10 @@ const periodoStatusSchema = z.object({
   detalhes: z.string().optional(),
 });
 
-const devolutivaStatusSchema = periodoStatusSchema.extend({
-  formador: z.string().optional(),
+const devolutivaLinkSchema = z.object({
+  formacaoId: z.string().optional(),
+  formacaoTitulo: z.string().optional(),
 });
-
-
-const devolutiva4Schema = devolutivaStatusSchema.extend({
-  data: z.date().nullable().optional(),
-}).omit({ dataInicio: true, dataFim: true });
 
 const linkReuniaoSchema = z.object({
     url: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
@@ -103,10 +101,10 @@ const formSchema = z.object({
     s4: periodoStatusSchema,
   }),
   devolutivas: z.object({
-    d1: devolutivaStatusSchema,
-    d2: devolutivaStatusSchema,
-    d3: devolutivaStatusSchema,
-    d4: devolutiva4Schema,
+    d1: devolutivaLinkSchema,
+    d2: devolutivaLinkSchema,
+    d3: devolutivaLinkSchema,
+    d4: devolutivaLinkSchema,
   }),
   reunioes: z.array(reuniaoSchema).optional(),
 });
@@ -213,10 +211,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '' },
       },
       devolutivas: {
-        d1: { dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), formador: projeto?.devolutivas?.d1?.formador || '', ok: projeto?.devolutivas?.d1?.ok || false, detalhes: projeto?.devolutivas?.d1?.detalhes || '' },
-        d2: { dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), formador: projeto?.devolutivas?.d2?.formador || '', ok: projeto?.devolutivas?.d2?.ok || false, detalhes: projeto?.devolutivas?.d2?.detalhes || '' },
-        d3: { dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), formador: projeto?.devolutivas?.d3?.formador || '', ok: projeto?.devolutivas?.d3?.ok || false, detalhes: projeto?.devolutivas?.d3?.detalhes || '' },
-        d4: { data: toDate(projeto?.devolutivas?.d4?.data), formador: projeto?.devolutivas?.d4?.formador || '', ok: projeto?.devolutivas?.d4?.ok || false, detalhes: projeto?.devolutivas?.d4?.detalhes || '' },
+        d1: { formacaoId: projeto?.devolutivas?.d1?.formacaoId, formacaoTitulo: projeto?.devolutivas?.d1?.formacaoTitulo },
+        d2: { formacaoId: projeto?.devolutivas?.d2?.formacaoId, formacaoTitulo: projeto?.devolutivas?.d2?.formacaoTitulo },
+        d3: { formacaoId: projeto?.devolutivas?.d3?.formacaoId, formacaoTitulo: projeto?.devolutivas?.d3?.formacaoTitulo },
+        d4: { formacaoId: projeto?.devolutivas?.d4?.formacaoId, formacaoTitulo: projeto?.devolutivas?.d4?.formacaoTitulo },
       },
       reunioes: projeto?.reunioes?.map(r => ({
           data: toDate(r.data),
@@ -284,16 +282,11 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes },
             s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes },
           },
-          devolutivas: {
-            d1: { dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim), formador: values.devolutivas.d1.formador, ok: values.devolutivas.d1.ok, detalhes: values.devolutivas.d1.detalhes },
-            d2: { dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim), formador: values.devolutivas.d2.formador, ok: values.devolutivas.d2.ok, detalhes: values.devolutivas.d2.detalhes },
-            d3: { dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim), formador: values.devolutivas.d3.formador, ok: values.devolutivas.d3.ok, detalhes: values.devolutivas.d3.detalhes },
-            d4: { data: timestampOrNull(values.devolutivas.d4.data), formador: values.devolutivas.d4.formador, ok: values.devolutivas.d4.ok, detalhes: values.devolutivas.d4.detalhes },
-          },
           reunioes: values.reunioes?.map(reuniao => ({
             data: timestampOrNull(reuniao.data),
             links: reuniao.links?.filter(link => link && link.url) || []
-          }))
+          })),
+          devolutivas: values.devolutivas,
       };
 
       const cleanedData = cleanObject(dataToSave);
@@ -322,6 +315,51 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       setLoading(false);
     }
   }
+  
+  const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
+    const { municipio, uf, formadoresIds } = form.getValues();
+    if (!municipio || !uf) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
+      const newFormationData: Omit<Formacao, 'id'> = {
+        titulo: title,
+        descricao: `Devolutiva referente ao projeto de implantação em ${municipio}.`,
+        status: 'preparacao',
+        municipio,
+        uf,
+        codigo: generateFormationCode(municipio),
+        formadoresIds: formadoresIds || [],
+        materiaisIds: [],
+        avaliacoesAbertas: false,
+        dataInicio: null,
+        dataFim: null,
+      };
+      
+      const docRef = await addDoc(collection(db, "formacoes"), {
+          ...newFormationData,
+          dataCriacao: serverTimestamp(),
+      });
+      
+      form.setValue(`devolutivas.d${devolutivaNumber}`, {
+        formacaoId: docRef.id,
+        formacaoTitulo: title
+      });
+      
+      toast({ title: 'Sucesso!', description: `Formação para a Devolutiva ${devolutivaNumber} criada.` });
+
+    } catch (error) {
+      console.error("Error creating devolutiva formation:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação para a devolutiva.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <Form {...form}>
@@ -594,71 +632,40 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         
         {/* DEVOLUTIVAS */}
         <div className="space-y-4 p-4 border rounded-lg">
-          <h3 className="font-semibold text-lg">Cronograma de Devolutivas</h3>
-          <Separator />
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {([1, 2, 3] as const).map(i => (
-                <div key={`d${i}`} className='p-2 rounded-md border space-y-3'>
-                  <h4 className='font-medium'>Devolutiva {i}</h4>
-                  <FormField control={form.control} name={`devolutivas.d${i}.dataInicio`} render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
-                      <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                      </PopoverContent></Popover><FormMessage />
-                    </FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`devolutivas.d${i}.dataFim`} render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
-                      <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                      </PopoverContent></Popover><FormMessage />
-                    </FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`devolutivas.d${i}.formador`} render={({ field }) => (
-                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                   <FormField control={form.control} name={`devolutivas.d${i}.ok`} render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`devolutivas.d${i}.detalhes`} render={({ field }) => (
-                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                </div>
-              ))}
-                <div key="d4" className='p-2 rounded-md border space-y-3'>
-                  <h4 className='font-medium'>Devolutiva 4</h4>
-                  <FormField control={form.control} name="devolutivas.d4.data" render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                      <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                      </PopoverContent></Popover><FormMessage />
-                    </FormItem>
-                  )}/>
-                  <FormField control={form.control} name="devolutivas.d4.formador" render={({ field }) => (
-                    <FormItem><FormLabel>Formador</FormLabel><FormControl><Input placeholder="Nome do formador" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                   <FormField control={form.control} name="devolutivas.d4.ok" render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`devolutivas.d4.detalhes`} render={({ field }) => (
-                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                </div>
+            <h3 className="font-semibold text-lg">Cronograma de Devolutivas</h3>
+            <p className="text-sm text-muted-foreground">
+              Para gerenciar uma devolutiva (adicionar datas, anexos, despesas, etc.), crie uma formação para ela. A formação criada aparecerá no quadro de acompanhamento.
+            </p>
+            <Separator />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {([1, 2, 3, 4] as const).map(i => {
+                    const devolutiva = form.watch(`devolutivas.d${i}`);
+                    return (
+                        <div key={`d${i}`} className='p-3 rounded-md border space-y-3'>
+                            <h4 className='font-medium'>Devolutiva {i}</h4>
+                            {devolutiva?.formacaoId ? (
+                                <div className="space-y-2">
+                                  <p className="text-sm text-muted-foreground">
+                                      Formação criada: <span className="font-semibold text-foreground">{devolutiva.formacaoTitulo}</span>
+                                  </p>
+                                  <Button variant="outline" size="sm" asChild>
+                                      <a href={`/quadro`} target="_blank">Ver no Quadro</a>
+                                  </Button>
+                                </div>
+                            ) : (
+                                <Button 
+                                  type="button" 
+                                  variant="secondary" 
+                                  onClick={() => handleCreateDevolutivaFormation(i)}
+                                  disabled={loading}
+                                >
+                                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                  Criar Formação para Devolutiva {i}
+                                </Button>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
 

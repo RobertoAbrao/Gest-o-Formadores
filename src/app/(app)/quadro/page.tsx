@@ -69,28 +69,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Formacao, FormadorStatus, ProjetoImplatancao } from '@/lib/types';
+import type { Formacao, FormadorStatus } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
 
-type QuadroItem = (Formacao & { itemType: 'formacao' }) | {
-    id: string;
-    itemType: 'projeto';
-    titulo: string;
-    descricao: string;
-    dataInicio: Timestamp | null;
-    dataFim: Timestamp | null;
-    status: FormadorStatus; 
-    codigo: string;
-    projetoId: string;
-};
-
-
 type Columns = {
   [key in FormadorStatus]: {
     title: string;
-    items: QuadroItem[];
+    items: Formacao[];
   };
 };
 
@@ -125,56 +112,11 @@ export default function QuadroPage() {
     setLoading(true);
     try {
       const formacoesQuery = query(collection(db, 'formacoes'), where('status', '!=', 'arquivado'));
-      const projetosQuery = query(collection(db, 'projetos'));
-      
-      const [formacoesSnapshot, projetosSnapshot] = await Promise.all([
-        getDocs(formacoesQuery),
-        getDocs(projetosQuery),
-      ]);
+      const formacoesSnapshot = await getDocs(formacoesQuery);
 
       const formacoesData = formacoesSnapshot.docs.map(
-        (doc) => ({ itemType: 'formacao', id: doc.id, ...doc.data() } as Formacao & { itemType: 'formacao' })
+        (doc) => ({ id: doc.id, ...doc.data() } as Formacao)
       );
-      
-      const projetosData = projetosSnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao)
-      );
-      
-      const projectActivities: QuadroItem[] = [];
-      projetosData.forEach(proj => {
-          Object.entries(proj.devolutivas || {}).forEach(([key, devolutiva]) => {
-              const isD4 = key === 'd4';
-              const devolutivaD4 = devolutiva as any;
-
-              if (isD4 && devolutivaD4.data) {
-                 projectActivities.push({
-                      id: `${proj.id}-d-${key}`,
-                      itemType: 'projeto',
-                      titulo: `Devolutiva ${key.replace('d','')}: ${proj.municipio}`,
-                      descricao: devolutiva.detalhes || `Devolutiva com ${devolutiva.formador || 'formador não definido'}`,
-                      dataInicio: devolutivaD4.data,
-                      dataFim: devolutivaD4.data,
-                      status: 'preparacao',
-                      codigo: proj.id.substring(0, 6),
-                      projetoId: proj.id,
-                  });
-              } else if (!isD4 && devolutiva.dataInicio && devolutiva.dataFim) {
-                  projectActivities.push({
-                      id: `${proj.id}-d-${key}`,
-                      itemType: 'projeto',
-                      titulo: `Devolutiva ${key.replace('d','')}: ${proj.municipio}`,
-                      descricao: devolutiva.detalhes || `Devolutiva com ${devolutiva.formador || 'formador não definido'}`,
-                      dataInicio: devolutiva.dataInicio,
-                      dataFim: devolutiva.dataFim,
-                      status: 'preparacao',
-                      codigo: proj.id.substring(0, 6),
-                      projetoId: proj.id,
-                  });
-              }
-          });
-      });
-
-      const allItems: QuadroItem[] = [...formacoesData, ...projectActivities];
 
       const newColumns: Columns = {
         preparacao: { title: 'Preparação', items: [] },
@@ -186,22 +128,10 @@ export default function QuadroPage() {
 
       const today = startOfToday();
 
-      allItems.forEach((item) => {
+      formacoesData.forEach((item) => {
         let status: FormadorStatus = item.status;
         
-        // Dynamic status for formations not manually set to 'concluido'
-        if (item.itemType === 'formacao' && item.status !== 'concluido') {
-             if (item.dataInicio && isAfter(item.dataInicio.toDate(), today)) {
-                 status = 'preparacao';
-             } else if (item.dataInicio && item.dataFim && isWithinInterval(today, { start: item.dataInicio.toDate(), end: item.dataFim.toDate() })) {
-                 status = 'em-formacao';
-             } else if (item.dataFim && isBefore(item.dataFim.toDate(), today)) {
-                 status = 'pos-formacao';
-             }
-        }
-        
-        // Dynamic status for all project items
-        if (item.itemType === 'projeto') {
+        if (item.status !== 'concluido' && item.status !== 'arquivado') {
              if (item.dataInicio && isAfter(item.dataInicio.toDate(), today)) {
                  status = 'preparacao';
              } else if (item.dataInicio && item.dataFim && isWithinInterval(today, { start: item.dataInicio.toDate(), end: item.dataFim.toDate() })) {
@@ -211,7 +141,7 @@ export default function QuadroPage() {
              }
         }
 
-        if (newColumns[status] && status !== 'arquivado') {
+        if (newColumns[status]) {
           newColumns[status].items.push(item);
         }
       });
@@ -303,10 +233,9 @@ export default function QuadroPage() {
     );
   }
 
-  const getIconForItemType = (item: QuadroItem) => {
-      if (item.itemType === 'formacao') return <ClipboardCheck className="h-4 w-4" />;
+  const getIconForItem = (item: Formacao) => {
       if (item.titulo.toLowerCase().includes('devolutiva')) return <Flag className="h-4 w-4 text-green-600" />;
-      return <ClipboardList className="h-4 w-4" />;
+      return <ClipboardCheck className="h-4 w-4" />;
   }
 
 
@@ -325,7 +254,7 @@ export default function QuadroPage() {
                 Acompanhamento de Atividades
               </h1>
               <p className="text-muted-foreground">
-                Crie formações e acompanhe o progresso de projetos.
+                Crie e gerencie formações e devolutivas.
               </p>
             </div>
             <DialogTrigger asChild>
@@ -388,90 +317,83 @@ export default function QuadroPage() {
                     <Card
                       key={item.id}
                       className="bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => item.itemType === 'formacao' && openDetailDialog(item)}
+                      onClick={() => openDetailDialog(item)}
                     >
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between">
                           <h3 className="font-semibold text-base flex items-center gap-2">
-                             {getIconForItemType(item)}
+                             {getIconForItem(item)}
                             {item.titulo}
                           </h3>
-                          {item.itemType === 'formacao' && (
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0"
-                                >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Ver Detalhes
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0"
+                              >
+                                  <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Ver Detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                  <Link href={`/relatorio/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Ver Relatório
+                                  </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                  <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                                  Formulário de Avaliação
+                                  </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {item.status === 'pos-formacao' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  Marcar como Concluído
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Editar
+                              )}
+                              {item.status === 'concluido' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Arquivar
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/relatorio/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Ver Relatório
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                    <ClipboardCheck className="mr-2 h-4 w-4" />
-                                    Formulário de Avaliação
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {item.status === 'pos-formacao' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Marcar como Concluído
-                                  </DropdownMenuItem>
-                                )}
-                                {item.status === 'concluido' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
-                                    <Archive className="mr-2 h-4 w-4" />
-                                    Arquivar
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                    onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir
-                                </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                              )}
+                              <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                  onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
+                              >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Excluir
+                              </DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {item.descricao}
                         </p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
                             <div className="flex items-center gap-4">
-                               {item.itemType === 'formacao' && item.materiaisIds && item.materiaisIds.length > 0 && (
+                               {item.materiaisIds && item.materiaisIds.length > 0 && (
                                     <div className="flex items-center gap-1">
                                         <Paperclip className="h-4 w-4" />
                                         <span>{item.materiaisIds.length}</span>
                                     </div>
                                 )}
-                                {item.itemType === 'formacao' && item.participantes && item.participantes > 0 && (
+                                {item.participantes && item.participantes > 0 && (
                                      <div className="flex items-center gap-1">
                                         <Users className="h-4 w-4" />
                                         <span>{item.participantes}</span>
                                     </div>
-                                )}
-                                {item.itemType === 'projeto' && (
-                                    <Link href={`/projetos#${item.projetoId}`} className='hover:underline flex items-center gap-1'>
-                                        <ClipboardList className='h-4 w-4' /> Ver Projeto
-                                    </Link>
                                 )}
                             </div>
                             <Badge variant="outline" className="font-mono">

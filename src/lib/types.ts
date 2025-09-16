@@ -146,16 +146,9 @@ interface PeriodoStatus {
   detalhes?: string;
 }
 
-interface DevolutivaStatus extends PeriodoStatus {
-  formador?: string;
-  detalhes?: string;
-}
-
-interface Devolutiva4Status {
-    data?: Timestamp | null;
-    ok?: boolean;
-    formador?: string;
-    detalhes?: string;
+interface DevolutivaLink {
+  formacaoId?: string;
+  formacaoTitulo?: string;
 }
 
 interface LinkReuniao {
@@ -188,10 +181,10 @@ export interface ProjetoImplatancao {
     s4: PeriodoStatus;
   };
   devolutivas: {
-    d1: DevolutivaStatus;
-    d2: DevolutivaStatus;
-    d3: DevolutivaStatus;
-    d4: Devolutiva4Status;
+    d1: DevolutivaLink;
+    d2: DevolutivaLink;
+    d3: DevolutivaLink;
+    d4: DevolutivaLink;
   };
 
   reunioes?: Reuniao[];
