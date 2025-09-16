@@ -8,6 +8,7 @@ import {
   getDocs,
   query,
   where,
+  Timestamp,
 } from 'firebase/firestore';
 import {
   MoreHorizontal,
@@ -21,9 +22,13 @@ import {
   Hash,
   Users,
   ClipboardCheck,
+  Flag,
+  Target,
+  ClipboardList,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { isAfter, isBefore, isWithinInterval, startOfToday } from 'date-fns';
 
 import {
   AlertDialog,
@@ -61,15 +66,27 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Formacao, FormadorStatus } from '@/lib/types';
+import type { Formacao, FormadorStatus, ProjetoImplatancao } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
 
+type QuadroItem = (Formacao & { itemType: 'formacao' }) | {
+    id: string;
+    itemType: 'projeto';
+    titulo: string;
+    descricao: string;
+    dataInicio: Timestamp | null;
+    dataFim: Timestamp | null;
+    status: FormadorStatus; 
+    codigo: string;
+};
+
+
 type Columns = {
   [key in FormadorStatus]: {
     title: string;
-    formacoes: Formacao[];
+    items: QuadroItem[];
   };
 };
 
@@ -82,11 +99,11 @@ const columnTitles: { [key in FormadorStatus]: string } = {
 };
 
 const initialColumns: Columns = {
-  preparacao: { title: 'Preparação', formacoes: [] },
-  'em-formacao': { title: 'Em Formação', formacoes: [] },
-  'pos-formacao': { title: 'Pós Formação', formacoes: [] },
-  concluido: { title: 'Concluído', formacoes: [] },
-  arquivado: { title: 'Arquivado', formacoes: [] },
+  preparacao: { title: 'Preparação', items: [] },
+  'em-formacao': { title: 'Em Formação', items: [] },
+  'pos-formacao': { title: 'Pós Formação', items: [] },
+  concluido: { title: 'Concluído', items: [] },
+  arquivado: { title: 'Arquivado', items: [] },
 };
 
 export default function QuadroPage() {
@@ -100,36 +117,118 @@ export default function QuadroPage() {
   );
   const { toast } = useToast();
 
-  const fetchAndCategorizeFormacoes = useCallback(async () => {
+  const fetchAndCategorizeItems = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'formacoes'), where('status', '!=', 'arquivado'));
-      const querySnapshot = await getDocs(q);
-      const formacoesData = querySnapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Formacao)
+      const formacoesQuery = query(collection(db, 'formacoes'), where('status', '!=', 'arquivado'));
+      const projetosQuery = query(collection(db, 'projetos'));
+      
+      const [formacoesSnapshot, projetosSnapshot] = await Promise.all([
+        getDocs(formacoesQuery),
+        getDocs(projetosQuery),
+      ]);
+
+      const formacoesData = formacoesSnapshot.docs.map(
+        (doc) => ({ itemType: 'formacao', id: doc.id, ...doc.data() } as Formacao & { itemType: 'formacao' })
       );
+      
+      const projetosData = projetosSnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao)
+      );
+      
+      const projectActivities: QuadroItem[] = [];
+      projetosData.forEach(proj => {
+          Object.entries(proj.simulados || {}).forEach(([key, simulado]) => {
+              if (simulado.dataInicio && simulado.dataFim) {
+                  projectActivities.push({
+                      id: `${proj.id}-s-${key}`,
+                      itemType: 'projeto',
+                      titulo: `Simulado ${key.replace('s','')}: ${proj.municipio}`,
+                      descricao: simulado.detalhes || `Acompanhamento do simulado para o projeto ${proj.versao || ''}`.trim(),
+                      dataInicio: simulado.dataInicio,
+                      dataFim: simulado.dataFim,
+                      status: 'preparacao', // será recalculado
+                      codigo: proj.id.substring(0, 6)
+                  });
+              }
+          });
+          Object.entries(proj.devolutivas || {}).forEach(([key, devolutiva]) => {
+              const isD4 = key === 'd4';
+              const devolutivaD4 = devolutiva as any;
+
+              if (isD4 && devolutivaD4.data) {
+                 projectActivities.push({
+                      id: `${proj.id}-d-${key}`,
+                      itemType: 'projeto',
+                      titulo: `Devolutiva ${key.replace('d','')}: ${proj.municipio}`,
+                      descricao: devolutiva.detalhes || `Devolutiva com ${devolutiva.formador || 'formador não definido'}`,
+                      dataInicio: devolutivaD4.data,
+                      dataFim: devolutivaD4.data,
+                      status: 'preparacao',
+                      codigo: proj.id.substring(0, 6)
+                  });
+              } else if (!isD4 && devolutiva.dataInicio && devolutiva.dataFim) {
+                  projectActivities.push({
+                      id: `${proj.id}-d-${key}`,
+                      itemType: 'projeto',
+                      titulo: `Devolutiva ${key.replace('d','')}: ${proj.municipio}`,
+                      descricao: devolutiva.detalhes || `Devolutiva com ${devolutiva.formador || 'formador não definido'}`,
+                      dataInicio: devolutiva.dataInicio,
+                      dataFim: devolutiva.dataFim,
+                      status: 'preparacao',
+                      codigo: proj.id.substring(0, 6)
+                  });
+              }
+          });
+      });
+
+      const allItems: QuadroItem[] = [...formacoesData, ...projectActivities];
 
       const newColumns: Columns = {
-        preparacao: { title: 'Preparação', formacoes: [] },
-        'em-formacao': { title: 'Em Formação', formacoes: [] },
-        'pos-formacao': { title: 'Pós Formação', formacoes: [] },
-        concluido: { title: 'Concluído', formacoes: [] },
-        arquivado: { title: 'Arquivado', formacoes: [] },
+        preparacao: { title: 'Preparação', items: [] },
+        'em-formacao': { title: 'Em Formação', items: [] },
+        'pos-formacao': { title: 'Pós Formação', items: [] },
+        concluido: { title: 'Concluído', items: [] },
+        arquivado: { title: 'Arquivado', items: [] },
       };
 
+      const today = startOfToday();
 
-      formacoesData.forEach((formacao) => {
-        const status = formacao.status || 'preparacao';
+      allItems.forEach((item) => {
+        let status: FormadorStatus = item.status;
+        
+        // Dynamic status for formations not manually set to 'concluido'
+        if (item.itemType === 'formacao' && item.status !== 'concluido') {
+             if (item.dataInicio && isAfter(item.dataInicio.toDate(), today)) {
+                 status = 'preparacao';
+             } else if (item.dataInicio && item.dataFim && isWithinInterval(today, { start: item.dataInicio.toDate(), end: item.dataFim.toDate() })) {
+                 status = 'em-formacao';
+             } else if (item.dataFim && isBefore(item.dataFim.toDate(), today)) {
+                 status = 'pos-formacao';
+             }
+        }
+        
+        // Dynamic status for all project items
+        if (item.itemType === 'projeto') {
+             if (item.dataInicio && isAfter(item.dataInicio.toDate(), today)) {
+                 status = 'preparacao';
+             } else if (item.dataInicio && item.dataFim && isWithinInterval(today, { start: item.dataInicio.toDate(), end: item.dataFim.toDate() })) {
+                 status = 'em-formacao';
+             } else if (item.dataFim && isBefore(item.dataFim.toDate(), today)) {
+                 status = 'pos-formacao';
+             }
+        }
+
         if (newColumns[status] && status !== 'arquivado') {
-          newColumns[status].formacoes.push(formacao);
+          newColumns[status].items.push(item);
         }
       });
       setColumns(newColumns);
     } catch (error) {
-      console.error('Error fetching formacoes:', error);
+      console.error('Error fetching items:', error);
       toast({
         variant: 'destructive',
-        title: 'Erro ao buscar formações',
+        title: 'Erro ao buscar itens',
         description: 'Não foi possível carregar o quadro.',
       });
     } finally {
@@ -138,11 +237,11 @@ export default function QuadroPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchAndCategorizeFormacoes();
-  }, [fetchAndCategorizeFormacoes]);
+    fetchAndCategorizeItems();
+  }, [fetchAndCategorizeItems]);
 
   const handleSuccess = () => {
-    fetchAndCategorizeFormacoes();
+    fetchAndCategorizeItems();
     setIsFormDialogOpen(false);
     setSelectedFormacao(null);
   };
@@ -170,7 +269,7 @@ export default function QuadroPage() {
         title: 'Sucesso!',
         description: 'Formação excluída com sucesso.',
       });
-      fetchAndCategorizeFormacoes();
+      fetchAndCategorizeItems();
     } catch (error) {
       console.error('Error deleting formacao: ', error);
       toast({
@@ -188,11 +287,9 @@ export default function QuadroPage() {
     setIsDetailDialogOpen(open);
     if (!open) {
       setSelectedFormacao(null);
-      // Refetch data when closing the dialog to see status changes
-      fetchAndCategorizeFormacoes();
+      fetchAndCategorizeItems();
     }
   };
-
 
   if (loading) {
     return (
@@ -201,6 +298,14 @@ export default function QuadroPage() {
       </div>
     );
   }
+
+  const getIconForItemType = (item: QuadroItem) => {
+      if (item.itemType === 'formacao') return <ClipboardCheck className="h-4 w-4" />;
+      if (item.titulo.toLowerCase().includes('simulado')) return <Target className="h-4 w-4 text-blue-600" />;
+      if (item.titulo.toLowerCase().includes('devolutiva')) return <Flag className="h-4 w-4 text-green-600" />;
+      return <ClipboardList className="h-4 w-4" />;
+  }
+
 
   return (
       <div className="flex flex-col gap-4 py-6 h-full">
@@ -214,10 +319,10 @@ export default function QuadroPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight font-headline">
-                Acompanhamento de Formações
+                Acompanhamento de Atividades
               </h1>
               <p className="text-muted-foreground">
-                Crie e gerencie o progresso de cada formação.
+                Crie formações e acompanhe o progresso de projetos.
               </p>
             </div>
             <DialogTrigger asChild>
@@ -271,84 +376,92 @@ export default function QuadroPage() {
                   <CardTitle className="text-lg flex items-center justify-between">
                     <span>{column.title}</span>
                     <span className="text-sm font-normal text-muted-foreground bg-background h-6 w-6 flex items-center justify-center rounded-full">
-                      {column.formacoes.length}
+                      {column.items.length}
                     </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3 min-h-[100px]">
-                  {column.formacoes.map((formacao) => (
+                  {column.items.map((item) => (
                     <Card
-                      key={formacao.id}
+                      key={item.id}
                       className="bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => openDetailDialog(formacao)}
+                      onClick={() => item.itemType === 'formacao' && openDetailDialog(item)}
                     >
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between">
-                          <h3 className="font-semibold text-base">
-                            {formacao.titulo}
+                          <h3 className="font-semibold text-base flex items-center gap-2">
+                             {getIconForItemType(item)}
+                            {item.titulo}
                           </h3>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                variant="ghost"
-                                className="h-7 w-7 p-0"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(formacao)}}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Ver Detalhes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(formacao)}}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/relatorio/${formacao.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Ver Relatório
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/avaliacao/${formacao.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                                  Formulário de Avaliação
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                onClick={(e) => {e.stopPropagation(); openDeleteDialog(formacao)}}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {item.itemType === 'formacao' && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver Detalhes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/relatorio/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Ver Relatório
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                                    Formulário de Avaliação
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Excluir
+                                </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          {formacao.descricao}
+                          {item.descricao}
                         </p>
                         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
                             <div className="flex items-center gap-4">
-                               {formacao.materiaisIds && formacao.materiaisIds.length > 0 && (
+                               {item.itemType === 'formacao' && item.materiaisIds && item.materiaisIds.length > 0 && (
                                     <div className="flex items-center gap-1">
                                         <Paperclip className="h-4 w-4" />
-                                        <span>{formacao.materiaisIds.length}</span>
+                                        <span>{item.materiaisIds.length}</span>
                                     </div>
                                 )}
-                                {formacao.participantes && formacao.participantes > 0 && (
+                                {item.itemType === 'formacao' && item.participantes && item.participantes > 0 && (
                                      <div className="flex items-center gap-1">
                                         <Users className="h-4 w-4" />
-                                        <span>{formacao.participantes}</span>
+                                        <span>{item.participantes}</span>
                                     </div>
+                                )}
+                                {item.itemType === 'projeto' && (
+                                    <Link href="/projetos" className='hover:underline flex items-center gap-1'>
+                                        <ClipboardList className='h-4 w-4' /> Ver Projeto
+                                    </Link>
                                 )}
                             </div>
                             <Badge variant="outline" className="font-mono">
                                 <Hash className="h-3 w-3 mr-1" />
-                                {formacao.codigo}
+                                {item.codigo}
                             </Badge>
                         </div>
                       </CardContent>
@@ -387,3 +500,5 @@ export default function QuadroPage() {
       </div>
   );
 }
+
+    
