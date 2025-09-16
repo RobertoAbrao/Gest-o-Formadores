@@ -6,9 +6,10 @@ import { Timestamp, doc, getDoc, collection, query, where, getDocs } from 'fireb
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2 } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
+import Link from 'next/link';
 
 interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
@@ -206,25 +207,24 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                 <CardContent className="space-y-4">
                      {([1, 2, 3, 4] as const).map(i => {
                          const devolutiva = projeto.devolutivas?.[`d${i}`];
-                         const isD4 = i === 4;
                          return (
                             <div key={`d${i}`} className="p-3 rounded-md border">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold">Devolutiva {i}</h4>
-                                    <StatusIcon ok={devolutiva?.ok} />
-                                </div>
-                                <Separator className="my-2" />
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                                    <p><strong className="text-muted-foreground">Formador:</strong> {devolutiva?.formador || 'N/A'}</p>
-                                    {isD4 ? (
-                                         <p><strong className="text-muted-foreground">Data:</strong> {formatDate((devolutiva as any)?.data)}</p>
-                                    ) : (
-                                        <>
-                                            <p><strong className="text-muted-foreground">Início:</strong> {formatDate(devolutiva?.dataInicio)}</p>
-                                            <p><strong className="text-muted-foreground">Fim:</strong> {formatDate(devolutiva?.dataFim)}</p>
-                                        </>
-                                    )}
-                                </div>
+                                <h4 className="font-semibold mb-2">Devolutiva {i}</h4>
+                                {devolutiva?.formacaoId ? (
+                                    <div className="space-y-2 text-sm">
+                                        <p className="flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-muted-foreground" />
+                                            <span>{devolutiva.formacaoTitulo}</span>
+                                        </p>
+                                        <Link href={`/quadro`} className="text-primary hover:underline text-xs">
+                                            Ver no quadro de acompanhamento
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">
+                                        Nenhuma formação criada para esta devolutiva. Edite o projeto para criá-la.
+                                    </p>
+                                )}
                             </div>
                          )
                     })}
@@ -233,3 +233,5 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         </div>
     );
 }
+
+    
