@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ProjetoImplatancao, Material, Formador } from '@/lib/types';
+import type { ProjetoImplatancao, Material, Formador, Formacao } from '@/lib/types';
 import { Timestamp, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
@@ -27,6 +27,64 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
         <XCircle className="h-5 w-5 text-muted-foreground" />
     );
 };
+
+const DevolutivaCard = ({ numero, devolutiva }: { numero: number, devolutiva: any }) => {
+    const [formacao, setFormacao] = useState<Formacao | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchFormacao = async () => {
+            if (devolutiva?.formacaoId) {
+                setLoading(true);
+                try {
+                    const formacaoRef = doc(db, 'formacoes', devolutiva.formacaoId);
+                    const formacaoSnap = await getDoc(formacaoRef);
+                    if (formacaoSnap.exists()) {
+                        setFormacao(formacaoSnap.data() as Formacao);
+                    }
+                } catch (error) {
+                    console.error("Error fetching formation details:", error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        fetchFormacao();
+    }, [devolutiva?.formacaoId]);
+
+    const dataInicio = formacao ? formacao.dataInicio : devolutiva.dataInicio;
+    const dataFim = formacao ? formacao.dataFim : devolutiva.dataFim;
+    const formador = formacao ? (formacao.formadoresNomes || []).join(', ') : devolutiva.formador;
+
+
+    return (
+        <div className="p-3 rounded-md border">
+            <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Devolutiva {numero}</h4>
+                <StatusIcon ok={devolutiva?.ok} />
+            </div>
+            <Separator className='my-2' />
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                <div className="space-y-2 text-sm">
+                    <p><strong>Formador:</strong> {formador || 'N/A'}</p>
+                    <p><strong>Início:</strong> {formatDate(dataInicio)}</p>
+                    <p><strong>Fim:</strong> {formatDate(dataFim)}</p>
+                    {devolutiva?.detalhes && <p className="text-xs text-muted-foreground pt-1">{devolutiva.detalhes}</p>}
+                </div>
+            )}
+            {devolutiva?.formacaoId && (
+                <div className="mt-3 pt-3 border-t">
+                    <p className="text-xs text-muted-foreground mb-1">Formação associada:</p>
+                    <Link href={`/quadro`} className="text-primary hover:underline text-sm flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        {devolutiva.formacaoTitulo}
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
     const [formadores, setFormadores] = useState<Formador[]>([]);
@@ -208,29 +266,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                      {([1, 2, 3, 4] as const).map(i => {
                          const devolutiva = projeto.devolutivas?.[`d${i}`];
                          return (
-                            <div key={`d${i}`} className="p-3 rounded-md border">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold">Devolutiva {i}</h4>
-                                    <StatusIcon ok={devolutiva?.ok} />
-                                </div>
-                                <Separator className='my-2' />
-                                <div className="space-y-2 text-sm">
-                                    <p><strong>Formador:</strong> {devolutiva?.formador || 'N/A'}</p>
-                                    <p><strong>Início:</strong> {formatDate(devolutiva?.dataInicio)}</p>
-                                    <p><strong>Fim:</strong> {formatDate(devolutiva?.dataFim)}</p>
-                                    {devolutiva?.detalhes && <p className="text-xs text-muted-foreground pt-1">{devolutiva.detalhes}</p>}
-                                </div>
-
-                                {devolutiva?.formacaoId && (
-                                    <div className="mt-3 pt-3 border-t">
-                                        <p className="text-xs text-muted-foreground mb-1">Formação associada:</p>
-                                        <Link href={`/quadro`} className="text-primary hover:underline text-sm flex items-center gap-2">
-                                            <FileText className="h-4 w-4" />
-                                            {devolutiva.formacaoTitulo}
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
+                            <DevolutivaCard key={`d${i}`} numero={i} devolutiva={devolutiva} />
                          )
                     })}
                 </CardContent>

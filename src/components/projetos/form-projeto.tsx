@@ -35,7 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X } from 'lucide-react';
-import type { ProjetoImplatancao, Formador, Formacao } from '@/lib/types';
+import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -61,7 +61,7 @@ const periodoStatusSchema = z.object({
   detalhes: z.string().optional(),
 });
 
-const devolutivaLinkSchema = z.object({
+const devolutivaLinkSchema: z.ZodType<DevolutivaLink> = z.object({
   formacaoId: z.string().optional(),
   formacaoTitulo: z.string().optional(),
   dataInicio: z.date().nullable().optional(),
@@ -70,6 +70,7 @@ const devolutivaLinkSchema = z.object({
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
 });
+
 
 const linkReuniaoSchema = z.object({
     url: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
