@@ -83,6 +83,7 @@ type QuadroItem = (Formacao & { itemType: 'formacao' }) | {
     dataFim: Timestamp | null;
     status: FormadorStatus; 
     codigo: string;
+    projetoId: string;
 };
 
 
@@ -154,7 +155,8 @@ export default function QuadroPage() {
                       dataInicio: devolutivaD4.data,
                       dataFim: devolutivaD4.data,
                       status: 'preparacao',
-                      codigo: proj.id.substring(0, 6)
+                      codigo: proj.id.substring(0, 6),
+                      projetoId: proj.id,
                   });
               } else if (!isD4 && devolutiva.dataInicio && devolutiva.dataFim) {
                   projectActivities.push({
@@ -165,7 +167,8 @@ export default function QuadroPage() {
                       dataInicio: devolutiva.dataInicio,
                       dataFim: devolutiva.dataFim,
                       status: 'preparacao',
-                      codigo: proj.id.substring(0, 6)
+                      codigo: proj.id.substring(0, 6),
+                      projetoId: proj.id,
                   });
               }
           });
@@ -466,7 +469,7 @@ export default function QuadroPage() {
                                     </div>
                                 )}
                                 {item.itemType === 'projeto' && (
-                                    <Link href="/projetos" className='hover:underline flex items-center gap-1'>
+                                    <Link href={`/projetos#${item.projetoId}`} className='hover:underline flex items-center gap-1'>
                                         <ClipboardList className='h-4 w-4' /> Ver Projeto
                                     </Link>
                                 )}
@@ -512,5 +515,3 @@ export default function QuadroPage() {
       </div>
   );
 }
-
-    
