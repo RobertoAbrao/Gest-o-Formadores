@@ -28,32 +28,10 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
     );
 };
 
-const DevolutivaCard = ({ numero, devolutiva }: { numero: number, devolutiva: any }) => {
-    const [formacao, setFormacao] = useState<Formacao | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        const fetchFormacao = async () => {
-            if (devolutiva?.formacaoId) {
-                setLoading(true);
-                try {
-                    const formacaoRef = doc(db, 'formacoes', devolutiva.formacaoId);
-                    const formacaoSnap = await getDoc(formacaoRef);
-                    if (formacaoSnap.exists()) {
-                        setFormacao(formacaoSnap.data() as Formacao);
-                    }
-                } catch (error) {
-                    console.error("Error fetching formation details:", error);
-                } finally {
-                    setLoading(false);
-                }
-            }
-        };
-        fetchFormacao();
-    }, [devolutiva?.formacaoId]);
-
-    const dataInicio = formacao ? formacao.dataInicio : devolutiva.dataInicio;
-    const dataFim = formacao ? formacao.dataFim : devolutiva.dataFim;
+const DevolutivaCard = ({ numero, devolutiva, formacao }: { numero: number, devolutiva: any, formacao: Formacao | null }) => {
+    
+    const dataInicio = formacao?.dataInicio;
+    const dataFim = formacao?.dataFim;
     const formador = formacao ? (formacao.formadoresNomes || []).join(', ') : devolutiva.formador;
 
 
@@ -64,14 +42,12 @@ const DevolutivaCard = ({ numero, devolutiva }: { numero: number, devolutiva: an
                 <StatusIcon ok={devolutiva?.ok} />
             </div>
             <Separator className='my-2' />
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                 <div className="space-y-2 text-sm">
                     <p><strong>Formador:</strong> {formador || 'N/A'}</p>
                     <p><strong>Início:</strong> {formatDate(dataInicio)}</p>
                     <p><strong>Fim:</strong> {formatDate(dataFim)}</p>
                     {devolutiva?.detalhes && <p className="text-xs text-muted-foreground pt-1">{devolutiva.detalhes}</p>}
                 </div>
-            )}
             {devolutiva?.formacaoId && (
                 <div className="mt-3 pt-3 border-t">
                     <p className="text-xs text-muted-foreground mb-1">Formação associada:</p>
@@ -88,17 +64,50 @@ const DevolutivaCard = ({ numero, devolutiva }: { numero: number, devolutiva: an
 
 export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
     const [formadores, setFormadores] = useState<Formador[]>([]);
+    const [formacoes, setFormacoes] = useState<Map<string, Formacao>>(new Map());
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
+                const fetchPromises: Promise<any>[] = [];
+
+                // Fetch Formadores
                 if (projeto.formadoresIds && projeto.formadoresIds.length > 0) {
-                    const q = query(collection(db, 'formadores'), where('__name__', 'in', projeto.formadoresIds));
-                    const formadoresSnap = await getDocs(q);
-                    setFormadores(formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador)));
+                    const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', projeto.formadoresIds));
+                    fetchPromises.push(getDocs(qFormadores));
+                } else {
+                    fetchPromises.push(Promise.resolve(null));
                 }
+
+                // Fetch Formações from Devolutivas
+                const formacaoIds = Object.values(projeto.devolutivas || {})
+                    .map(d => d.formacaoId)
+                    .filter((id): id is string => !!id);
+
+                if (formacaoIds.length > 0) {
+                     const qFormacoes = query(collection(db, 'formacoes'), where('__name__', 'in', formacaoIds));
+                    fetchPromises.push(getDocs(qFormacoes));
+                } else {
+                    fetchPromises.push(Promise.resolve(null));
+                }
+                
+                const [formadoresSnap, formacoesSnap] = await Promise.all(fetchPromises);
+
+                if (formadoresSnap) {
+                     setFormadores(formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador)));
+                }
+
+                if (formacoesSnap) {
+                    const formacoesMap = new Map<string, Formacao>();
+                    formacoesSnap.docs.forEach(doc => {
+                        formacoesMap.set(doc.id, { id: doc.id, ...doc.data() } as Formacao);
+                    });
+                    setFormacoes(formacoesMap);
+                }
+                
+
             } catch (error) {
                 console.error("Failed to fetch project details:", error);
             } finally {
@@ -107,7 +116,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         };
 
         fetchData();
-    }, [projeto.formadoresIds]);
+    }, [projeto]);
 
     if (loading) {
         return (
@@ -265,8 +274,9 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                 <CardContent className="space-y-4">
                      {([1, 2, 3, 4] as const).map(i => {
                          const devolutiva = projeto.devolutivas?.[`d${i}`];
+                         const formacao = devolutiva?.formacaoId ? formacoes.get(devolutiva.formacaoId) : null;
                          return (
-                            <DevolutivaCard key={`d${i}`} numero={i} devolutiva={devolutiva} />
+                            <DevolutivaCard key={`d${i}`} numero={i} devolutiva={devolutiva} formacao={formacao || null} />
                          )
                     })}
                 </CardContent>
