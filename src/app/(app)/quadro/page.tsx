@@ -9,6 +9,7 @@ import {
   query,
   where,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import {
   MoreHorizontal,
@@ -25,6 +26,8 @@ import {
   Flag,
   Target,
   ClipboardList,
+  Archive,
+  CheckCircle,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -283,6 +286,18 @@ export default function QuadroPage() {
     }
   };
 
+  const handleStatusChange = async (formacaoId: string, newStatus: FormadorStatus) => {
+    try {
+      const formacaoRef = doc(db, 'formacoes', formacaoId);
+      await updateDoc(formacaoRef, { status: newStatus });
+      toast({ title: "Sucesso", description: `Status da formação alterado.` });
+      fetchAndCategorizeItems();
+    } catch (error) {
+       console.error("Erro ao alterar status:", error);
+       toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+    }
+  };
+
   const handleDetailDialogChange = (open: boolean) => {
     setIsDetailDialogOpen(open);
     if (!open) {
@@ -425,6 +440,18 @@ export default function QuadroPage() {
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
+                                {item.status === 'pos-formacao' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Marcar como Concluído
+                                  </DropdownMenuItem>
+                                )}
+                                {item.status === 'concluido' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Arquivar
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                     onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
