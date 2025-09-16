@@ -149,6 +149,11 @@ interface PeriodoStatus {
 interface DevolutivaLink {
   formacaoId?: string;
   formacaoTitulo?: string;
+  dataInicio?: Timestamp | null;
+  dataFim?: Timestamp | null;
+  formador?: string;
+  ok?: boolean;
+  detalhes?: string;
 }
 
 interface LinkReuniao {

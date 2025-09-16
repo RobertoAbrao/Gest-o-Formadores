@@ -209,21 +209,26 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                          const devolutiva = projeto.devolutivas?.[`d${i}`];
                          return (
                             <div key={`d${i}`} className="p-3 rounded-md border">
-                                <h4 className="font-semibold mb-2">Devolutiva {i}</h4>
-                                {devolutiva?.formacaoId ? (
-                                    <div className="space-y-2 text-sm">
-                                        <p className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-muted-foreground" />
-                                            <span>{devolutiva.formacaoTitulo}</span>
-                                        </p>
-                                        <Link href={`/quadro`} className="text-primary hover:underline text-xs">
-                                            Ver no quadro de acompanhamento
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold">Devolutiva {i}</h4>
+                                    <StatusIcon ok={devolutiva?.ok} />
+                                </div>
+                                <Separator className='my-2' />
+                                <div className="space-y-2 text-sm">
+                                    <p><strong>Formador:</strong> {devolutiva?.formador || 'N/A'}</p>
+                                    <p><strong>Início:</strong> {formatDate(devolutiva?.dataInicio)}</p>
+                                    <p><strong>Fim:</strong> {formatDate(devolutiva?.dataFim)}</p>
+                                    {devolutiva?.detalhes && <p className="text-xs text-muted-foreground pt-1">{devolutiva.detalhes}</p>}
+                                </div>
+
+                                {devolutiva?.formacaoId && (
+                                    <div className="mt-3 pt-3 border-t">
+                                        <p className="text-xs text-muted-foreground mb-1">Formação associada:</p>
+                                        <Link href={`/quadro`} className="text-primary hover:underline text-sm flex items-center gap-2">
+                                            <FileText className="h-4 w-4" />
+                                            {devolutiva.formacaoTitulo}
                                         </Link>
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-muted-foreground italic">
-                                        Nenhuma formação criada para esta devolutiva. Edite o projeto para criá-la.
-                                    </p>
                                 )}
                             </div>
                          )
@@ -233,5 +238,3 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         </div>
     );
 }
-
-    
