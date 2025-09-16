@@ -328,7 +328,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   }
   
   const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
-    const { municipio, uf, formadoresIds } = form.getValues();
+    const { municipio, uf, formadoresIds, devolutivas } = form.getValues();
+    const devolutivaData = devolutivas[`d${devolutivaNumber}`];
+    
     if (!municipio || !uf) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
       return;
@@ -339,16 +341,16 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
       const newFormationData: Omit<Formacao, 'id'> = {
         titulo: title,
-        descricao: `Devolutiva referente ao projeto de implantação em ${municipio}.`,
+        descricao: devolutivaData.detalhes || `Devolutiva referente ao projeto de implantação em ${municipio}.`,
         status: 'preparacao',
         municipio,
         uf,
         codigo: generateFormationCode(municipio),
-        formadoresIds: formadoresIds || [],
+        formadoresIds: devolutivaData.formador ? allFormadores.filter(f => f.nomeCompleto === devolutivaData.formador).map(f => f.id) : (formadoresIds || []),
         materiaisIds: [],
         avaliacoesAbertas: false,
-        dataInicio: null,
-        dataFim: null,
+        dataInicio: devolutivaData.dataInicio ? Timestamp.fromDate(devolutivaData.dataInicio) : null,
+        dataFim: devolutivaData.dataFim ? Timestamp.fromDate(devolutivaData.dataFim) : null,
       };
       
       const docRef = await addDoc(collection(db, "formacoes"), {
