@@ -141,20 +141,6 @@ export default function QuadroPage() {
       
       const projectActivities: QuadroItem[] = [];
       projetosData.forEach(proj => {
-          Object.entries(proj.simulados || {}).forEach(([key, simulado]) => {
-              if (simulado.dataInicio && simulado.dataFim) {
-                  projectActivities.push({
-                      id: `${proj.id}-s-${key}`,
-                      itemType: 'projeto',
-                      titulo: `Simulado ${key.replace('s','')}: ${proj.municipio}`,
-                      descricao: simulado.detalhes || `Acompanhamento do simulado para o projeto ${proj.versao || ''}`.trim(),
-                      dataInicio: simulado.dataInicio,
-                      dataFim: simulado.dataFim,
-                      status: 'preparacao', // será recalculado
-                      codigo: proj.id.substring(0, 6)
-                  });
-              }
-          });
           Object.entries(proj.devolutivas || {}).forEach(([key, devolutiva]) => {
               const isD4 = key === 'd4';
               const devolutivaD4 = devolutiva as any;
@@ -316,7 +302,6 @@ export default function QuadroPage() {
 
   const getIconForItemType = (item: QuadroItem) => {
       if (item.itemType === 'formacao') return <ClipboardCheck className="h-4 w-4" />;
-      if (item.titulo.toLowerCase().includes('simulado')) return <Target className="h-4 w-4 text-blue-600" />;
       if (item.titulo.toLowerCase().includes('devolutiva')) return <Flag className="h-4 w-4 text-green-600" />;
       return <ClipboardList className="h-4 w-4" />;
   }
