@@ -34,7 +34,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { generateFormationCode } from '@/lib/utils';
+import Link from 'next/link';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -329,7 +330,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   }
   
-  const handleCreateFormation = async (title: string, dataInicio: Date | null, dataFim: Date | null, details: string | undefined, formadorNomes: string[]) => {
+  const handleCreateFormation = async (title: string, dataInicio: Date | null | undefined, dataFim: Date | null | undefined, details: string | undefined, formadorNomes: string[]) => {
     const { municipio, uf } = form.getValues();
     if (!municipio || !uf) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
@@ -354,6 +355,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         uf,
         codigo: generateFormationCode(municipio),
         formadoresIds: finalFormadoresIds,
+        formadoresNomes,
         materiaisIds: [],
         avaliacoesAbertas: false,
         dataInicio: dataInicio ? Timestamp.fromDate(dataInicio) : null,
@@ -407,6 +409,40 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
     }
   };
+
+  const handleUpdateFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
+    setLoading(true);
+    try {
+        const { devolutivas } = form.getValues();
+        const devolutivaData = devolutivas[`d${devolutivaNumber}`];
+        const formacaoId = devolutivaData.formacaoId;
+
+        if (!formacaoId) {
+            toast({ variant: 'destructive', title: 'Erro', description: 'Nenhuma formação associada para atualizar.' });
+            return;
+        }
+        
+        const formadoresNomes = devolutivaData.formadores || [];
+        const formadoresIds = allFormadores.filter(f => formadoresNomes.includes(f.nomeCompleto)).map(f => f.id);
+
+        const updateData = {
+            dataInicio: timestampOrNull(devolutivaData.dataInicio),
+            dataFim: timestampOrNull(devolutivaData.dataFim),
+            formadoresIds: formadoresIds,
+            formadoresNomes: formadoresNomes,
+        };
+
+        const formacaoRef = doc(db, 'formacoes', formacaoId);
+        await updateDoc(formacaoRef, updateData);
+
+        toast({ title: 'Sucesso!', description: 'Formação no quadro foi atualizada com os dados do projeto.' });
+    } catch (error) {
+        console.error("Error updating formation:", error);
+        toast({ variant: 'destructive', title: 'Erro de Atualização', description: 'Não foi possível sincronizar as alterações com a formação.' });
+    } finally {
+        setLoading(false);
+    }
+};
 
   return (
     <Form {...form}>
@@ -632,7 +668,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                   <FormItem className="flex flex-col"><FormLabel>Avaliação Diagnóstica</FormLabel>
                     <Popover><PopoverTrigger asChild><FormControl>
                       <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
@@ -805,9 +841,21 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                   <p className="text-sm text-muted-foreground">
                                       Formação criada: <span className="font-semibold text-foreground">{devolutiva.formacaoTitulo}</span>
                                   </p>
-                                  <Button variant="outline" size="sm" asChild>
-                                      <a href={`/quadro`} target="_blank">Ver no Quadro</a>
-                                  </Button>
+                                  <div className="flex gap-2">
+                                     <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/quadro`} target="_blank">Ver no Quadro</Link>
+                                     </Button>
+                                     <Button 
+                                        type="button" 
+                                        variant="secondary" 
+                                        size="sm"
+                                        onClick={() => handleUpdateFormation(i)}
+                                        disabled={loading}
+                                     >
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Atualizar
+                                     </Button>
+                                  </div>
                                 </div>
                             ) : (
                                 <Button 
