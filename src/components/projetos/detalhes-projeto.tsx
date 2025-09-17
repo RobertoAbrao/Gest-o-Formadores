@@ -32,7 +32,7 @@ const DevolutivaCard = ({ numero, devolutiva, formacao }: { numero: number, devo
     
     const dataInicio = formacao?.dataInicio;
     const dataFim = formacao?.dataFim;
-    const formador = formacao ? (formacao.formadoresNomes || []).join(', ') : devolutiva.formador;
+    const formadores = formacao ? (formacao.formadoresNomes || []) : (devolutiva.formadores || []);
 
 
     return (
@@ -43,7 +43,7 @@ const DevolutivaCard = ({ numero, devolutiva, formacao }: { numero: number, devo
             </div>
             <Separator className='my-2' />
                 <div className="space-y-2 text-sm">
-                    <p><strong>Formador:</strong> {formador || 'N/A'}</p>
+                    {formadores.length > 0 && <p><strong>Formador(es):</strong> {formadores.join(', ')}</p>}
                     <p><strong>Início:</strong> {formatDate(dataInicio)}</p>
                     <p><strong>Fim:</strong> {formatDate(dataFim)}</p>
                     {devolutiva?.detalhes && <p className="text-xs text-muted-foreground pt-1">{devolutiva.detalhes}</p>}

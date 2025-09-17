@@ -151,7 +151,7 @@ export interface DevolutivaLink {
   formacaoTitulo?: string;
   dataInicio?: Timestamp | null;
   dataFim?: Timestamp | null;
-  formador?: string;
+  formadores?: string[];
   ok?: boolean;
   detalhes?: string;
 }

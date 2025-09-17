@@ -66,7 +66,7 @@ const devolutivaLinkSchema: z.ZodType<DevolutivaLink> = z.object({
   formacaoTitulo: z.string().optional(),
   dataInicio: z.date().nullable().optional(),
   dataFim: z.date().nullable().optional(),
-  formador: z.string().optional(),
+  formadores: z.array(z.string()).optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
 });
@@ -399,7 +399,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         devolutivaData.dataInicio, 
         devolutivaData.dataFim, 
         devolutivaData.detalhes,
-        devolutivaData.formador ? [devolutivaData.formador] : []
+        devolutivaData.formadores || []
     );
       
     if (newFormationId) {
@@ -407,7 +407,6 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
     }
   };
-
 
   return (
     <Form {...form}>
@@ -731,18 +730,72 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                 </PopoverContent></Popover><FormMessage />
                               </FormItem>
                             )}/>
-                            <FormField control={form.control} name={`devolutivas.d${i}.formador`} render={({ field }) => (
-                              <FormItem><FormLabel>Formador</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value} disabled={allFormadores.length === 0}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecione um formador" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                      <SelectContent>{allFormadores.map(f => (<SelectItem key={f.id} value={f.nomeCompleto}>{f.nomeCompleto}</SelectItem>))}</SelectContent>
-                                  </Select><FormMessage />
-                              </FormItem>
-                            )}/>
+                            <FormField
+                                control={form.control}
+                                name={`devolutivas.d${i}.formadores`}
+                                render={({ field }) => {
+                                    const selectedFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
+
+                                    return (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Formadores</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                        <span className="truncate">
+                                                            {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)` : "Selecione formadores..."}
+                                                        </span>
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[300px] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Buscar formador..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {allFormadores.map((formador) => (
+                                                                    <CommandItem
+                                                                        key={formador.id}
+                                                                        value={formador.nomeCompleto}
+                                                                        onSelect={() => {
+                                                                            const currentValues = field.value || [];
+                                                                            const newValues = currentValues.includes(formador.nomeCompleto)
+                                                                                ? currentValues.filter(name => name !== formador.nomeCompleto)
+                                                                                : [...currentValues, formador.nomeCompleto];
+                                                                            field.onChange(newValues);
+                                                                        }}
+                                                                    >
+                                                                        <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.nomeCompleto) ? 'opacity-100' : 'opacity-0')} />
+                                                                        {formador.nomeCompleto}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            {selectedFormadores.length > 0 && (
+                                                <div className="pt-1 flex flex-wrap gap-1">
+                                                    {selectedFormadores.map(formador => (
+                                                        <Badge key={formador.id} variant="secondary">
+                                                            {formador.nomeCompleto}
+                                                            <button
+                                                                type="button"
+                                                                className="ml-1 rounded-full outline-none"
+                                                                onClick={() => field.onChange(field.value?.filter(name => name !== formador.nomeCompleto))}
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <FormMessage />
+                                        </FormItem>
+                                    );
+                                }}
+                            />
                             <FormField control={form.control} name={`devolutivas.d${i}.detalhes`} render={({ field }) => (
                               <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
