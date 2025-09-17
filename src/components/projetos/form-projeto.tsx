@@ -330,7 +330,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   }
   
   const handleCreateFormation = async (title: string, dataInicio: Date | null, dataFim: Date | null, details: string | undefined, formadorNomes: string[]) => {
-    const { municipio, uf, formadoresIds } = form.getValues();
+    const { municipio, uf } = form.getValues();
     if (!municipio || !uf) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
       return null;
@@ -342,7 +342,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       if (formadorNomes && formadorNomes.length > 0) {
         finalFormadoresIds = allFormadores.filter(f => formadorNomes.includes(f.nomeCompleto)).map(f => f.id);
       } else {
-        finalFormadoresIds = formadoresIds || [];
+        finalFormadoresIds = form.getValues('formadoresIds') || [];
       }
 
 
@@ -733,13 +733,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                             )}/>
                             <FormField control={form.control} name={`devolutivas.d${i}.formador`} render={({ field }) => (
                               <FormItem><FormLabel>Formador</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value} disabled={availableFormadores.length === 0}>
+                                  <Select onValueChange={field.onChange} value={field.value} disabled={allFormadores.length === 0}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Selecione um formador" />
                                         </SelectTrigger>
                                     </FormControl>
-                                      <SelectContent>{availableFormadores.map(f => (<SelectItem key={f.id} value={f.nomeCompleto}>{f.nomeCompleto}</SelectItem>))}</SelectContent>
+                                      <SelectContent>{allFormadores.map(f => (<SelectItem key={f.id} value={f.nomeCompleto}>{f.nomeCompleto}</SelectItem>))}</SelectContent>
                                   </Select><FormMessage />
                               </FormItem>
                             )}/>
