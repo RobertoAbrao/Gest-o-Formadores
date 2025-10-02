@@ -62,7 +62,7 @@ const periodoStatusSchema = z.object({
   detalhes: z.string().optional(),
 });
 
-const devolutivaLinkSchema: z.ZodType<DevolutivaLink> = z.object({
+const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
   formacaoId: z.string().optional(),
   formacaoTitulo: z.string().optional(),
   dataInicio: z.date().nullable().optional(),
@@ -355,7 +355,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         uf,
         codigo: generateFormationCode(municipio),
         formadoresIds: finalFormadoresIds,
-        formadoresNomes,
+        formadoresNomes: formadorNomes,
         materiaisIds: [],
         avaliacoesAbertas: false,
         dataInicio: dataInicio ? Timestamp.fromDate(dataInicio) : null,
@@ -770,7 +770,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                 control={form.control}
                                 name={`devolutivas.d${i}.formadores`}
                                 render={({ field }) => {
-                                    const selectedFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
+                                    const selectedDevolutivaFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
 
                                     return (
                                         <FormItem className="flex flex-col">
@@ -779,7 +779,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                                 <PopoverTrigger asChild>
                                                     <Button variant="outline" role="combobox" className="w-full justify-between">
                                                         <span className="truncate">
-                                                            {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)` : "Selecione formadores..."}
+                                                            {selectedDevolutivaFormadores.length > 0 ? `${selectedDevolutivaFormadores.length} selecionado(s)` : "Selecione formadores..."}
                                                         </span>
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
@@ -811,9 +811,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                                     </Command>
                                                 </PopoverContent>
                                             </Popover>
-                                            {selectedFormadores.length > 0 && (
+                                            {selectedDevolutivaFormadores.length > 0 && (
                                                 <div className="pt-1 flex flex-wrap gap-1">
-                                                    {selectedFormadores.map(formador => (
+                                                    {selectedDevolutivaFormadores.map(formador => (
                                                         <Badge key={formador.id} variant="secondary">
                                                             {formador.nomeCompleto}
                                                             <button
