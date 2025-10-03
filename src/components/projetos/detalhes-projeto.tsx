@@ -30,8 +30,9 @@ const StatusIcon = ({ ok }: { ok?: boolean }) => {
 
 const DevolutivaCard = ({ numero, devolutiva, formacao }: { numero: number, devolutiva: any, formacao: Formacao | null }) => {
     
-    const dataInicio = formacao?.dataInicio;
-    const dataFim = formacao?.dataFim;
+    // Prioritize dates from the devolutiva object itself, fallback to the associated formation
+    const dataInicio = devolutiva?.dataInicio || formacao?.dataInicio;
+    const dataFim = devolutiva?.dataFim || formacao?.dataFim;
     const formadores = formacao ? (formacao.formadoresNomes || []) : (devolutiva.formadores || []);
 
 
