@@ -35,7 +35,7 @@ const MilestoneCard = ({
     icon: React.ElementType,
     title: string,
     date?: string,
-    description?: string,
+    description?: { formadores: string; detalhes: string; },
     isComplete: boolean,
     isFirst?: boolean,
     isLast?: boolean
@@ -70,7 +70,12 @@ const MilestoneCard = ({
                 <div className="w-1/2 pl-8">
                      <div className='mt-3'>
                         <p className="text-xs text-gray-500">{date}</p>
-                        {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
+                        {description && (
+                            <div className="text-sm text-gray-600 mt-1">
+                                {description.formadores && <p>{description.formadores}</p>}
+                                {description.detalhes && <p>{description.detalhes}</p>}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -84,13 +89,13 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
 
   const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
     const devolutiva = projeto.devolutivas?.[devolutivaKey];
-    if (!devolutiva) return '';
+    if (!devolutiva) return { formadores: '', detalhes: '' };
 
-    const formadoresNomes = devolutiva.formadores && devolutiva.formadores.length > 0
+    const formadores = devolutiva.formadores && devolutiva.formadores.length > 0
       ? `Formadores: ${devolutiva.formadores.join(', ')}`
-      : 'Nenhum formador associado.';
+      : '';
     
-    return `${formadoresNomes}. ${devolutiva.detalhes || ''}`;
+    return { formadores, detalhes: devolutiva.detalhes || '' };
   }
 
 
@@ -99,7 +104,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: UploadCloud,
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
-        description: projeto.diagnostica?.detalhes,
+        description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
         isComplete: !!projeto.dataMigracao,
     },
     {
@@ -112,14 +117,14 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: Target,
         title: 'Avaliação Diagnóstica',
         date: formatDate(projeto.diagnostica?.data),
-        description: projeto.diagnostica?.detalhes,
+        description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
         isComplete: !!projeto.diagnostica?.ok,
     },
     {
         icon: Target,
         title: 'Simulado 1',
         date: `De ${formatDate(projeto.simulados?.s1?.dataInicio)} a ${formatDate(projeto.simulados?.s1?.dataFim)}`,
-        description: projeto.simulados?.s1?.detalhes,
+        description: { formadores: '', detalhes: projeto.simulados?.s1?.detalhes || '' },
         isComplete: !!projeto.simulados?.s1?.ok,
     },
      {
@@ -132,7 +137,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: Target,
         title: 'Simulado 2',
         date: `De ${formatDate(projeto.simulados?.s2?.dataInicio)} a ${formatDate(projeto.simulados?.s2?.dataFim)}`,
-        description: projeto.simulados?.s2?.detalhes,
+        description: { formadores: '', detalhes: projeto.simulados?.s2?.detalhes || '' },
         isComplete: !!projeto.simulados?.s2?.ok,
     },
      {
@@ -145,7 +150,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: Target,
         title: 'Simulado 3',
         date: `De ${formatDate(projeto.simulados?.s3?.dataInicio)} a ${formatDate(projeto.simulados?.s3?.dataFim)}`,
-        description: projeto.simulados?.s3?.detalhes,
+        description: { formadores: '', detalhes: projeto.simulados?.s3?.detalhes || '' },
         isComplete: !!projeto.simulados?.s3?.ok,
     },
      {
@@ -158,7 +163,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: Target,
         title: 'Simulado 4',
         date: `De ${formatDate(projeto.simulados?.s4?.dataInicio)} a ${formatDate(projeto.simulados?.s4?.dataFim)}`,
-        description: projeto.simulados?.s4?.detalhes,
+        description: { formadores: '', detalhes: projeto.simulados?.s4?.detalhes || '' },
         isComplete: !!projeto.simulados?.s4?.ok,
     },
      {
@@ -170,10 +175,10 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: CheckCircle,
         title: 'Projeto Concluído',
-        description: 'Todas as etapas foram finalizadas com sucesso.',
+        description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
         isComplete: true,
     },
-  ].filter(m => m.date || m.description || m.title === 'Projeto Concluído');
+  ].filter(m => m.date || (m.description && (m.description.formadores || m.description.detalhes)) || m.title === 'Projeto Concluído');
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
