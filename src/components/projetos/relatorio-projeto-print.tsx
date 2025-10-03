@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { ProjetoImplatancao } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import AppLogo from '../AppLogo';
@@ -80,6 +82,18 @@ const MilestoneCard = ({
 export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
+  const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
+    const devolutiva = projeto.devolutivas?.[devolutivaKey];
+    if (!devolutiva) return '';
+
+    const formadoresNomes = devolutiva.formadores && devolutiva.formadores.length > 0
+      ? `Formadores: ${devolutiva.formadores.join(', ')}`
+      : 'Nenhum formador associado.';
+    
+    return `${formadoresNomes}. ${devolutiva.detalhes || ''}`;
+  }
+
+
   const milestones = [
     {
         icon: UploadCloud,
@@ -111,7 +125,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 1',
-        description: `Formador: ${projeto.devolutivas?.d1?.formador || 'N/A'}. ${projeto.devolutivas?.d1?.detalhes || ''}`,
+        description: getDevolutivaDescription('d1'),
         isComplete: !!projeto.devolutivas?.d1?.ok,
     },
     {
@@ -124,7 +138,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 2',
-        description: `Formador: ${projeto.devolutivas?.d2?.formador || 'N/A'}. ${projeto.devolutivas?.d2?.detalhes || ''}`,
+        description: getDevolutivaDescription('d2'),
         isComplete: !!projeto.devolutivas?.d2?.ok,
     },
     {
@@ -137,7 +151,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 3',
-        description: `Formador: ${projeto.devolutivas?.d3?.formador || 'N/A'}. ${projeto.devolutivas?.d3?.detalhes || ''}`,
+        description: getDevolutivaDescription('d3'),
         isComplete: !!projeto.devolutivas?.d3?.ok,
     },
      {
@@ -150,7 +164,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 4',
-        description: `Formador: ${projeto.devolutivas?.d4?.formador || 'N/A'}. ${projeto.devolutivas?.d4?.detalhes || ''}`,
+        description: getDevolutivaDescription('d4'),
         isComplete: !!projeto.devolutivas?.d4?.ok,
     },
      {
