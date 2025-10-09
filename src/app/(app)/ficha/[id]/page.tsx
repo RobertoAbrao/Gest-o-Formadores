@@ -42,7 +42,7 @@ export default function FichaDevolutivaPage() {
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(qFormadores);
-            const formadoresData = formadoresSnap.docs.map(d => d.data() as Formador);
+            const formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
             setFormadores(formadoresData);
         } else {
             setFormadores([]);
@@ -163,7 +163,7 @@ export default function FichaDevolutivaPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {formadores.length > 0 ? (
-                                        formadores.map((formador, index) => (
+                                        formadores.map((formador) => (
                                             <TableRow key={formador.id}>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell>{formador.nomeCompleto}</TableCell>
@@ -172,7 +172,7 @@ export default function FichaDevolutivaPage() {
                                         ))
                                     ) : (
                                         [...Array(3)].map((_, index) => (
-                                          <TableRow key={index}>
+                                          <TableRow key={`empty-row-${index}`}>
                                               <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                               <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                               <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
