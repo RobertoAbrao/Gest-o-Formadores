@@ -28,6 +28,7 @@ import {
   ClipboardList,
   Archive,
   CheckCircle,
+  FileSignature,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -342,6 +343,12 @@ export default function QuadroPage() {
                               <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
                                   <Pencil className="mr-2 h-4 w-4" />
                                   Editar
+                              </DropdownMenuItem>
+                               <DropdownMenuItem asChild>
+                                  <Link href={`/ficha/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                      <FileSignature className="mr-2 h-4 w-4" />
+                                      Gerar Ficha
+                                  </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild>
                                   <Link href={`/relatorio/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
