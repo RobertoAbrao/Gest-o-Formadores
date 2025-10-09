@@ -4,9 +4,13 @@
 import {
   doc,
   getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao } from '@/lib/types';
+import type { Formacao, Formador } from '@/lib/types';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Loader2, Printer, ArrowLeft, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +24,7 @@ export default function FichaDevolutivaPage() {
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [formacao, setFormacao] = useState<Formacao | null>(null);
+  const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -31,7 +36,18 @@ export default function FichaDevolutivaPage() {
         if (!formacaoSnap.exists()) {
             throw new Error("Formação não encontrada.");
         }
-        setFormacao({ id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao);
+        const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
+        setFormacao(formacaoData);
+
+        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
+            const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
+            const formadoresSnap = await getDocs(qFormadores);
+            const formadoresData = formadoresSnap.docs.map(d => d.data() as Formador);
+            setFormadores(formadoresData);
+        } else {
+            setFormadores([]);
+        }
+
     } catch (error: any) {
         console.error('Erro ao buscar detalhes da formação: ', error);
         setError(error.message);
@@ -146,13 +162,23 @@ export default function FichaDevolutivaPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {[...Array(6)].map((_, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {formadores.length > 0 ? (
+                                        formadores.map((formador, index) => (
+                                            <TableRow key={formador.id}>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                <TableCell>{formador.nomeCompleto}</TableCell>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        [...Array(3)].map((_, index) => (
+                                          <TableRow key={index}>
+                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                          </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
