@@ -20,6 +20,17 @@ import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+const DIAS_DA_SEMANA = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo',
+];
+
+
 export default function FichaDevolutivaPage() {
   const params = useParams();
   const formacaoId = params.id as string;
@@ -30,6 +41,7 @@ export default function FichaDevolutivaPage() {
   const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
   const [presencialRows, setPresencialRows] = useState(5);
   const [selectedFormadoresPresencial, setSelectedFormadoresPresencial] = useState<Record<number, string>>({});
+  const [selectedDiasSemana, setSelectedDiasSemana] = useState<Record<number, string>>({});
 
 
   const fetchData = useCallback(async () => {
@@ -212,7 +224,31 @@ export default function FichaDevolutivaPage() {
                                     <TableBody>
                                         {[...Array(presencialRows)].map((_, index) => (
                                             <TableRow key={`presencial-row-${index}`}>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                <TableCell>
+                                                     <div className='print-select-value'>
+                                                        {selectedDiasSemana[index] || ''}
+                                                    </div>
+                                                    <Select
+                                                        onValueChange={(value) => {
+                                                            setSelectedDiasSemana(prev => ({
+                                                                ...prev,
+                                                                [index]: value,
+                                                            }));
+                                                        }}
+                                                        value={selectedDiasSemana[index]}
+                                                    >
+                                                        <SelectTrigger className="w-full no-print">
+                                                            <SelectValue placeholder="Selecione..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {DIAS_DA_SEMANA.map(dia => (
+                                                                <SelectItem key={dia} value={dia}>
+                                                                    {dia}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell>
