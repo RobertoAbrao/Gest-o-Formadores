@@ -110,6 +110,42 @@ export default function FichaDevolutivaPage() {
       });
   };
 
+  const generalSchedule = useMemo(() => {
+    const allEntries: (AgendaRow & { formadorNome: string })[] = [];
+
+    for (const formadorId in agendas) {
+      const formador = formadores.find(f => f.id === formadorId);
+      if (formador) {
+        agendas[formadorId].forEach(row => {
+          if (row.dia && row.horario) { // Only include filled rows
+            allEntries.push({
+              ...row,
+              formadorNome: formador.nomeCompleto,
+            });
+          }
+        });
+      }
+    }
+
+    const groupedByDay = allEntries.reduce((acc, entry) => {
+        if (!acc[entry.dia]) {
+            acc[entry.dia] = [];
+        }
+        acc[entry.dia].push(entry);
+        return acc;
+    }, {} as Record<string, (AgendaRow & { formadorNome: string })[]>);
+
+    // Sort days
+    const sortedDays = DIAS_DA_SEMANA.filter(day => groupedByDay[day]);
+    
+    return sortedDays.map(day => ({
+        day,
+        entries: groupedByDay[day].sort((a,b) => a.horario.localeCompare(b.horario))
+    }));
+
+  }, [agendas, formadores]);
+
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -142,7 +178,7 @@ export default function FichaDevolutivaPage() {
           .printable-area, .printable-area * { visibility: visible; }
           .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; }
           .no-print { display: none !important; }
-          .print-only { visibility: visible !important; display: block !important; }
+          .print-only { visibility: visible !important; display: inline !important; }
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
           .print-table { border-collapse: collapse; width: 100%; }
@@ -205,10 +241,46 @@ export default function FichaDevolutivaPage() {
                         </p>
                         <p className="mt-2 text-xs">Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.</p>
                     </section>
+                    
+                    {modalidade === 'presencial' && (
+                        <section>
+                             <h3 className="text-lg font-bold mb-2">Cronograma Geral do Evento</h3>
+                             <div className="border rounded-lg overflow-hidden">
+                                <Table className="print-table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className='w-[20%]'>Dia</TableHead>
+                                            <TableHead className='w-[20%]'>Horário</TableHead>
+                                            <TableHead>Ano/Área</TableHead>
+                                            <TableHead className='w-[25%]'>Formador(a)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {generalSchedule.length > 0 ? (
+                                            generalSchedule.map(({ day, entries }) => (
+                                                entries.map((entry, index) => (
+                                                    <TableRow key={`${day}-${index}`}>
+                                                        {index === 0 && <TableCell rowSpan={entries.length} className="font-medium align-top">{day}</TableCell>}
+                                                        <TableCell>{entry.horario}</TableCell>
+                                                        <TableCell>{entry.area}</TableCell>
+                                                        <TableCell>{entry.formadorNome}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center h-24">Nenhuma atividade agendada. Preencha as agendas individuais.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                             </div>
+                        </section>
+                    )}
 
                     <section>
                         <h3 className="text-lg font-bold mb-2">
-                            {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda da Formação Presencial'}
+                            {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
                         </h3>
                         {modalidade === 'online' ? (
                             <div className="border rounded-lg overflow-hidden">
@@ -221,23 +293,13 @@ export default function FichaDevolutivaPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {formadores.length > 0 ? (
-                                            formadores.map((formador) => (
-                                                <TableRow key={formador.id}>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                    <TableCell>{formador.nomeCompleto}</TableCell>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            [...Array(3)].map((_, index) => (
-                                              <TableRow key={`empty-online-row-${index}`}>
-                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                              </TableRow>
-                                            ))
-                                        )}
+                                        {formadores.map((formador) => (
+                                            <TableRow key={formador.id}>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                <TableCell>{formador.nomeCompleto}</TableCell>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                            </TableRow>
+                                        ))}
                                     </TableBody>
                                 </Table>
                            </div>
@@ -276,8 +338,18 @@ export default function FichaDevolutivaPage() {
                                                                 </Select>
                                                                 <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
-                                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                            <TableCell 
+                                                                className="editable-field" 
+                                                                contentEditable 
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.currentTarget.textContent || '')}
+                                                            />
+                                                            <TableCell 
+                                                                className="editable-field" 
+                                                                contentEditable 
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '')}
+                                                            />
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -303,3 +375,4 @@ export default function FichaDevolutivaPage() {
     </>
   );
 }
+
