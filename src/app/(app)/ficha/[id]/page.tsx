@@ -12,13 +12,14 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const DIAS_DA_SEMANA = [
     'Segunda-feira',
@@ -30,6 +31,15 @@ const DIAS_DA_SEMANA = [
     'Domingo',
 ];
 
+type AgendaRow = {
+    dia: string;
+    horario: string;
+    area: string;
+};
+
+type AgendasState = {
+    [formadorId: string]: AgendaRow[];
+};
 
 export default function FichaDevolutivaPage() {
   const params = useParams();
@@ -39,10 +49,7 @@ export default function FichaDevolutivaPage() {
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
-  const [presencialRows, setPresencialRows] = useState(5);
-  const [selectedFormadoresPresencial, setSelectedFormadoresPresencial] = useState<Record<number, string>>({});
-  const [selectedDiasSemana, setSelectedDiasSemana] = useState<Record<number, string>>({});
-
+  const [agendas, setAgendas] = useState<AgendasState>({});
 
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
@@ -61,6 +68,14 @@ export default function FichaDevolutivaPage() {
             const formadoresSnap = await getDocs(qFormadores);
             const formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
             setFormadores(formadoresData);
+            
+            // Initialize agendas state
+            const initialAgendas: AgendasState = {};
+            formadoresData.forEach(f => {
+                initialAgendas[f.id] = [{ dia: '', horario: '', area: '' }];
+            });
+            setAgendas(initialAgendas);
+
         } else {
             setFormadores([]);
         }
@@ -76,7 +91,13 @@ export default function FichaDevolutivaPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
+  
+  const handleAddRow = (formadorId: string) => {
+    setAgendas(prev => ({
+        ...prev,
+        [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '' }]
+    }));
+  };
 
   if (loading) {
     return (
@@ -113,9 +134,7 @@ export default function FichaDevolutivaPage() {
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
           .print-table { border-collapse: collapse; width: 100%; }
-          .print-select-value {
-              visibility: visible !important;
-          }
+          .print-select-value { visibility: visible !important; }
         }
       `}</style>
         <div className="bg-muted/30 min-h-screen p-4 sm:p-8 print-container">
@@ -180,8 +199,8 @@ export default function FichaDevolutivaPage() {
                         <h3 className="text-lg font-bold mb-2">
                             {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda da Formação Presencial'}
                         </h3>
-                        <div className="border rounded-lg overflow-hidden">
-                           {modalidade === 'online' ? (
+                        {modalidade === 'online' ? (
+                            <div className="border rounded-lg overflow-hidden">
                                 <Table className="print-table">
                                     <TableHeader>
                                         <TableRow>
@@ -210,82 +229,54 @@ export default function FichaDevolutivaPage() {
                                         )}
                                     </TableBody>
                                 </Table>
+                           </div>
                            ) : (
-                                <>
-                                <Table className="print-table">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className='w-[20%]'>Dia da Semana</TableHead>
-                                            <TableHead className='w-[20%]'>Horário</TableHead>
-                                            <TableHead className='w-[30%]'>Ano/Área</TableHead>
-                                            <TableHead>Formador(a)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {[...Array(presencialRows)].map((_, index) => (
-                                            <TableRow key={`presencial-row-${index}`}>
-                                                <TableCell>
-                                                     <div className='print-select-value'>
-                                                        {selectedDiasSemana[index] || ''}
-                                                    </div>
-                                                    <Select
-                                                        onValueChange={(value) => {
-                                                            setSelectedDiasSemana(prev => ({
-                                                                ...prev,
-                                                                [index]: value,
-                                                            }));
-                                                        }}
-                                                        value={selectedDiasSemana[index]}
-                                                    >
-                                                        <SelectTrigger className="w-full no-print">
-                                                            <SelectValue placeholder="Selecione..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {DIAS_DA_SEMANA.map(dia => (
-                                                                <SelectItem key={dia} value={dia}>
-                                                                    {dia}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </TableCell>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell>
-                                                    <div className='print-select-value'>
-                                                        {selectedFormadoresPresencial[index] || ''}
-                                                    </div>
-                                                    <Select
-                                                        onValueChange={(value) => {
-                                                            setSelectedFormadoresPresencial(prev => ({
-                                                                ...prev,
-                                                                [index]: value,
-                                                            }));
-                                                        }}
-                                                        value={selectedFormadoresPresencial[index]}
-                                                    >
-                                                        <SelectTrigger className="w-full no-print">
-                                                            <SelectValue placeholder="Selecione..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {formadores.map(formador => (
-                                                                <SelectItem key={formador.id} value={formador.nomeCompleto}>
-                                                                    {formador.nomeCompleto}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                                <div className="p-2 text-right no-print">
-                                    <Button size="sm" variant="outline" onClick={() => setPresencialRows(prev => prev + 1)}>Adicionar Linha</Button>
-                                </div>
-                                </>
+                            <div className="space-y-6">
+                                {formadores.map(formador => (
+                                    <Card key={formador.id}>
+                                        <CardHeader>
+                                            <CardTitle>{formador.nomeCompleto}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <Table className="print-table">
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className='w-[30%]'>Dia da Semana</TableHead>
+                                                        <TableHead className='w-[25%]'>Horário</TableHead>
+                                                        <TableHead>Ano/Área</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {(agendas[formador.id] || []).map((_, rowIndex) => (
+                                                        <TableRow key={`agenda-row-${formador.id}-${rowIndex}`}>
+                                                            <TableCell>
+                                                                <Select>
+                                                                    <SelectTrigger className="w-full no-print">
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {DIAS_DA_SEMANA.map(dia => (
+                                                                            <SelectItem key={dia} value={dia}>{dia}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </TableCell>
+                                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                            <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                            <div className="pt-4 text-right no-print">
+                                                <Button size="sm" variant="outline" onClick={() => handleAddRow(formador.id)}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
                            )}
-                        </div>
                     </section>
                     
                     <footer className="text-xs text-gray-500 pt-4 border-t">
