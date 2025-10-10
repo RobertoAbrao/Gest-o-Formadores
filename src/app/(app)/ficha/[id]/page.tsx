@@ -11,13 +11,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Loader2, Printer, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function FichaDevolutivaPage() {
   const params = useParams();
@@ -28,6 +29,8 @@ export default function FichaDevolutivaPage() {
   const [error, setError] = useState<string | null>(null);
   const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
   const [presencialRows, setPresencialRows] = useState(5);
+  const [selectedFormadoresPresencial, setSelectedFormadoresPresencial] = useState<Record<number, string>>({});
+
 
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
@@ -98,6 +101,9 @@ export default function FichaDevolutivaPage() {
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
           .print-table { border-collapse: collapse; width: 100%; }
+          .print-select-value {
+              visibility: visible !important;
+          }
         }
       `}</style>
         <div className="bg-muted/30 min-h-screen p-4 sm:p-8 print-container">
@@ -209,7 +215,31 @@ export default function FichaDevolutivaPage() {
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                <TableCell>
+                                                    <div className='print-select-value'>
+                                                        {selectedFormadoresPresencial[index] || ''}
+                                                    </div>
+                                                    <Select
+                                                        onValueChange={(value) => {
+                                                            setSelectedFormadoresPresencial(prev => ({
+                                                                ...prev,
+                                                                [index]: value,
+                                                            }));
+                                                        }}
+                                                        value={selectedFormadoresPresencial[index]}
+                                                    >
+                                                        <SelectTrigger className="w-full no-print">
+                                                            <SelectValue placeholder="Selecione..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {formadores.map(formador => (
+                                                                <SelectItem key={formador.id} value={formador.nomeCompleto}>
+                                                                    {formador.nomeCompleto}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
