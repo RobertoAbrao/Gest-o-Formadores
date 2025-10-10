@@ -11,8 +11,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { Loader2, Printer, ArrowLeft, Calendar } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Loader2, Printer, ArrowLeft, Calendar, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -26,6 +26,7 @@ export default function FichaDevolutivaPage() {
   const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
 
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
@@ -100,7 +101,7 @@ export default function FichaDevolutivaPage() {
       `}</style>
         <div className="bg-muted/30 min-h-screen p-4 sm:p-8 print-container">
             <div className="max-w-4xl mx-auto bg-card p-6 rounded-lg shadow-sm">
-                <div className="flex justify-between items-start mb-8 no-print">
+                <div className="flex flex-wrap justify-between items-center gap-4 mb-8 no-print">
                     <div>
                         <Button variant="outline" size="sm" asChild>
                             <Link href="/quadro">
@@ -110,10 +111,16 @@ export default function FichaDevolutivaPage() {
                         </Button>
                         <p className="text-muted-foreground mt-2 text-sm">Pré-visualização da Ficha de Devolutiva</p>
                     </div>
-                    <Button onClick={() => window.print()}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Imprimir / Salvar PDF
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setModalidade(modalidade === 'online' ? 'presencial' : 'online')}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Alterar para {modalidade === 'online' ? 'Presencial' : 'Online'}
+                        </Button>
+                        <Button onClick={() => window.print()}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Imprimir / Salvar PDF
+                        </Button>
+                    </div>
                 </div>
                 <div className="printable-area bg-white text-black font-sans space-y-6">
                     <header className="flex justify-between items-center pb-4 border-b-2">
@@ -151,36 +158,61 @@ export default function FichaDevolutivaPage() {
                     </section>
 
                     <section>
-                        <h3 className="text-lg font-bold mb-2">Links de Acesso à Formação (Google Meet)</h3>
+                        <h3 className="text-lg font-bold mb-2">
+                            {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda da Formação Presencial'}
+                        </h3>
                         <div className="border rounded-lg overflow-hidden">
-                            <Table className="print-table">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className='w-[30%]'>Ano/Área</TableHead>
-                                        <TableHead className='w-[20%]'>Formador(a)</TableHead>
-                                        <TableHead>Link da Videochamada (Google Meet)</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {formadores.length > 0 ? (
-                                        formadores.map((formador) => (
-                                            <TableRow key={formador.id}>
+                           {modalidade === 'online' ? (
+                                <Table className="print-table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className='w-[30%]'>Ano/Área</TableHead>
+                                            <TableHead className='w-[20%]'>Formador(a)</TableHead>
+                                            <TableHead>Link da Videochamada (Google Meet)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {formadores.length > 0 ? (
+                                            formadores.map((formador) => (
+                                                <TableRow key={formador.id}>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                    <TableCell>{formador.nomeCompleto}</TableCell>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            [...Array(3)].map((_, index) => (
+                                              <TableRow key={`empty-row-${index}`}>
+                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                  <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                              </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                           ) : (
+                                <Table className="print-table">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className='w-[20%]'>Dia da Semana</TableHead>
+                                            <TableHead className='w-[20%]'>Horário</TableHead>
+                                            <TableHead className='w-[30%]'>Ano/Área</TableHead>
+                                            <TableHead>Formador(a)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {[...Array(5)].map((_, index) => (
+                                            <TableRow key={`presencial-row-${index}`}>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell>{formador.nomeCompleto}</TableCell>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        [...Array(3)].map((_, index) => (
-                                          <TableRow key={`empty-row-${index}`}>
-                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                              <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                          </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                           )}
                         </div>
                     </section>
                     
