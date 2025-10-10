@@ -69,7 +69,6 @@ export default function FichaDevolutivaPage() {
             const formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
             setFormadores(formadoresData);
             
-            // Initialize agendas state
             const initialAgendas: AgendasState = {};
             formadoresData.forEach(f => {
                 initialAgendas[f.id] = [{ dia: '', horario: '', area: '' }];
@@ -97,6 +96,18 @@ export default function FichaDevolutivaPage() {
         ...prev,
         [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '' }]
     }));
+  };
+  
+  const handleAgendaChange = (formadorId: string, rowIndex: number, field: keyof AgendaRow, value: string) => {
+      setAgendas(prev => {
+          const newAgendas = { ...prev };
+          const formadorAgenda = [...(newAgendas[formadorId] || [])];
+          if (formadorAgenda[rowIndex]) {
+              formadorAgenda[rowIndex] = { ...formadorAgenda[rowIndex], [field]: value };
+          }
+          newAgendas[formadorId] = formadorAgenda;
+          return newAgendas;
+      });
   };
 
   if (loading) {
@@ -131,10 +142,10 @@ export default function FichaDevolutivaPage() {
           .printable-area, .printable-area * { visibility: visible; }
           .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; }
           .no-print { display: none !important; }
+          .print-only { visibility: visible !important; display: block !important; }
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
           .print-table { border-collapse: collapse; width: 100%; }
-          .print-select-value { visibility: visible !important; }
         }
       `}</style>
         <div className="bg-muted/30 min-h-screen p-4 sm:p-8 print-container">
@@ -220,7 +231,7 @@ export default function FichaDevolutivaPage() {
                                             ))
                                         ) : (
                                             [...Array(3)].map((_, index) => (
-                                              <TableRow key={`empty-row-${index}`}>
+                                              <TableRow key={`empty-online-row-${index}`}>
                                                   <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                   <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                   <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
@@ -247,10 +258,13 @@ export default function FichaDevolutivaPage() {
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {(agendas[formador.id] || []).map((_, rowIndex) => (
+                                                    {(agendas[formador.id] || []).map((agendaRow, rowIndex) => (
                                                         <TableRow key={`agenda-row-${formador.id}-${rowIndex}`}>
                                                             <TableCell>
-                                                                <Select>
+                                                                <Select
+                                                                    value={agendaRow.dia || ''}
+                                                                    onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value)}
+                                                                >
                                                                     <SelectTrigger className="w-full no-print">
                                                                         <SelectValue placeholder="Selecione..." />
                                                                     </SelectTrigger>
@@ -260,6 +274,7 @@ export default function FichaDevolutivaPage() {
                                                                         ))}
                                                                     </SelectContent>
                                                                 </Select>
+                                                                <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
                                                             <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                             <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
