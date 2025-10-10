@@ -12,7 +12,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Printer, ArrowLeft, Calendar, RefreshCw } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -27,6 +27,7 @@ export default function FichaDevolutivaPage() {
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
+  const [presencialRows, setPresencialRows] = useState(5);
 
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
@@ -147,7 +148,7 @@ export default function FichaDevolutivaPage() {
                     </section>
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
-                        <h3 className="font-bold mb-2 flex items-center gap-2"><Calendar className="h-4 w-4"/> Data e Horário Comum para Todas as Formações:</h3>
+                        <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
                         <p>
                             • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>Segunda-feira, 13 de outubro</span>
                         </p>
@@ -192,6 +193,7 @@ export default function FichaDevolutivaPage() {
                                     </TableBody>
                                 </Table>
                            ) : (
+                                <>
                                 <Table className="print-table">
                                     <TableHeader>
                                         <TableRow>
@@ -202,7 +204,7 @@ export default function FichaDevolutivaPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {[...Array(5)].map((_, index) => (
+                                        {[...Array(presencialRows)].map((_, index) => (
                                             <TableRow key={`presencial-row-${index}`}>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
@@ -212,6 +214,10 @@ export default function FichaDevolutivaPage() {
                                         ))}
                                     </TableBody>
                                 </Table>
+                                <div className="p-2 text-right no-print">
+                                    <Button size="sm" variant="outline" onClick={() => setPresencialRows(prev => prev + 1)}>Adicionar Linha</Button>
+                                </div>
+                                </>
                            )}
                         </div>
                     </section>
