@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Printer, ArrowLeft, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { RelatorioFormacaoPrint } from '@/components/formacoes/relatorio-formacao-print';
+import { gerarMapaMental, type GerarMapaMentalInput } from '@/ai/flows/gerar-mapa-mental-flow';
 
 type AvaliacaoSummary = {
     total: number;
@@ -68,6 +69,10 @@ export default function DetalhesFormacaoPage() {
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+  const [isMapaMentalDialogOpen, setIsMapaMentalDialogOpen] = useState(false);
+  const [mapaMentalContent, setMapaMentalContent] = useState('');
+  const [loadingMapaMental, setLoadingMapaMental] = useState(false);
+
   const { toast } = useToast();
   
   const fetchData = useCallback(async () => {
@@ -187,7 +192,45 @@ export default function DetalhesFormacaoPage() {
     summary.mediaFormador = countFormador > 0 ? totalFormador / countFormador : 0;
     
     return summary;
-}, [avaliacoes]);
+  }, [avaliacoes]);
+
+  const handleGenerateMindMap = async () => {
+    if (!formacao || !avaliacaoSummary) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Dados insuficientes para gerar o mapa mental.' });
+      return;
+    }
+    setLoadingMapaMental(true);
+    setIsMapaMentalDialogOpen(true);
+    try {
+        const input: GerarMapaMentalInput = {
+            tituloFormacao: formacao.titulo,
+            participantes: formacao.participantes || avaliacaoSummary.total,
+            formadores: formadores.map(f => f.nomeCompleto),
+            mediaGeralFormador: avaliacaoSummary.mediaFormador,
+            mediaGeralEditora: avaliacaoSummary.mediaEditora,
+            respostasAbertas: avaliacaoSummary.respostasAbertas,
+            pontosFortes: {
+                assuntos: avaliacaoSummary.assuntos,
+                organizacao: avaliacaoSummary.organizacao,
+                relevancia: avaliacaoSummary.relevancia,
+            },
+            pontosMelhorar: {
+                material: avaliacaoSummary.material
+            }
+        };
+
+        const result = await gerarMapaMental(input);
+        setMapaMentalContent(result);
+
+    } catch (error) {
+        console.error("Erro ao gerar mapa mental:", error);
+        toast({ variant: 'destructive', title: 'Erro de IA', description: 'Não foi possível gerar o mapa mental.' });
+        setMapaMentalContent('Ocorreu um erro ao gerar o mapa mental.');
+    } finally {
+        setLoadingMapaMental(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -257,10 +300,16 @@ export default function DetalhesFormacaoPage() {
                         </Button>
                         <p className="text-muted-foreground mt-2 text-sm">Pré-visualização do Relatório</p>
                     </div>
-                    <Button onClick={() => window.print()}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Imprimir / Salvar PDF
-                    </Button>
+                    <div className='flex items-center gap-2'>
+                        <Button variant="outline" onClick={handleGenerateMindMap} disabled={loadingMapaMental}>
+                             <Sparkles className="mr-2 h-4 w-4" />
+                             Gerar Mapa Mental
+                        </Button>
+                        <Button onClick={() => window.print()}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Imprimir / Salvar PDF
+                        </Button>
+                    </div>
                 </div>
                 <div className="printable-area">
                     <RelatorioFormacaoPrint 
@@ -273,6 +322,27 @@ export default function DetalhesFormacaoPage() {
                     />
                 </div>
             </div>
+             <Dialog open={isMapaMentalDialogOpen} onOpenChange={setIsMapaMentalDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className='flex items-center gap-2'><Sparkles className='h-5 w-5 text-primary'/> Mapa Mental da Formação</DialogTitle>
+                        <DialogDescription>
+                            Um resumo visual dos principais pontos do relatório, gerado por IA.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh] p-1">
+                        {loadingMapaMental ? (
+                            <div className="flex items-center justify-center h-48">
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            </div>
+                        ) : (
+                            <div className="prose prose-sm dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-p:text-foreground prose-li:text-muted-foreground whitespace-pre-wrap font-mono p-4 bg-muted/50 rounded-md">
+                                {mapaMentalContent}
+                            </div>
+                        )}
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
         </div>
     </>
   );
