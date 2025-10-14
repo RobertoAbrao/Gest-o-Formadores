@@ -39,6 +39,7 @@ import { RelatorioFormacaoPrint } from '@/components/formacoes/relatorio-formaca
 type AvaliacaoSummary = {
     total: number;
     mediaEditora: number;
+    mediaFormador: number;
     modalidade: Record<string, number>;
     funcao: Record<string, number>;
     etapaEnsino: Record<string, number>;
@@ -48,6 +49,7 @@ type AvaliacaoSummary = {
     relevancia: Record<string, number>;
     material: Record<string, number>;
     avaliacaoEditora: Record<string, number>;
+    avaliacaoFormador: Record<string, number>;
     respostasAbertas: {
         motivos: string[];
         interesses: string[];
@@ -131,6 +133,7 @@ export default function DetalhesFormacaoPage() {
     const summary: AvaliacaoSummary = {
         total: avaliacoes.length,
         mediaEditora: 0,
+        mediaFormador: 0,
         modalidade: {},
         funcao: {},
         etapaEnsino: {},
@@ -140,6 +143,7 @@ export default function DetalhesFormacaoPage() {
         relevancia: {},
         material: {},
         avaliacaoEditora: {},
+        avaliacaoFormador: {},
         respostasAbertas: {
             motivos: [],
             interesses: [],
@@ -148,10 +152,18 @@ export default function DetalhesFormacaoPage() {
     };
 
     let totalEditora = 0;
+    let totalFormador = 0;
+    let countFormador = 0;
 
     for (const avaliacao of avaliacoes) {
         totalEditora += Number(avaliacao.avaliacaoEditora);
         
+        if (avaliacao.avaliacaoFormador) {
+            totalFormador += Number(avaliacao.avaliacaoFormador);
+            countFormador++;
+            summary.avaliacaoFormador[avaliacao.avaliacaoFormador] = (summary.avaliacaoFormador[avaliacao.avaliacaoFormador] || 0) + 1;
+        }
+
         summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
         summary.funcao[avaliacao.funcao] = (summary.funcao[avaliacao.funcao] || 0) + 1;
         summary.etapaEnsino[avaliacao.etapaEnsino] = (summary.etapaEnsino[avaliacao.etapaEnsino] || 0) + 1;
@@ -172,6 +184,7 @@ export default function DetalhesFormacaoPage() {
     }
 
     summary.mediaEditora = totalEditora / summary.total;
+    summary.mediaFormador = countFormador > 0 ? totalFormador / countFormador : 0;
     
     return summary;
 }, [avaliacoes]);
