@@ -129,6 +129,7 @@ export interface Avaliacao {
     motivoMaterialNaoAtende?: string;
     interesseFormacao?: string;
     avaliacaoEditora: '1' | '2' | '3' | '4' | '5';
+    avaliacaoFormador?: '1' | '2' | '3' | '4' | '5';
     observacoes?: string;
     dataCriacao: Timestamp;
 }

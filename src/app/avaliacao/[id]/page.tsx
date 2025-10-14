@@ -73,6 +73,9 @@ const avaliacaoSchema = z.object({
     uf: z.string().min(2, 'O estado (UF) é obrigatório.'),
     cidade: z.string().min(2, 'A cidade é obrigatória.'),
     formadorId: z.string({ required_error: 'Selecione o formador que você está avaliando.'}),
+    avaliacaoFormador: z.enum(['1', '2', '3', '4', '5'], {
+        required_error: 'Avalie o desempenho do formador.'
+    }).optional(),
     modalidade: z.enum(['Presencial', 'On-line'], { required_error: 'Selecione a modalidade.'}),
     funcao: z.string({ required_error: 'Selecione sua função pedagógica.'}),
     dataFormacao: z.date({ required_error: 'A data da formação é obrigatória.'}),
@@ -347,8 +350,31 @@ export default function AvaliacaoPage() {
                                     />
                             </div>
 
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>3. Como você avalia o desempenho do formador selecionado?</h3>
+                                 <Separator />
+                                <FormField control={form.control} name="avaliacaoFormador" render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                         <FormDescription>
+                                            Numa escala de 1 a 5, sendo 1 "Muito Ruim" e 5 "Excelente".
+                                        </FormDescription>
+                                        <FormControl>
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex items-center space-x-4">
+                                                 {['1', '2', '3', '4', '5'].map(val => (
+                                                    <FormItem key={val} className="flex items-center space-x-2 space-y-0">
+                                                        <FormControl><RadioGroupItem value={val} /></FormControl>
+                                                        <FormLabel className="font-normal">{val}</FormLabel>
+                                                    </FormItem>
+                                                ))}
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>3. Modalidade da formação</h3>
+                                <h3 className='font-semibold text-lg'>4. Modalidade da formação</h3>
                                  <Separator />
                                 <FormField control={form.control} name="modalidade" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -370,7 +396,7 @@ export default function AvaliacaoPage() {
                             </div>
                             
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>4. Minha função pedagógica</h3>
+                                <h3 className='font-semibold text-lg'>5. Minha função pedagógica</h3>
                                  <Separator />
                                 <FormField control={form.control} name="funcao" render={({ field }) => (
                                     <FormItem>
@@ -384,7 +410,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                             <div className="space-y-4 p-4 border rounded-lg">
-                                 <h3 className='font-semibold text-lg'>5. Data da formação</h3>
+                                 <h3 className='font-semibold text-lg'>6. Data da formação</h3>
                                  <Separator />
                                  <FormField control={form.control} name="dataFormacao" render={({ field }) => (
                                     <FormItem className="flex flex-col">
@@ -407,7 +433,7 @@ export default function AvaliacaoPage() {
                             </div>
                             
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>6. Com qual etapa de ensino você trabalha?</h3>
+                                <h3 className='font-semibold text-lg'>7. Com qual etapa de ensino você trabalha?</h3>
                                  <Separator />
                                 <FormField control={form.control} name="etapaEnsino" render={({ field }) => (
                                     <FormItem>
@@ -421,7 +447,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>7. Assinale o material tema da formação</h3>
+                                <h3 className='font-semibold text-lg'>8. Assinale o material tema da formação</h3>
                                  <Separator />
                                  <FormField
                                     control={form.control}
@@ -463,7 +489,7 @@ export default function AvaliacaoPage() {
                             </div>
                             
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>8. Como você avalia os assuntos abordados na formação?</h3>
+                                <h3 className='font-semibold text-lg'>9. Como você avalia os assuntos abordados na formação?</h3>
                                  <Separator />
                                 <FormField control={form.control} name="avaliacaoAssuntos" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -483,7 +509,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>9. Avalie a organização do encontro</h3>
+                                <h3 className='font-semibold text-lg'>10. Avalie a organização do encontro</h3>
                                  <Separator />
                                 <FormField control={form.control} name="avaliacaoOrganizacao" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -503,7 +529,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>10. Avalie a relevância da formação para sua prática em sala de aula.</h3>
+                                <h3 className='font-semibold text-lg'>11. Avalie a relevância da formação para sua prática em sala de aula.</h3>
                                  <Separator />
                                 <FormField control={form.control} name="avaliacaoRelevancia" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -523,7 +549,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>11. O material atende às expectativas no uso em sala de aula?</h3>
+                                <h3 className='font-semibold text-lg'>12. O material atende às expectativas no uso em sala de aula?</h3>
                                  <Separator />
                                 <FormField control={form.control} name="materialAtendeExpectativa" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -544,7 +570,7 @@ export default function AvaliacaoPage() {
                             
                             {(materialAtende === 'Não' || materialAtende === 'Parcialmente') && (
                                 <div className="space-y-4 p-4 border rounded-lg">
-                                    <h3 className='font-semibold text-lg'>12. De acordo com a questão anterior, se sua resposta for não ou parcialmente, escreva o motivo.</h3>
+                                    <h3 className='font-semibold text-lg'>13. De acordo com a questão anterior, se sua resposta for não ou parcialmente, escreva o motivo.</h3>
                                     <Separator />
                                     <FormField control={form.control} name="motivoMaterialNaoAtende" render={({ field }) => (
                                         <FormItem>
@@ -558,7 +584,7 @@ export default function AvaliacaoPage() {
                             )}
 
                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>13. O que mais despertou seu interesse nessa formação?</h3>
+                                <h3 className='font-semibold text-lg'>14. O que mais despertou seu interesse nessa formação?</h3>
                                 <Separator />
                                 <FormField control={form.control} name="interesseFormacao" render={({ field }) => (
                                     <FormItem>
@@ -571,7 +597,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>14. Avalie a formação da Editora LT.</h3>
+                                <h3 className='font-semibold text-lg'>15. Avalie a formação da Editora LT.</h3>
                                  <Separator />
                                 <FormField control={form.control} name="avaliacaoEditora" render={({ field }) => (
                                     <FormItem className="space-y-3">
@@ -594,7 +620,7 @@ export default function AvaliacaoPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className='font-semibold text-lg'>15. Observações.</h3>
+                                <h3 className='font-semibold text-lg'>16. Observações.</h3>
                                 <Separator />
                                 <FormField control={form.control} name="observacoes" render={({ field }) => (
                                     <FormItem>
