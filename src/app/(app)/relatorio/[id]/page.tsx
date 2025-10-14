@@ -35,7 +35,35 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { RelatorioFormacaoPrint } from '@/components/formacoes/relatorio-formacao-print';
-import { gerarMapaMental, type GerarMapaMentalInput } from '@/ai/flows/gerar-mapa-mental-flow';
+import { gerarMapaMental } from '@/ai/flows/gerar-mapa-mental-flow';
+import { z } from 'zod';
+
+const RespostasAbertasSchema = z.object({
+  motivos: z.array(z.string()).describe('Lista de motivos pelos quais o material não atendeu às expectativas.'),
+  interesses: z.array(z.string()).describe('Lista de interesses dos participantes para futuras formações.'),
+  observacoes: z.array(z.string()).describe('Lista de observações e sugestões gerais.'),
+});
+
+const PontosSchema = z.object({
+    assuntos: z.record(z.string(), z.number()).optional(),
+    organizacao: z.record(z.string(), z.number()).optional(),
+    relevancia: z.record(z.string(), z.number()).optional(),
+    material: z.record(z.string(), z.number()).optional(),
+});
+
+const GerarMapaMentalInputSchema = z.object({
+  tituloFormacao: z.string().describe('O título principal da formação.'),
+  participantes: z.number().describe('O número total de participantes ou respostas.'),
+  formadores: z.array(z.string()).describe('Uma lista com os nomes dos formadores.'),
+  mediaGeralFormador: z.number().describe('A média de avaliação geral dos formadores (de 1 a 5).'),
+  mediaGeralEditora: z.number().describe('A média de avaliação geral da editora (de 1 a 5).'),
+  respostasAbertas: RespostasAbertasSchema.describe('Respostas abertas e qualitativas dos participantes.'),
+  pontosFortes: PontosSchema.describe('Dados quantitativos sobre pontos fortes (assuntos, organização, relevância).'),
+  pontosMelhorar: PontosSchema.describe('Dados quantitativos sobre pontos a melhorar (material).'),
+});
+
+type GerarMapaMentalInput = z.infer<typeof GerarMapaMentalInputSchema>;
+
 
 type AvaliacaoSummary = {
     total: number;

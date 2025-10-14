@@ -5,7 +5,6 @@
  * @fileOverview Fluxo de IA para gerar um mapa mental a partir de dados de um relatório de formação.
  *
  * - gerarMapaMental - Função que chama o fluxo de IA.
- * - GerarMapaMentalInput - O tipo de entrada para a função.
  */
 
 import { ai } from '@/ai/genkit';
@@ -24,7 +23,7 @@ const PontosSchema = z.object({
     material: z.record(z.string(), z.number()).optional(),
 });
 
-export const GerarMapaMentalInputSchema = z.object({
+const GerarMapaMentalInputSchema = z.object({
   tituloFormacao: z.string().describe('O título principal da formação.'),
   participantes: z.number().describe('O número total de participantes ou respostas.'),
   formadores: z.array(z.string()).describe('Uma lista com os nomes dos formadores.'),
@@ -35,7 +34,7 @@ export const GerarMapaMentalInputSchema = z.object({
   pontosMelhorar: PontosSchema.describe('Dados quantitativos sobre pontos a melhorar (material).'),
 });
 
-export type GerarMapaMentalInput = z.infer<typeof GerarMapaMentalInputSchema>;
+type GerarMapaMentalInput = z.infer<typeof GerarMapaMentalInputSchema>;
 
 // Define o fluxo de IA
 const gerarMapaMentalFlow = ai.defineFlow(
