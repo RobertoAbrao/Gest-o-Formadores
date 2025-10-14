@@ -17,7 +17,7 @@ import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -34,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
+import Link from 'next/link';
 
 
 interface DetalhesFormacaoProps {
@@ -1040,6 +1041,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </TabsContent>
                              {formadoresComAvaliacao.map(formador => (
                                 <TabsContent key={formador.id} value={formador.id} className="pt-4">
+                                     <div className="flex justify-end mb-4">
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={`/relatorio/${formacaoId}/${formador.id}`} target="_blank">
+                                                <Printer className="mr-2 h-4 w-4" /> Gerar Relatório Individual
+                                            </Link>
+                                        </Button>
+                                    </div>
                                     <AvaliacaoSummaryComponent 
                                         summary={calculateAvaliacaoSummary(avaliacoesPorFormador[formador.id])} 
                                         avaliacoes={avaliacoesPorFormador[formador.id]} 
