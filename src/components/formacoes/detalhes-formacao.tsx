@@ -205,11 +205,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     fetchData();
   }, [fetchData]);
 
-    const avaliacaoSummary = useMemo<AvaliacaoSummary | null>(() => {
-        if (avaliacoes.length === 0) return null;
+    const calculateAvaliacaoSummary = (filteredAvaliacoes: Avaliacao[]): AvaliacaoSummary | null => {
+        if (filteredAvaliacoes.length === 0) return null;
 
         const summary: AvaliacaoSummary = {
-            total: avaliacoes.length,
+            total: filteredAvaliacoes.length,
             mediaEditora: 0,
             modalidade: {},
             funcao: {},
@@ -224,7 +224,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
         let totalEditora = 0;
 
-        for (const avaliacao of avaliacoes) {
+        for (const avaliacao of filteredAvaliacoes) {
             totalEditora += Number(avaliacao.avaliacaoEditora);
             
             summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
@@ -245,7 +245,21 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         summary.mediaEditora = totalEditora / summary.total;
         
         return summary;
-    }, [avaliacoes]);
+    };
+    
+    const avaliacaoSummaryGeral = useMemo(() => calculateAvaliacaoSummary(avaliacoes), [avaliacoes]);
+
+    const avaliacoesPorFormador = useMemo(() => {
+      const grouped: Record<string, Avaliacao[]> = {};
+      for (const formador of formadores) {
+        grouped[formador.id] = avaliacoes.filter(a => a.formadorId === formador.id);
+      }
+      return grouped;
+    }, [avaliacoes, formadores]);
+
+    const formadoresComAvaliacao = useMemo(() => {
+        return formadores.filter(f => avaliacoesPorFormador[f.id] && avaliacoesPorFormador[f.id].length > 0);
+    }, [formadores, avaliacoesPorFormador]);
 
   const despesasAgrupadas = useMemo(() => {
     return despesas.reduce((acc, despesa) => {
@@ -393,6 +407,189 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     setSelectedDespesa(despesa);
     setIsDespesaDialogOpen(true);
   }
+  
+  const AvaliacaoSummaryComponent = ({ summary, avaliacoes }: { summary: AvaliacaoSummary | null, avaliacoes: Avaliacao[]}) => {
+    if (!summary) return null;
+    return (
+      <div className="mb-8 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{summary.total}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Média Avaliação da Editora</CardTitle>
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{summary.mediaEditora.toFixed(1)} / 5</div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card>
+            <CardHeader><CardTitle className="text-base">Resumo das Respostas</CardTitle></CardHeader>
+            <CardContent className="space-y-6 text-sm">
+                
+                <div className="space-y-2">
+                    <p className="font-medium">Modalidade</p>
+                    {Object.entries(summary.modalidade).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    <p className="font-medium">Função Pedagógica</p>
+                    {Object.entries(summary.funcao).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    <p className="font-medium">Etapa de Ensino</p>
+                    {Object.entries(summary.etapaEnsino).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="space-y-2">
+                    <p className="font-medium">Material/Tema da Formação</p>
+                    {Object.entries(summary.materialTema).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    <p className="font-medium">Assuntos Abordados</p>
+                    {Object.entries(summary.assuntos).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="space-y-2">
+                    <p className="font-medium">Organização do Encontro</p>
+                    {Object.entries(summary.organizacao).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+                 <div className="space-y-2">
+                    <p className="font-medium">Relevância para Prática</p>
+                    {Object.entries(summary.relevancia).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="space-y-2">
+                    <p className="font-medium">Material Atende Expectativas</p>
+                    {Object.entries(summary.material).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span></div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="space-y-2">
+                    <p className="font-medium">Avaliação da Editora (1-5)</p>
+                    {Object.entries(summary.avaliacaoEditora).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
+                        <div key={key}>
+                            <div className="flex justify-between mb-1">
+                                <span className="flex items-center gap-1">{key} <Star className="h-4 w-4 text-yellow-400" /></span>
+                                <span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span>
+                            </div>
+                            <Progress value={(value / summary.total) * 100} />
+                        </div>
+                    ))}
+                </div>
+
+            </CardContent>
+        </Card>
+        <Separator />
+         <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
+         <Accordion type="multiple" className="w-full space-y-2">
+            {avaliacoes.map(avaliacao => (
+                <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
+                    <AccordionTrigger className='px-4 hover:no-underline'>
+                        <div className="flex items-center justify-between w-full pr-4">
+                            <span>{avaliacao.nomeCompleto}</span>
+                            <span className="text-xs text-muted-foreground font-normal">
+                                {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="text-sm space-y-4 p-4 border-t">
+                            <div className='space-y-3'>
+                                <div><strong>Função:</strong> {avaliacao.funcao}</div>
+                                <div>
+                                  <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
+                                </div>
+                                <div>
+                                  <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
+                                </div>
+                                <div>
+                                  <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
+                                </div>
+                                <div>
+                                  <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
+                                </div>
+                                <div>
+                                    <strong>Avaliação (1-5):</strong>
+                                    <div className='flex items-center gap-1 mt-1'>
+                                        {[...Array(5)].map((_, i) => (
+                                        <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                        ))}
+                                    </div>
+                                </div>
+                                {avaliacao.interesseFormacao && (
+                                <div>
+                                    <strong>Interesse:</strong>
+                                    <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
+                                </div>
+                                )}
+                                {avaliacao.observacoes && (
+                                <div>
+                                    <strong>Observações:</strong>
+                                    <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
+                                </div>
+                                )}
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -829,188 +1026,27 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         </div>
                      ) : (
-                        <div>
-                             {avaliacaoSummary && (
-                                <div className="mb-8 space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Card>
-                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
-                                                <Users className="h-4 w-4 text-muted-foreground" />
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-2xl font-bold">{avaliacaoSummary.total}</div>
-                                            </CardContent>
-                                        </Card>
-                                        <Card>
-                                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                <CardTitle className="text-sm font-medium">Média Avaliação da Editora</CardTitle>
-                                                <Star className="h-4 w-4 text-muted-foreground" />
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="text-2xl font-bold">{avaliacaoSummary.mediaEditora.toFixed(1)} / 5</div>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-
-                                    <Card>
-                                        <CardHeader><CardTitle className="text-base">Resumo das Respostas</CardTitle></CardHeader>
-                                        <CardContent className="space-y-6 text-sm">
-                                            
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Modalidade</p>
-                                                {Object.entries(avaliacaoSummary.modalidade).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Função Pedagógica</p>
-                                                {Object.entries(avaliacaoSummary.funcao).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Etapa de Ensino</p>
-                                                {Object.entries(avaliacaoSummary.etapaEnsino).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Material/Tema da Formação</p>
-                                                {Object.entries(avaliacaoSummary.materialTema).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Assuntos Abordados</p>
-                                                {Object.entries(avaliacaoSummary.assuntos).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Organização do Encontro</p>
-                                                {Object.entries(avaliacaoSummary.organizacao).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                             <div className="space-y-2">
-                                                <p className="font-medium">Relevância para Prática</p>
-                                                {Object.entries(avaliacaoSummary.relevancia).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Material Atende Expectativas</p>
-                                                {Object.entries(avaliacaoSummary.material).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1"><span>{key}</span><span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span></div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            <div className="space-y-2">
-                                                <p className="font-medium">Avaliação da Editora (1-5)</p>
-                                                {Object.entries(avaliacaoSummary.avaliacaoEditora).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <div className="flex justify-between mb-1">
-                                                            <span className="flex items-center gap-1">{key} <Star className="h-4 w-4 text-yellow-400" /></span>
-                                                            <span>{value} ({((value / avaliacaoSummary.total) * 100).toFixed(0)}%)</span>
-                                                        </div>
-                                                        <Progress value={(value / avaliacaoSummary.total) * 100} />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                        </CardContent>
-                                    </Card>
-                                    <Separator />
-                                </div>
-                            )}
-                            
-                            <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
-                             <Accordion type="multiple" className="w-full space-y-2">
-                                {avaliacoes.map(avaliacao => (
-                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
-                                        <AccordionTrigger className='px-4 hover:no-underline'>
-                                            <div className="flex items-center justify-between w-full pr-4">
-                                                <span>{avaliacao.nomeCompleto}</span>
-                                                <span className="text-xs text-muted-foreground font-normal">
-                                                    {formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="text-sm space-y-4 p-4 border-t">
-                                                <div className='space-y-3'>
-                                                    <div><strong>Função:</strong> {avaliacao.funcao}</div>
-                                                    <div>
-                                                      <strong>Assuntos:</strong> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Organização:</strong> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Relevância:</strong> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge>
-                                                    </div>
-                                                    <div>
-                                                      <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
-                                                    </div>
-                                                    <div>
-                                                        <strong>Avaliação (1-5):</strong>
-                                                        <div className='flex items-center gap-1 mt-1'>
-                                                            {[...Array(5)].map((_, i) => (
-                                                            <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    {avaliacao.interesseFormacao && (
-                                                    <div>
-                                                        <strong>Interesse:</strong>
-                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.interesseFormacao}</p>
-                                                    </div>
-                                                    )}
-                                                    {avaliacao.observacoes && (
-                                                    <div>
-                                                        <strong>Observações:</strong>
-                                                        <p className='text-muted-foreground pl-2 border-l-2 ml-1'>{avaliacao.observacoes}</p>
-                                                    </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
+                        <Tabs defaultValue="geral">
+                            <TabsList>
+                                <TabsTrigger value="geral">Visão Geral</TabsTrigger>
+                                {formadoresComAvaliacao.map(formador => (
+                                  <TabsTrigger key={formador.id} value={formador.id}>
+                                    {formador.nomeCompleto.split(' ')[0]}
+                                  </TabsTrigger>
                                 ))}
-                            </Accordion>
-                        </div>
+                            </TabsList>
+                            <TabsContent value="geral" className="pt-4">
+                                <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
+                            </TabsContent>
+                             {formadoresComAvaliacao.map(formador => (
+                                <TabsContent key={formador.id} value={formador.id} className="pt-4">
+                                    <AvaliacaoSummaryComponent 
+                                        summary={calculateAvaliacaoSummary(avaliacoesPorFormador[formador.id])} 
+                                        avaliacoes={avaliacoesPorFormador[formador.id]} 
+                                    />
+                                </TabsContent>
+                            ))}
+                        </Tabs>
                      )}
                  </div>
             </TabsContent>
@@ -1035,4 +1071,3 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </ScrollArea>
   );
 }
-
