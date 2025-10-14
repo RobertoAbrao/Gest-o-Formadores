@@ -5,12 +5,13 @@ import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Star, Users, File as FileIcon, FileType, FileText } from 'lucide-react';
+import { Star, Users, File as FileIcon, FileType, FileText, User } from 'lucide-react';
 import { Progress } from '../ui/progress';
 
 type AvaliacaoSummary = {
     total: number;
     mediaEditora: number;
+    mediaFormador: number;
     modalidade: Record<string, number>;
     funcao: Record<string, number>;
     etapaEnsino: Record<string, number>;
@@ -20,6 +21,7 @@ type AvaliacaoSummary = {
     relevancia: Record<string, number>;
     material: Record<string, number>;
     avaliacaoEditora: Record<string, number>;
+    avaliacaoFormador: Record<string, number>;
     respostasAbertas: {
         motivos: string[];
         interesses: string[];
@@ -230,7 +232,7 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Resumo das Avaliações</h3>
            {avaliacoes.length > 0 && summary ? (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                          <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
@@ -240,9 +242,18 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                                 <div className="text-2xl font-bold">{summary.total}</div>
                             </CardContent>
                         </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Média Formador</CardTitle>
+                                <User className="h-4 w-4 text-gray-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{summary.mediaFormador > 0 ? summary.mediaFormador.toFixed(1) : 'N/A'}</div>
+                            </CardContent>
+                        </Card>
                          <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Média da Editora (1-5)</CardTitle>
+                                <CardTitle className="text-sm font-medium">Média Editora (1-5)</CardTitle>
                                 <Star className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
@@ -261,6 +272,9 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                            <QuestionSummary title="Organização do Encontro" data={summary.organizacao} total={summary.total}/>
                            <QuestionSummary title="Relevância para Prática" data={summary.relevancia} total={summary.total}/>
                            <QuestionSummary title="Material Atende Expectativas" data={summary.material} total={summary.total}/>
+                           {Object.keys(summary.avaliacaoFormador).length > 0 && (
+                               <QuestionSummary title="Avaliação do Formador (1-5)" data={summary.avaliacaoFormador} total={summary.total}/>
+                           )}
                            <QuestionSummary title="Avaliação da Editora (1-5)" data={summary.avaliacaoEditora} total={summary.total}/>
                         </CardContent>
                     </Card>

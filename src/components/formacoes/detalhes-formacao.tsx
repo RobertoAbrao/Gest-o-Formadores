@@ -93,6 +93,7 @@ type GroupedByFormador = {
 type AvaliacaoSummary = {
     total: number;
     mediaEditora: number;
+    mediaFormador: number;
     modalidade: Record<string, number>;
     funcao: Record<string, number>;
     etapaEnsino: Record<string, number>;
@@ -102,6 +103,7 @@ type AvaliacaoSummary = {
     relevancia: Record<string, number>;
     material: Record<string, number>;
     avaliacaoEditora: Record<string, number>;
+    avaliacaoFormador: Record<string, number>;
 }
 
 
@@ -212,6 +214,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         const summary: AvaliacaoSummary = {
             total: filteredAvaliacoes.length,
             mediaEditora: 0,
+            mediaFormador: 0,
             modalidade: {},
             funcao: {},
             etapaEnsino: {},
@@ -221,12 +224,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             relevancia: {},
             material: {},
             avaliacaoEditora: {},
+            avaliacaoFormador: {},
         };
 
         let totalEditora = 0;
+        let totalFormador = 0;
+        let countFormador = 0;
 
         for (const avaliacao of filteredAvaliacoes) {
             totalEditora += Number(avaliacao.avaliacaoEditora);
+            if (avaliacao.avaliacaoFormador) {
+                totalFormador += Number(avaliacao.avaliacaoFormador);
+                countFormador++;
+            }
             
             summary.modalidade[avaliacao.modalidade] = (summary.modalidade[avaliacao.modalidade] || 0) + 1;
             summary.funcao[avaliacao.funcao] = (summary.funcao[avaliacao.funcao] || 0) + 1;
@@ -241,9 +251,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             summary.relevancia[avaliacao.avaliacaoRelevancia] = (summary.relevancia[avaliacao.avaliacaoRelevancia] || 0) + 1;
             summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
             summary.avaliacaoEditora[avaliacao.avaliacaoEditora] = (summary.avaliacaoEditora[avaliacao.avaliacaoEditora] || 0) + 1;
+            if (avaliacao.avaliacaoFormador) {
+                summary.avaliacaoFormador[avaliacao.avaliacaoFormador] = (summary.avaliacaoFormador[avaliacao.avaliacaoFormador] || 0) + 1;
+            }
         }
 
         summary.mediaEditora = totalEditora / summary.total;
+        summary.mediaFormador = countFormador > 0 ? totalFormador / countFormador : 0;
         
         return summary;
     };
@@ -409,11 +423,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     setIsDespesaDialogOpen(true);
   }
   
-  const AvaliacaoSummaryComponent = ({ summary, avaliacoes }: { summary: AvaliacaoSummary | null, avaliacoes: Avaliacao[]}) => {
+  const AvaliacaoSummaryComponent = ({ summary, avaliacoes, formadorName }: { summary: AvaliacaoSummary | null, avaliacoes: Avaliacao[], formadorName?: string}) => {
     if (!summary) return null;
     return (
       <div className="mb-8 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total de Respostas</CardTitle>
@@ -425,7 +439,16 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Média Avaliação da Editora</CardTitle>
+                    <CardTitle className="text-sm font-medium">Média {formadorName || 'Formador'}</CardTitle>
+                    <Star className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{summary.mediaFormador > 0 ? `${summary.mediaFormador.toFixed(1)} / 5` : 'N/A'}</div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Média Editora LT</CardTitle>
                     <Star className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -518,6 +541,21 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     ))}
                 </div>
                 
+                {Object.keys(summary.avaliacaoFormador).length > 0 && (
+                     <div className="space-y-2">
+                        <p className="font-medium">Avaliação do Formador (1-5)</p>
+                        {Object.entries(summary.avaliacaoFormador).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
+                            <div key={key}>
+                                <div className="flex justify-between mb-1">
+                                    <span className="flex items-center gap-1">{key} <Star className="h-4 w-4 text-yellow-400" /></span>
+                                    <span>{value} ({((value / summary.total) * 100).toFixed(0)}%)</span>
+                                </div>
+                                <Progress value={(value / summary.total) * 100} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
                 <div className="space-y-2">
                     <p className="font-medium">Avaliação da Editora (1-5)</p>
                     {Object.entries(summary.avaliacaoEditora).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (
@@ -562,8 +600,18 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                 <div>
                                   <strong>Material Atende:</strong> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge>
                                 </div>
+                                {avaliacao.avaliacaoFormador && (
+                                    <div>
+                                        <strong>Avaliação do Formador (1-5):</strong>
+                                        <div className='flex items-center gap-1 mt-1'>
+                                            {[...Array(5)].map((_, i) => (
+                                            <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoFormador) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 <div>
-                                    <strong>Avaliação (1-5):</strong>
+                                    <strong>Avaliação da Editora (1-5):</strong>
                                     <div className='flex items-center gap-1 mt-1'>
                                         {[...Array(5)].map((_, i) => (
                                         <Star key={i} className={`h-5 w-5 ${i < Number(avaliacao.avaliacaoEditora) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'}`}/>
@@ -1050,7 +1098,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                     </div>
                                     <AvaliacaoSummaryComponent 
                                         summary={calculateAvaliacaoSummary(avaliacoesPorFormador[formador.id])} 
-                                        avaliacoes={avaliacoesPorFormador[formador.id]} 
+                                        avaliacoes={avaliacoesPorFormador[formador.id]}
+                                        formadorName={formador.nomeCompleto.split(' ')[0]}
                                     />
                                 </TabsContent>
                             ))}
