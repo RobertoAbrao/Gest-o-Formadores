@@ -541,7 +541,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     ))}
                 </div>
                 
-                {Object.keys(summary.avaliacaoFormador).length > 0 && (
+                {summary.avaliacaoFormador && Object.keys(summary.avaliacaoFormador).length > 0 && (
                      <div className="space-y-2">
                         <p className="font-medium">Avaliação do Formador (1-5)</p>
                         {Object.entries(summary.avaliacaoFormador).sort(([a], [b]) => Number(a) - Number(b)).map(([key, value]) => (

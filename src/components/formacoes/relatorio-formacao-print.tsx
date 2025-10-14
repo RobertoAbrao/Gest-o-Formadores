@@ -272,21 +272,23 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                            <QuestionSummary title="Organização do Encontro" data={summary.organizacao} total={summary.total}/>
                            <QuestionSummary title="Relevância para Prática" data={summary.relevancia} total={summary.total}/>
                            <QuestionSummary title="Material Atende Expectativas" data={summary.material} total={summary.total}/>
-                           {Object.keys(summary.avaliacaoFormador).length > 0 && (
+                           {summary.avaliacaoFormador && Object.keys(summary.avaliacaoFormador).length > 0 && (
                                <QuestionSummary title="Avaliação do Formador (1-5)" data={summary.avaliacaoFormador} total={summary.total}/>
                            )}
                            <QuestionSummary title="Avaliação da Editora (1-5)" data={summary.avaliacaoEditora} total={summary.total}/>
                         </CardContent>
                     </Card>
                     
-                    <Card>
-                        <CardHeader><CardTitle className="text-base">Respostas Abertas</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                           <OpenEndedResponses title="Motivos (Material não atende)" responses={summary.respostasAbertas.motivos} />
-                           <OpenEndedResponses title="Principais Interesses na Formação" responses={summary.respostasAbertas.interesses} />
-                           <OpenEndedResponses title="Observações e Sugestões" responses={summary.respostasAbertas.observacoes} />
-                        </CardContent>
-                    </Card>
+                    {summary.respostasAbertas && (
+                        <Card>
+                            <CardHeader><CardTitle className="text-base">Respostas Abertas</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                               <OpenEndedResponses title="Motivos (Material não atende)" responses={summary.respostasAbertas.motivos} />
+                               <OpenEndedResponses title="Principais Interesses na Formação" responses={summary.respostasAbertas.interesses} />
+                               <OpenEndedResponses title="Observações e Sugestões" responses={summary.respostasAbertas.observacoes} />
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
            ) : (
                 <p className="text-sm text-gray-500 italic">Nenhuma avaliação recebida para esta formação.</p>
