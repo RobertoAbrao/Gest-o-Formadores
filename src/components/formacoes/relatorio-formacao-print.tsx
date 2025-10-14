@@ -99,6 +99,8 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
     return <FileIcon className="h-6 w-6 text-gray-500 mr-2 shrink-0" />;
   };
 
+  const isIndividualReport = formadores.length === 1;
+
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-200">
@@ -244,7 +246,9 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                         </Card>
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Média Formador</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                    Média {isIndividualReport ? 'Formador' : 'Geral Formadores'}
+                                </CardTitle>
                                 <User className="h-4 w-4 text-gray-500" />
                             </CardHeader>
                             <CardContent>
