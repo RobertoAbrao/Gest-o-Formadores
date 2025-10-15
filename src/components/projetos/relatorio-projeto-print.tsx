@@ -188,11 +188,11 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
     },
   ];
 
-    const datedMilestones = allMilestones.filter(m => m.sortDate);
+    const scheduledMilestones = allMilestones.filter(m => m.sortDate);
 
-    const sortedMilestones = datedMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
+    const sortedMilestones = scheduledMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
 
-    const allStepsComplete = datedMilestones.length > 0 && datedMilestones.every(m => m.isComplete);
+    const allStepsComplete = scheduledMilestones.length > 0 && scheduledMilestones.every(m => m.isComplete);
     
     if (allStepsComplete) {
         sortedMilestones.push({
