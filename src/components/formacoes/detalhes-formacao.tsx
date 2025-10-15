@@ -103,7 +103,7 @@ type AvaliacaoSummary = {
     relevancia: Record<string, number>;
     material: Record<string, number>;
     avaliacaoEditora: Record<string, number>;
-    avaliacaoFormador: Record<string, number>;
+    avaliacaoFormador?: Record<string, number>;
 }
 
 
@@ -252,6 +252,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             summary.material[avaliacao.materialAtendeExpectativa] = (summary.material[avaliacao.materialAtendeExpectativa] || 0) + 1;
             summary.avaliacaoEditora[avaliacao.avaliacaoEditora] = (summary.avaliacaoEditora[avaliacao.avaliacaoEditora] || 0) + 1;
             if (avaliacao.avaliacaoFormador) {
+                if (!summary.avaliacaoFormador) summary.avaliacaoFormador = {};
                 summary.avaliacaoFormador[avaliacao.avaliacaoFormador] = (summary.avaliacaoFormador[avaliacao.avaliacaoFormador] || 0) + 1;
             }
         }
@@ -672,7 +673,15 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             <TabsContent value="info">
                 <div className="space-y-6 pt-4">
                     <div className="space-y-4">
-                        <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
+                            <Button variant="outline" size="sm" asChild>
+                                <Link href={`/relatorio/${formacao.id}`} target="_blank">
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Imprimir Relatório
+                                </Link>
+                            </Button>
+                        </div>
                         <Separator />
                         <div className="grid gap-4 md:grid-cols-2">
                             {formadores.length > 0 && (
