@@ -188,15 +188,13 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
     },
   ];
 
-    const sortedMilestones = allMilestones
-        .filter(m => m.sortDate) // Filtra apenas eventos que têm data para ordenar
-        .sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
+    const datedMilestones = allMilestones.filter(m => m.sortDate);
 
-    // Encontrar o último evento com data, se houver.
-    const lastDatedEvent = sortedMilestones[sortedMilestones.length -1];
+    const sortedMilestones = datedMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
+
+    const allStepsComplete = datedMilestones.length > 0 && datedMilestones.every(m => m.isComplete);
     
-    // Adicionar o evento "Projeto Concluído" no final, se o último evento datado estiver completo.
-    if(lastDatedEvent && lastDatedEvent.isComplete) {
+    if (allStepsComplete) {
         sortedMilestones.push({
             icon: CheckCircle,
             title: 'Projeto Concluído',
@@ -205,7 +203,6 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
             sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
         });
     }
-
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
@@ -233,14 +230,18 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         <section>
              <h3 className="text-xl font-semibold mb-6 pb-2 border-b">Marcos e Atividades</h3>
              <div className='space-y-4'>
-                {sortedMilestones.map((milestone, index) => (
-                    <MilestoneCard 
-                        key={index}
-                        {...milestone}
-                        isFirst={index === 0}
-                        isLast={index === sortedMilestones.length - 1}
-                    />
-                ))}
+                {sortedMilestones.length > 0 ? (
+                    sortedMilestones.map((milestone, index) => (
+                        <MilestoneCard 
+                            key={index}
+                            {...milestone}
+                            isFirst={index === 0}
+                            isLast={index === sortedMilestones.length - 1}
+                        />
+                    ))
+                ) : (
+                    <p className="text-sm text-center text-gray-500 py-8">Nenhum marco com data definida para exibir na linha do tempo.</p>
+                )}
              </div>
         </section>
       </main>
