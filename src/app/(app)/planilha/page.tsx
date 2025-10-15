@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, Map } from 'lucide-react';
+import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User } from 'lucide-react';
 import type { ProjetoImplatancao, Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -302,3 +302,5 @@ export default function PlanilhaPage() {
     </div>
   );
 }
+
+    
