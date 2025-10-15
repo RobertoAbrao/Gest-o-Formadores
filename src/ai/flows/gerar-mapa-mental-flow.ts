@@ -68,17 +68,17 @@ const gerarMapaMentalFlow = ai.defineFlow(
       Analise os dados quantitativos para identificar os pontos mais votados em cada categoria (pontos fortes e a melhorar).
 
       Exemplo de Saída:
-      - **Título da Formação**
-        - **Resultados 📊**
+      - Título da Formação
+        - Resultados 📊
           - Média Formadores: 4.8 / 5
           - Média Editora: 4.5 / 5
-        - **Pontos Fortes ✅**
+        - Pontos Fortes ✅
           - Assuntos foram 'Muito Relevantes'.
           - Organização do evento foi 'Ótima'.
-        - **Pontos a Melhorar ⚠️**
+        - Pontos a Melhorar ⚠️
           - Material didático atendeu apenas 'Parcialmente'.
-            - *Motivo: "Faltam exemplos práticos."*
-        - **Sugestões 💡**
+            - Motivo: "Faltam exemplos práticos."
+        - Sugestões 💡
           - Oferecer workshops práticos.
           - Disponibilizar slides com antecedência.
 
