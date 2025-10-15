@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet } from 'lucide-react';
+import { Loader2, Sheet, GanttChartSquare } from 'lucide-react';
 import type { ProjetoImplatancao } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -19,28 +19,30 @@ import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firesto
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { format, differenceInDays, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Activity {
-  date: Date;
-  endDate?: Date;
+  startDate: Date;
+  endDate: Date;
   municipio: string;
   uf: string;
   atividade: string;
   observacoes: string;
+  tipo: 'implantacao' | 'migracao' | 'simulado' | 'devolutiva' | 'diagnostica';
+  isMilestone: boolean;
 }
 
-const formatDate = (date: Date): string => {
-    return format(date, "dd/MM");
-}
+const activityColors: Record<Activity['tipo'], string> = {
+    implantacao: 'bg-red-500',
+    migracao: 'bg-red-700',
+    diagnostica: 'bg-yellow-500',
+    simulado: 'bg-blue-500',
+    devolutiva: 'bg-green-500',
+};
 
-const formatPeriod = (start: Date, end: Date): string => {
-    const startFormat = format(start, "dd/MM");
-    const endFormat = format(end, "dd/MM");
-    return `${startFormat} a ${endFormat}`;
-}
 
 export default function PlanilhaPage() {
   const { user } = useAuth();
@@ -71,81 +73,110 @@ export default function PlanilhaPage() {
     }
   }, [user, router, fetchProjetos]);
 
-  const activitiesByMonth = useMemo(() => {
+  const { activitiesByProject, timelineStart, timelineEnd, totalDays, months } = useMemo(() => {
     const allActivities: Activity[] = [];
     projetos.forEach(p => {
         if (p.dataImplantacao) {
             allActivities.push({
-                date: p.dataImplantacao.toDate(),
-                municipio: p.municipio,
-                uf: p.uf,
-                atividade: "Implantação",
-                observacoes: p.diagnostica?.detalhes || ''
+                startDate: p.dataImplantacao.toDate(),
+                endDate: p.dataImplantacao.toDate(),
+                municipio: p.municipio, uf: p.uf,
+                atividade: "Implantação", observacoes: p.diagnostica?.detalhes || '',
+                tipo: 'implantacao', isMilestone: true,
             });
         }
         if (p.dataMigracao) {
              allActivities.push({
-                date: p.dataMigracao.toDate(),
-                municipio: p.municipio,
-                uf: p.uf,
-                atividade: "Migração de Dados",
-                observacoes: ''
+                startDate: p.dataMigracao.toDate(),
+                endDate: p.dataMigracao.toDate(),
+                municipio: p.municipio, uf: p.uf,
+                atividade: "Migração de Dados", observacoes: '',
+                tipo: 'migracao', isMilestone: true,
+            });
+        }
+        if (p.diagnostica?.data) {
+             allActivities.push({
+                startDate: p.diagnostica.data.toDate(),
+                endDate: p.diagnostica.data.toDate(),
+                municipio: p.municipio, uf: p.uf,
+                atividade: "Avaliação Diagnóstica", observacoes: p.diagnostica.detalhes || '',
+                tipo: 'diagnostica', isMilestone: true,
             });
         }
         if (p.simulados) {
             Object.entries(p.simulados).forEach(([key, simulado]) => {
-                if (simulado.dataInicio) {
+                if (simulado.dataInicio && simulado.dataFim) {
                      allActivities.push({
-                        date: (simulado.dataInicio as Timestamp).toDate(),
-                        endDate: simulado.dataFim ? (simulado.dataFim as Timestamp).toDate() : undefined,
-                        municipio: p.municipio,
-                        uf: p.uf,
-                        atividade: `Simulado ${key.replace('s','')}`,
-                        observacoes: simulado.detalhes || ''
+                        startDate: (simulado.dataInicio as Timestamp).toDate(),
+                        endDate: (simulado.dataFim as Timestamp).toDate(),
+                        municipio: p.municipio, uf: p.uf,
+                        atividade: `Simulado ${key.replace('s','')}`, observacoes: simulado.detalhes || '',
+                        tipo: 'simulado', isMilestone: false,
                     });
                 }
             })
         }
         if (p.devolutivas) {
             Object.entries(p.devolutivas).forEach(([key, devolutiva]) => {
-                if ('data' in devolutiva && devolutiva.data) {
-                     allActivities.push({
-                        date: (devolutiva.data as Timestamp).toDate(),
-                        municipio: p.municipio,
-                        uf: p.uf,
-                        atividade: `Devolutiva ${key.replace('d','')}`,
-                        observacoes: devolutiva.detalhes || (devolutiva.formador ? `Formador: ${devolutiva.formador}` : '')
-                    });
-                } else if ('dataInicio' in devolutiva && devolutiva.dataInicio) {
+                const isSingleDate = 'data' in devolutiva && devolutiva.data;
+                const hasPeriod = 'dataInicio' in devolutiva && devolutiva.dataInicio && 'dataFim' in devolutiva && devolutiva.dataFim;
+
+                if (isSingleDate || hasPeriod) {
                     allActivities.push({
-                        date: (devolutiva.dataInicio as Timestamp).toDate(),
-                        endDate: devolutiva.dataFim ? (devolutiva.dataFim as Timestamp).toDate() : undefined,
-                        municipio: p.municipio,
-                        uf: p.uf,
+                        startDate: (isSingleDate ? (devolutiva.data as Timestamp) : (devolutiva.dataInicio as Timestamp)).toDate(),
+                        endDate: (isSingleDate ? (devolutiva.data as Timestamp) : (devolutiva.dataFim as Timestamp)).toDate(),
+                        municipio: p.municipio, uf: p.uf,
                         atividade: `Devolutiva ${key.replace('d','')}`,
-                        observacoes: devolutiva.detalhes || (devolutiva.formador ? `Formador: ${devolutiva.formador}` : '')
+                        observacoes: devolutiva.detalhes || (devolutiva.formador ? `Formador: ${devolutiva.formador}` : ''),
+                        tipo: 'devolutiva', isMilestone: isSingleDate,
                     });
                 }
             })
         }
     });
 
-    allActivities.sort((a,b) => a.date.getTime() - b.date.getTime());
+    if (allActivities.length === 0) {
+        return { activitiesByProject: {}, timelineStart: new Date(), timelineEnd: new Date(), totalDays: 0, months: [] };
+    }
 
-    return allActivities.reduce((acc, activity) => {
-        const monthYear = format(activity.date, "MMMM yyyy", { locale: ptBR });
-        if (!acc[monthYear]) {
-            acc[monthYear] = [];
+    const timelineStart = startOfMonth(allActivities.reduce((min, a) => a.startDate < min ? a.startDate : min, allActivities[0].startDate));
+    const timelineEnd = endOfMonth(allActivities.reduce((max, a) => a.endDate > max ? a.endDate : max, allActivities[0].endDate));
+    const totalDays = differenceInDays(timelineEnd, timelineStart) + 1;
+    
+    const activitiesByProject = allActivities.reduce((acc, activity) => {
+        const key = `${activity.municipio} (${activity.uf})`;
+        if (!acc[key]) {
+            acc[key] = [];
         }
-        acc[monthYear].push(activity);
+        acc[key].push(activity);
         return acc;
     }, {} as Record<string, Activity[]>);
 
+    const months = [];
+    let currentMonth = timelineStart;
+    while(currentMonth <= timelineEnd) {
+        const monthEnd = endOfMonth(currentMonth);
+        const daysInMonth = differenceInDays(monthEnd, currentMonth) + 1;
+        const widthPercentage = (daysInMonth / totalDays) * 100;
+        months.push({
+            name: format(currentMonth, 'MMMM yyyy', { locale: ptBR }),
+            width: `${widthPercentage}%`
+        });
+        currentMonth = addMonths(currentMonth, 1);
+    }
+    
+    return { activitiesByProject, timelineStart, timelineEnd, totalDays, months };
+
   }, [projetos]);
 
-  const handleExport = (activities: Activity[], monthYear: string) => {
-    const dataToExport = activities.map(activity => ({
-      'Data/Período': activity.endDate ? formatPeriod(activity.date, activity.endDate) : formatDate(activity.date),
+  const handleExport = () => {
+     const allActivities = Object.values(activitiesByProject).flat();
+     if (allActivities.length === 0) {
+        toast({ variant: 'destructive', title: 'Nenhum dado para exportar.' });
+        return;
+     }
+    const dataToExport = allActivities.map(activity => ({
+      'Data/Período': activity.isMilestone ? format(activity.startDate, "dd/MM/yyyy") : `${format(activity.startDate, "dd/MM/yyyy")} a ${format(activity.endDate, "dd/MM/yyyy")}`,
       'Município (UF)': `${activity.municipio} (${activity.uf})`,
       'Atividade': activity.atividade,
       'Observações': activity.observacoes
@@ -165,7 +196,7 @@ export default function PlanilhaPage() {
     }));
     worksheet["!cols"] = colWidths;
     
-    XLSX.writeFile(workbook, `Planilha Atividades - ${monthYear}.xlsx`);
+    XLSX.writeFile(workbook, `Planilha Atividades - Geral.xlsx`);
   };
   
   if (loading) {
@@ -180,60 +211,76 @@ export default function PlanilhaPage() {
     <div className="flex flex-col gap-8 py-6 h-full">
       <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Planilha de Projetos</h1>
-            <p className="text-muted-foreground">Visualize todas as atividades dos projetos em um único lugar.</p>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Timeline de Projetos</h1>
+            <p className="text-muted-foreground">Visualize o cronograma de todas as atividades dos projetos.</p>
         </div>
+        <Button variant="outline" onClick={handleExport} disabled={Object.keys(activitiesByProject).length === 0}>
+            <Sheet className="mr-2 h-4 w-4" />
+            Exportar para Planilhas
+        </Button>
       </div>
       
-      {Object.keys(activitiesByMonth).length === 0 ? (
+      {Object.keys(activitiesByProject).length === 0 ? (
          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
-            <Sheet className="w-12 h-12 text-muted-foreground" />
+            <GanttChartSquare className="w-12 h-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">Nenhuma atividade encontrada</h3>
-            <p className="text-sm text-muted-foreground">Não há atividades de projeto para exibir na planilha.</p>
+            <p className="text-sm text-muted-foreground">Não há atividades de projeto para exibir na linha do tempo.</p>
         </div>
       ) : (
-        <div className="space-y-8">
-            {Object.entries(activitiesByMonth).map(([monthYear, activities]) => (
-                <Card key={monthYear} className="shadow-md">
-                    <CardHeader>
-                        <CardTitle className="capitalize">{monthYear}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                         <div className="border rounded-lg overflow-hidden">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[150px]">Data/Período</TableHead>
-                                        <TableHead>Município (UF)</TableHead>
-                                        <TableHead>Atividade</TableHead>
-                                        <TableHead>Observações</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {activities.map((activity, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">
-                                                {activity.endDate ? formatPeriod(activity.date, activity.endDate) : formatDate(activity.date)}
-                                            </TableCell>
-                                            <TableCell>{activity.municipio} ({activity.uf})</TableCell>
-                                            <TableCell>{activity.atividade}</TableCell>
-                                            <TableCell className="text-muted-foreground">{activity.observacoes}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+        <Card className="shadow-md">
+            <CardContent className="p-4 overflow-x-auto">
+                <TooltipProvider>
+                    <div className="min-w-[1200px]">
+                        {/* Header com meses */}
+                        <div className="flex bg-muted/50 rounded-t-lg">
+                             <div className="w-64 shrink-0 p-2 font-semibold border-r">Projetos</div>
+                             <div className="flex-grow flex">
+                                {months.map(month => (
+                                    <div key={month.name} style={{ width: month.width }} className="p-2 text-center font-semibold border-r text-sm capitalize">
+                                        {month.name}
+                                    </div>
+                                ))}
+                             </div>
                         </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button variant="outline" onClick={() => handleExport(activities, monthYear)}>
-                            <Sheet className="mr-2 h-4 w-4" />
-                            Exportar para as Planilhas
-                        </Button>
-                    </CardFooter>
-                </Card>
-            ))}
-        </div>
+
+                        {/* Linhas de Projeto */}
+                        <div className="divide-y">
+                            {Object.entries(activitiesByProject).map(([projectName, activities]) => (
+                                <div key={projectName} className="flex">
+                                    <div className="w-64 shrink-0 p-3 font-medium border-r truncate">{projectName}</div>
+                                    <div className="flex-grow relative h-14">
+                                        {activities.map((activity, index) => {
+                                            const left = (differenceInDays(activity.startDate, timelineStart) / totalDays) * 100;
+                                            const width = ((differenceInDays(activity.endDate, activity.startDate) + 1) / totalDays) * 100;
+                                            return (
+                                                <Tooltip key={index}>
+                                                    <TooltipTrigger asChild>
+                                                         <div
+                                                            className={`absolute top-1/2 -translate-y-1/2 h-8 rounded-md flex items-center px-2 text-white text-xs whitespace-nowrap overflow-hidden ${activityColors[activity.tipo]}`}
+                                                            style={{ left: `${left}%`, width: `${width}%` }}
+                                                        >
+                                                            <span className="truncate">{activity.atividade}</span>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-bold">{activity.atividade}</p>
+                                                        <p>Período: {format(activity.startDate, 'dd/MM/yy')} - {format(activity.endDate, 'dd/MM/yy')}</p>
+                                                        {activity.observacoes && <p className="text-muted-foreground">Obs: {activity.observacoes}</p>}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </TooltipProvider>
+            </CardContent>
+        </Card>
       )}
     </div>
   );
 }
+
+    
