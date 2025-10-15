@@ -130,6 +130,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 1',
+        date: `De ${formatDate(projeto.devolutivas?.d1?.dataInicio)} a ${formatDate(projeto.devolutivas?.d1?.dataFim)}`,
         description: getDevolutivaDescription('d1'),
         isComplete: !!projeto.devolutivas?.d1?.ok,
     },
@@ -143,6 +144,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 2',
+        date: `De ${formatDate(projeto.devolutivas?.d2?.dataInicio)} a ${formatDate(projeto.devolutivas?.d2?.dataFim)}`,
         description: getDevolutivaDescription('d2'),
         isComplete: !!projeto.devolutivas?.d2?.ok,
     },
@@ -156,6 +158,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 3',
+        date: `De ${formatDate(projeto.devolutivas?.d3?.dataInicio)} a ${formatDate(projeto.devolutivas?.d3?.dataFim)}`,
         description: getDevolutivaDescription('d3'),
         isComplete: !!projeto.devolutivas?.d3?.ok,
     },
@@ -169,6 +172,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
      {
         icon: Flag,
         title: 'Devolutiva 4',
+        date: `De ${formatDate(projeto.devolutivas?.d4?.dataInicio)} a ${formatDate(projeto.devolutivas?.d4?.dataFim)}`,
         description: getDevolutivaDescription('d4'),
         isComplete: !!projeto.devolutivas?.d4?.ok,
     },
@@ -178,7 +182,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
         isComplete: true,
     },
-  ].filter(m => m.date || (m.description && (m.description.formadores || m.description.detalhes)) || m.title === 'Projeto Concluído');
+  ].filter(m => (m.date && !m.date.includes('N/A')) || (m.description && (m.description.formadores || m.description.detalhes)) || m.title === 'Projeto Concluído');
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
