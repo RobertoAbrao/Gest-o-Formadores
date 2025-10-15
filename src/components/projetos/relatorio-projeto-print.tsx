@@ -56,6 +56,7 @@ const MilestoneCard = ({
                 {/* Lado Esquerdo: Título */}
                 <div className="w-1/2 pr-8 text-right">
                     <h4 className="font-bold text-lg mt-3">{title}</h4>
+                     {date && <p className="text-xs text-gray-500 mt-1">{date}</p>}
                 </div>
                 
                 {/* Centro: Ícone */}
@@ -69,7 +70,7 @@ const MilestoneCard = ({
                 {/* Lado Direito: Data e Descrição */}
                 <div className="w-1/2 pl-8">
                      <div className='mt-3'>
-                        <p className="text-xs text-gray-500">{date}</p>
+                        
                         {description && (
                             <div className="text-sm text-gray-600 mt-1">
                                 {description.formadores && <p>{description.formadores}</p>}
@@ -189,20 +190,15 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
   ];
 
     const scheduledMilestones = allMilestones.filter(m => m.sortDate);
-
     const sortedMilestones = scheduledMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
-
-    const allStepsComplete = scheduledMilestones.length > 0 && scheduledMilestones.every(m => m.isComplete);
     
-    if (allStepsComplete) {
-        sortedMilestones.push({
-            icon: CheckCircle,
-            title: 'Projeto Concluído',
-            description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-            isComplete: true,
-            sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
-        });
-    }
+    sortedMilestones.push({
+        icon: CheckCircle,
+        title: 'Projeto Concluído',
+        description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
+        isComplete: true,
+        sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
+    });
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
