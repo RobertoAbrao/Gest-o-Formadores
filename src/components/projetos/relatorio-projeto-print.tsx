@@ -98,20 +98,21 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
     return { formadores, detalhes: devolutiva.detalhes || '' };
   }
 
-
-  const milestones = [
+  const allMilestones = [
     {
         icon: UploadCloud,
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
         isComplete: !!projeto.dataMigracao,
+        sortDate: projeto.dataMigracao?.toDate()
     },
     {
         icon: Milestone,
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
+        sortDate: projeto.dataImplantacao?.toDate()
     },
     {
         icon: Target,
@@ -119,6 +120,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: formatDate(projeto.diagnostica?.data),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
         isComplete: !!projeto.diagnostica?.ok,
+        sortDate: projeto.diagnostica?.data?.toDate()
     },
     {
         icon: Target,
@@ -126,6 +128,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.simulados?.s1?.dataInicio)} a ${formatDate(projeto.simulados?.s1?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.s1?.detalhes || '' },
         isComplete: !!projeto.simulados?.s1?.ok,
+        sortDate: projeto.simulados?.s1?.dataInicio?.toDate()
     },
      {
         icon: Flag,
@@ -133,6 +136,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.devolutivas?.d1?.dataInicio)} a ${formatDate(projeto.devolutivas?.d1?.dataFim)}`,
         description: getDevolutivaDescription('d1'),
         isComplete: !!projeto.devolutivas?.d1?.ok,
+        sortDate: projeto.devolutivas?.d1?.dataInicio?.toDate()
     },
     {
         icon: Target,
@@ -140,6 +144,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.simulados?.s2?.dataInicio)} a ${formatDate(projeto.simulados?.s2?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.s2?.detalhes || '' },
         isComplete: !!projeto.simulados?.s2?.ok,
+        sortDate: projeto.simulados?.s2?.dataInicio?.toDate()
     },
      {
         icon: Flag,
@@ -147,6 +152,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.devolutivas?.d2?.dataInicio)} a ${formatDate(projeto.devolutivas?.d2?.dataFim)}`,
         description: getDevolutivaDescription('d2'),
         isComplete: !!projeto.devolutivas?.d2?.ok,
+        sortDate: projeto.devolutivas?.d2?.dataInicio?.toDate()
     },
     {
         icon: Target,
@@ -154,6 +160,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.simulados?.s3?.dataInicio)} a ${formatDate(projeto.simulados?.s3?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.s3?.detalhes || '' },
         isComplete: !!projeto.simulados?.s3?.ok,
+        sortDate: projeto.simulados?.s3?.dataInicio?.toDate()
     },
      {
         icon: Flag,
@@ -161,6 +168,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.devolutivas?.d3?.dataInicio)} a ${formatDate(projeto.devolutivas?.d3?.dataFim)}`,
         description: getDevolutivaDescription('d3'),
         isComplete: !!projeto.devolutivas?.d3?.ok,
+        sortDate: projeto.devolutivas?.d3?.dataInicio?.toDate()
     },
      {
         icon: Target,
@@ -168,6 +176,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.simulados?.s4?.dataInicio)} a ${formatDate(projeto.simulados?.s4?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.s4?.detalhes || '' },
         isComplete: !!projeto.simulados?.s4?.ok,
+        sortDate: projeto.simulados?.s4?.dataInicio?.toDate()
     },
      {
         icon: Flag,
@@ -175,14 +184,28 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         date: `De ${formatDate(projeto.devolutivas?.d4?.dataInicio)} a ${formatDate(projeto.devolutivas?.d4?.dataFim)}`,
         description: getDevolutivaDescription('d4'),
         isComplete: !!projeto.devolutivas?.d4?.ok,
+        sortDate: projeto.devolutivas?.d4?.dataInicio?.toDate()
     },
-     {
-        icon: CheckCircle,
-        title: 'Projeto Concluído',
-        description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-        isComplete: true,
-    },
-  ].filter(m => (m.date && !m.date.includes('N/A')) || (m.description && (m.description.formadores || m.description.detalhes)) || m.title === 'Projeto Concluído');
+  ];
+
+    const sortedMilestones = allMilestones
+        .filter(m => m.sortDate) // Filtra apenas eventos que têm data para ordenar
+        .sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
+
+    // Encontrar o último evento com data, se houver.
+    const lastDatedEvent = sortedMilestones[sortedMilestones.length -1];
+    
+    // Adicionar o evento "Projeto Concluído" no final, se o último evento datado estiver completo.
+    if(lastDatedEvent && lastDatedEvent.isComplete) {
+        sortedMilestones.push({
+            icon: CheckCircle,
+            title: 'Projeto Concluído',
+            description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
+            isComplete: true,
+            sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
+        });
+    }
+
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
@@ -210,12 +233,12 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         <section>
              <h3 className="text-xl font-semibold mb-6 pb-2 border-b">Marcos e Atividades</h3>
              <div className='space-y-4'>
-                {milestones.map((milestone, index) => (
+                {sortedMilestones.map((milestone, index) => (
                     <MilestoneCard 
                         key={index}
                         {...milestone}
                         isFirst={index === 0}
-                        isLast={index === milestones.length - 1}
+                        isLast={index === sortedMilestones.length - 1}
                     />
                 ))}
              </div>
