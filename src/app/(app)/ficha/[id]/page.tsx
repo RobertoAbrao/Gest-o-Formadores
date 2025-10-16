@@ -242,6 +242,21 @@ export default function FichaDevolutivaPage() {
                         <p className="mt-2 text-xs">Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.</p>
                     </section>
                     
+                     {modalidade === 'presencial' && (
+                        <section>
+                             <h3 className="text-lg font-bold mb-2">Endereço do Evento</h3>
+                              <p 
+                                className="text-sm editable-field"
+                                contentEditable
+                                suppressContentEditableWarning
+                              >
+                                <strong>Endereço (Anos Iniciais):</strong> Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA
+                                <br />
+                                <strong>Endereço (Anos Finais):</strong> Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA
+                            </p>
+                        </section>
+                    )}
+
                     {modalidade === 'presencial' && (
                         <section>
                              <h3 className="text-lg font-bold mb-2">Cronograma Geral do Evento</h3>
