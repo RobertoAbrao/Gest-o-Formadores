@@ -12,7 +12,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador } from '@/lib/types';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -283,29 +283,50 @@ export default function FichaDevolutivaPage() {
                             {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
                         </h3>
                         {modalidade === 'online' ? (
-                            <div className="border rounded-lg overflow-hidden">
-                                <Table className="print-table">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className='w-[30%]'>Ano/Área</TableHead>
-                                            <TableHead className='w-[20%]'>Formador(a)</TableHead>
-                                            <TableHead>Link da Videochamada (Google Meet)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {formadores.map((formador) => (
-                                            <TableRow key={formador.id}>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell>
-                                                  <p className='font-semibold'>{formador.nomeCompleto}</p>
-                                                  {formador.curriculo && <p className="text-xs text-gray-600 whitespace-pre-wrap mt-1">{formador.curriculo}</p>}
-                                                </TableCell>
-                                                <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                            <div className="space-y-6">
+                                <div className="border rounded-lg overflow-hidden">
+                                    <Table className="print-table">
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Ano/Área</TableHead>
+                                                <TableHead>Link da Videochamada (Google Meet)</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                           </div>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {formadores.map((formador) => (
+                                                <TableRow key={formador.id}>
+                                                    <TableCell className="editable-field w-[40%]" contentEditable suppressContentEditableWarning></TableCell>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                                <div>
+                                     <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
+                                        <User className="h-5 w-5" />
+                                        Equipe de Formadores
+                                     </h3>
+                                     <div className="border rounded-lg overflow-hidden">
+                                        <Table className="print-table">
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[30%]">Formador(a)</TableHead>
+                                                    <TableHead>Currículo</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                 {formadores.map((formador) => (
+                                                    <TableRow key={formador.id}>
+                                                        <TableCell className='font-semibold'>{formador.nomeCompleto}</TableCell>
+                                                        <TableCell className="text-xs text-gray-600 whitespace-pre-wrap">{formador.curriculo || 'Currículo não informado.'}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                     </div>
+                                </div>
+                            </div>
                            ) : (
                             <div className="space-y-6">
                                 {formadores.map(formador => (
