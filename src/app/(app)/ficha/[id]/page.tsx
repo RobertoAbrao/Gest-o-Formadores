@@ -19,7 +19,7 @@ import Link from 'next/link';
 import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const DIAS_DA_SEMANA = [
     'Segunda-feira',
@@ -296,7 +296,10 @@ export default function FichaDevolutivaPage() {
                                         {formadores.map((formador) => (
                                             <TableRow key={formador.id}>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                <TableCell>{formador.nomeCompleto}</TableCell>
+                                                <TableCell>
+                                                  <p className='font-semibold'>{formador.nomeCompleto}</p>
+                                                  {formador.curriculo && <p className="text-xs text-gray-600 whitespace-pre-wrap mt-1">{formador.curriculo}</p>}
+                                                </TableCell>
                                                 <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                             </TableRow>
                                         ))}
@@ -309,6 +312,11 @@ export default function FichaDevolutivaPage() {
                                     <Card key={formador.id}>
                                         <CardHeader>
                                             <CardTitle>{formador.nomeCompleto}</CardTitle>
+                                            {formador.curriculo && (
+                                                <CardDescription className="text-xs text-muted-foreground whitespace-pre-wrap pt-1">
+                                                    {formador.curriculo}
+                                                </CardDescription>
+                                            )}
                                         </CardHeader>
                                         <CardContent>
                                             <Table className="print-table">
@@ -375,4 +383,3 @@ export default function FichaDevolutivaPage() {
     </>
   );
 }
-
