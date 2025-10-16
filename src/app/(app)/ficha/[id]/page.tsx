@@ -288,14 +288,16 @@ export default function FichaDevolutivaPage() {
                                     <Table className="print-table">
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead>Ano/Área</TableHead>
+                                                <TableHead className="w-[25%]">Ano/Área</TableHead>
+                                                <TableHead className="w-[25%]">Formador(a)</TableHead>
                                                 <TableHead>Link da Videochamada (Google Meet)</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {formadores.map((formador) => (
                                                 <TableRow key={formador.id}>
-                                                    <TableCell className="editable-field w-[40%]" contentEditable suppressContentEditableWarning></TableCell>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                                    <TableCell>{formador.nomeCompleto}</TableCell>
                                                     <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
                                                 </TableRow>
                                             ))}
