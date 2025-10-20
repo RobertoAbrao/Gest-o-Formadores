@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User } from 'lucide-react';
+import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle } from 'lucide-react';
 import type { ProjetoImplatancao, Formador } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormProjeto } from '@/components/projetos/form-projeto';
 
 
 interface Activity {
@@ -52,6 +55,10 @@ export default function PlanilhaPage() {
   const [selectedUf, setSelectedUf] = useState<string>('all');
   const [selectedFormador, setSelectedFormador] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'pending'>('all');
+
+  // Edit Modal State
+  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [selectedProjeto, setSelectedProjeto] = useState<ProjetoImplatancao | null>(null);
 
 
   const fetchData = useCallback(async () => {
@@ -178,6 +185,20 @@ export default function PlanilhaPage() {
     
     XLSX.writeFile(workbook, `Planilha Atividades.xlsx`);
   };
+
+  const handleEditClick = (projetoId: string) => {
+    const projeto = projetos.find(p => p.id === projetoId);
+    if (projeto) {
+        setSelectedProjeto(projeto);
+        setIsFormDialogOpen(true);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    fetchData(); // Re-fetch data to reflect changes
+    setIsFormDialogOpen(false);
+    setSelectedProjeto(null);
+  };
   
   if (loading) {
     return (
@@ -271,7 +292,11 @@ export default function PlanilhaPage() {
                                 </TableRow>
                             ) : (
                                 filteredActivities.map((activity, index) => (
-                                    <TableRow key={`${activity.projetoId}-${index}`}>
+                                    <TableRow 
+                                        key={`${activity.projetoId}-${index}`} 
+                                        className="cursor-pointer"
+                                        onClick={() => handleEditClick(activity.projetoId)}
+                                    >
                                         <TableCell className="font-medium">
                                             {activity.municipio} <span className="text-muted-foreground">({activity.uf})</span>
                                         </TableCell>
@@ -299,8 +324,26 @@ export default function PlanilhaPage() {
             </CardContent>
         </Card>
       )}
+
+        <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
+          setIsFormDialogOpen(open);
+          if (!open) setSelectedProjeto(null);
+        }}>
+          <DialogContent className="sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>{selectedProjeto ? 'Editar Projeto' : 'Novo Projeto de Implantação'}</DialogTitle>
+              <DialogDescription>
+                {selectedProjeto ? 'Altere os dados do projeto.' : 'Preencha os dados para cadastrar um novo projeto.'}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className='max-h-[80vh]'>
+                <div className='p-4'>
+                    <FormProjeto projeto={selectedProjeto} onSuccess={handleFormSuccess} />
+                </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
     </div>
   );
 }
-
-    
