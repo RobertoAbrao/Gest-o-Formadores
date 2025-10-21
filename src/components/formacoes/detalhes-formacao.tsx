@@ -12,6 +12,8 @@ import {
   arrayUnion,
   arrayRemove,
   Timestamp,
+  addDoc,
+  deleteDoc,
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
@@ -42,6 +44,10 @@ interface DetalhesFormacaoProps {
   onClose: () => void;
   isArchived?: boolean;
 }
+
+// Estendendo o tipo Anexo para incluir um ID opcional, para diferenciar os novos dos antigos
+type DisplayAnexo = Anexo & { id?: string };
+
 
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -115,6 +121,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+  const [anexos, setAnexos] = useState<DisplayAnexo[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +144,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     try {
         const formacaoRef = doc(db, 'formacoes', formacaoId);
         const formacaoSnap = await getDoc(formacaoRef);
+
         if (!formacaoSnap.exists()) {
             console.error('Formação não encontrada');
             toast({ variant: "destructive", title: "Erro", description: "Formação não encontrada." });
@@ -144,12 +152,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             return;
         }
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
-
-        if (formacaoData.anexos) {
-            formacaoData.anexos.sort((a, b) => b.dataUpload.toMillis() - a.dataUpload.toMillis());
-        }
-
         setFormacao(formacaoData);
+
+        // Fetch new attachments from the 'anexos' collection
+        const anexosQuery = query(collection(db, 'anexos'), where('formacaoId', '==', formacaoId));
+        const anexosSnap = await getDocs(anexosQuery);
+        const novosAnexos = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DisplayAnexo));
+
+        // Get old attachments and combine
+        const antigosAnexos = formacaoData.anexos || [];
+        const allAnexos = [...antigosAnexos, ...novosAnexos];
+        allAnexos.sort((a, b) => b.dataUpload.toMillis() - a.dataUpload.toMillis());
+        setAnexos(allAnexos);
+
 
         let formadoresData: Formador[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
@@ -303,21 +318,22 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !formacao) return;
-
+  
     setUploading(true);
     try {
       const dataUrl = await fileToDataURL(file);
-      const novoAnexo: Anexo = { 
-          nome: file.name, 
-          url: dataUrl,
-          dataUpload: Timestamp.now()
-        };
-      const formacaoRef = doc(db, 'formacoes', formacao.id);
-      await updateDoc(formacaoRef, {
-        anexos: arrayUnion(novoAnexo)
-      });
+      
+      const novoAnexo = { 
+        nome: file.name, 
+        url: dataUrl,
+        dataUpload: Timestamp.now(),
+        formacaoId: formacao.id, // Link to the formation
+      };
+  
+      await addDoc(collection(db, 'anexos'), novoAnexo);
+  
       toast({ title: "Sucesso", description: "Anexo enviado." });
-      await fetchData();
+      await fetchData(); 
     } catch (error) {
       console.error("Erro no upload do arquivo:", error);
       toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
@@ -328,16 +344,22 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       }
     }
   };
-
-  const handleDeleteAnexo = async (anexo: Anexo) => {
+  
+  const handleDeleteAnexo = async (anexo: DisplayAnexo) => {
     if (!formacao || !window.confirm(`Tem certeza que deseja excluir o anexo "${anexo.nome}"?`)) {
       return;
     }
     try {
-      const formacaoRef = doc(db, 'formacoes', formacao.id);
-      await updateDoc(formacaoRef, {
-        anexos: arrayRemove(anexo)
-      });
+      if (anexo.id) {
+        // New system: delete the document from the 'anexos' collection
+        await deleteDoc(doc(db, 'anexos', anexo.id));
+      } else {
+        // Old system: remove the item from the 'anexos' array in the formation document
+        const formacaoRef = doc(db, 'formacoes', formacao.id);
+        await updateDoc(formacaoRef, {
+          anexos: arrayRemove(anexo)
+        });
+      }
       toast({ title: "Sucesso", description: "Anexo excluído." });
       await fetchData();
     } catch (error) {
@@ -785,7 +807,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             )}
                         </div>
                         <Separator />
-                        {(!formacao.anexos || formacao.anexos.length === 0) ? (
+                        {anexos.length === 0 ? (
                             <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
                                 <div>
                                     <Paperclip className="h-6 w-6 mx-auto mb-2"/>
@@ -795,7 +817,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                         ) : (
                             <div className="relative pl-6">
                                 <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
-                                {formacao.anexos.map((anexo, index) => {
+                                {anexos.map((anexo, index) => {
                                     const isImage = anexo.url.startsWith('data:image');
                                     return (
                                         <div key={index} className="relative mb-8">
