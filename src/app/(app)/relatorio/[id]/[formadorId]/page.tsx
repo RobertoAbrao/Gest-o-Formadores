@@ -63,10 +63,16 @@ export default function RelatorioIndividualPage() {
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         setFormacao(formacaoData);
 
-        if (formacaoData.anexos) {
-            formacaoData.anexos.sort((a, b) => b.dataUpload.toMillis() - a.dataUpload.toMillis());
-            setAnexos(formacaoData.anexos);
-        }
+        // Fetch new attachments from the 'anexos' collection
+        const anexosQuery = query(collection(db, 'anexos'), where('formacaoId', '==', formacaoId));
+        const anexosSnap = await getDocs(anexosQuery);
+        const novosAnexos = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
+
+        // Get old attachments and combine
+        const antigosAnexos = formacaoData.anexos || [];
+        const allAnexos = [...antigosAnexos, ...novosAnexos];
+        allAnexos.sort((a, b) => b.dataUpload.toMillis() - a.dataUpload.toMillis());
+        setAnexos(allAnexos);
         
         const formadorRef = doc(db, 'formadores', formadorId);
         const formadorSnap = await getDoc(formadorRef);
