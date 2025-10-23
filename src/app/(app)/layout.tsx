@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -80,6 +81,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/despesas', label: 'Relatório de Despesas', icon: DollarSign },
           { href: '/perfil', label: 'Meu Perfil', icon: UserIcon },
         ];
+        
+  // Conditionally render layout for the material viewer page
+  if (pathname.startsWith('/materiais/')) {
+    return <>{children}</>;
+  }
 
   const handleLogout = () => {
     logout();

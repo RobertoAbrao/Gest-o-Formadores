@@ -2,16 +2,6 @@
 'use client';
 
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2, Eye } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2, Eye, LayoutGrid } from 'lucide-react';
 import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback } from 'react';
@@ -29,6 +19,11 @@ import { db } from '@/lib/firebase';
 import { FormMaterial } from '@/components/materiais/form-material';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+
 
 const typeIcons: Record<MaterialType, React.ElementType> = {
   'PDF': FileText,
@@ -38,10 +33,10 @@ const typeIcons: Record<MaterialType, React.ElementType> = {
 };
 
 const typeColors: Record<MaterialType, string> = {
-    'PDF': 'bg-red-100 text-red-800 border-red-200',
-    'Vídeo': 'bg-blue-100 text-blue-800 border-blue-200',
-    'Link Externo': 'bg-green-100 text-green-800 border-green-200',
-    'Documento Word': 'bg-sky-100 text-sky-800 border-sky-200',
+    'PDF': 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-500/30',
+    'Vídeo': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500/30',
+    'Link Externo': 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500/30',
+    'Documento Word': 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-500/30',
 }
 
 
@@ -151,76 +146,64 @@ export default function MateriaisPage() {
             </DialogContent>
         </Dialog>
       
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Título</TableHead>
-              <TableHead className="hidden lg:table-cell">Descrição</TableHead>
-              <TableHead className="hidden sm:table-cell">Tipo</TableHead>
-              <TableHead className="hidden md:table-cell">Data de Upload</TableHead>
-              <TableHead className="w-[100px] text-right">Ação</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {materiais.map((material) => {
-              const Icon = typeIcons[material.tipoMaterial];
-              return (
-                <TableRow key={material.id}>
-                  <TableCell className="font-medium">
-                    <a href={material.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {material.titulo}
-                    </a>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">{material.descricao}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant="outline" className={`font-mono text-xs ${typeColors[material.tipoMaterial]}`}>
-                      <Icon className="mr-1 h-3 w-3" />
-                      {material.tipoMaterial}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {material.dataUpload.toDate().toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {isAdmin ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                           <DropdownMenuItem asChild>
-                             <a href={material.url} target="_blank" rel="noopener noreferrer" className="flex items-center w-full">
-                                <Eye className="mr-2 h-4 w-4" />
-                                Visualizar
-                             </a>
-                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(material)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(material)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={material.url} target="_blank" rel="noopener noreferrer">
-                          <Download className="mr-2 h-4 w-4" />
-                          Acessar
-                        </a>
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
+        {materiais.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg mt-8">
+                <LayoutGrid className="w-12 h-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">Nenhum material cadastrado</h3>
+                <p className="text-sm text-muted-foreground">Comece adicionando um novo material para visualizá-lo aqui.</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4">
+                {materiais.map((material) => {
+                    const Icon = typeIcons[material.tipoMaterial];
+                    return (
+                        <Card key={material.id} className="flex flex-col">
+                            <CardHeader className='pb-4'>
+                                <div className='flex justify-between items-start'>
+                                    <Badge variant="outline" className={`font-mono text-xs ${typeColors[material.tipoMaterial]}`}>
+                                        <Icon className="mr-1 h-3 w-3" />
+                                        {material.tipoMaterial}
+                                    </Badge>
+                                    {isAdmin && (
+                                         <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-7 w-7 p-0 -mr-2 -mt-2">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => openEditDialog(material)}>
+                                                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => openDeleteDialog(material)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </div>
+                                <CardTitle className="pt-4 text-lg leading-snug">{material.titulo}</CardTitle>
+                            </CardHeader>
+                            <CardContent className='flex-grow'>
+                                <CardDescription className="line-clamp-3 text-sm">{material.descricao}</CardDescription>
+                            </CardContent>
+                            <CardFooter className="flex-col items-start gap-2">
+                                <p className="text-xs text-muted-foreground">
+                                    Upload em: {material.dataUpload.toDate().toLocaleDateString('pt-BR')}
+                                </p>
+                                <Button className='w-full' size="sm" asChild>
+                                    <Link href={`/materiais/${material.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Visualizar
+                                    </Link>
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )
+                })}
+            </div>
+        )}
 
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
