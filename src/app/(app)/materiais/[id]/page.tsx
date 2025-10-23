@@ -17,6 +17,18 @@ type UrlInfo = {
 };
 
 function getGoogleDriveUrlInfo(url: string): UrlInfo {
+    // Regex para extrair o ID de uma pasta
+    const folderRegex = /drive\.google\.com\/drive\/(?:u\/\d\/)?folders\/([a-zA-Z0-9_-]+)/;
+    const folderMatch = url.match(folderRegex);
+
+    if (folderMatch && folderMatch[1]) {
+        // É uma pasta, retorna a URL de incorporação da pasta
+        return {
+            url: `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}`,
+            isFolder: true,
+        };
+    }
+
     // Regex para extrair o ID de um arquivo
     const fileRegex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/;
     const fileMatch = url.match(fileRegex);
@@ -26,18 +38,6 @@ function getGoogleDriveUrlInfo(url: string): UrlInfo {
         return {
             url: `https://drive.google.com/file/d/${fileMatch[1]}/preview`,
             isFolder: false,
-        };
-    }
-    
-    // Regex para extrair o ID de uma pasta
-    const folderRegex = /drive\.google\.com\/drive\/(?:u\/\d\/)?folders\/([a-zA-Z0-9_-]+)/;
-    const folderMatch = url.match(folderRegex);
-
-    if (folderMatch && folderMatch[1]) {
-        // É uma pasta, retorna a URL original pois não pode ser embutida
-        return {
-            url: url,
-            isFolder: true,
         };
     }
     
@@ -127,32 +127,13 @@ export default function MaterialViewerPage() {
             </header>
             <main className="flex-grow p-4 flex items-center justify-center">
                 <div className="w-full h-full">
-                     {urlInfo.isFolder ? (
-                        <Card className="max-w-lg mx-auto my-auto">
-                           <CardHeader className="items-center text-center">
-                              <FolderOpen className="h-12 w-12 text-primary" />
-                              <CardTitle>Este material é uma pasta</CardTitle>
-                              <CardDescription>
-                                 Pastas do Google Drive não podem ser exibidas aqui. Clique no botão abaixo para abri-la em uma nova aba.
-                              </CardDescription>
-                           </CardHeader>
-                           <CardContent>
-                              <Button asChild className="w-full">
-                                 <a href={urlInfo.url} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="mr-2 h-4 w-4" /> Abrir Pasta no Google Drive
-                                 </a>
-                              </Button>
-                           </CardContent>
-                        </Card>
-                     ) : (
-                         <iframe
-                            src={urlInfo.url}
-                            className="w-full h-full rounded-md border"
-                            allow="autoplay"
-                            title={material.titulo}
-                            onError={() => setError('Ocorreu um erro ao carregar o conteúdo. Verifique as permissões de compartilhamento.')}
-                        ></iframe>
-                     )}
+                     <iframe
+                        src={urlInfo.url}
+                        className="w-full h-full rounded-md border"
+                        allow="autoplay"
+                        title={material.titulo}
+                        onError={() => setError('Ocorreu um erro ao carregar o conteúdo. Verifique as permissões de compartilhamento.')}
+                    ></iframe>
                 </div>
             </main>
         </div>
