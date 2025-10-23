@@ -23,7 +23,7 @@ import type { Material, MaterialType } from '@/lib/types';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
-const materialTypes: MaterialType[] = ['PDF', 'Vídeo', 'Link Externo', 'Documento Word'];
+const materialTypes: MaterialType[] = ['PDF', 'Vídeo', 'Link Externo', 'Documento Word', 'Apresentação', 'Pasta'];
 
 const formSchema = z.object({
   titulo: z.string().min(3, { message: 'O título deve ter pelo menos 3 caracteres.' }),

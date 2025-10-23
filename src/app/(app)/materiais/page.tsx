@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2, Eye, LayoutGrid } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, FileText, Video, Link as LinkIcon, Download, Loader2, Eye, LayoutGrid, Presentation, Folder } from 'lucide-react';
 import type { Material, MaterialType } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback } from 'react';
@@ -30,6 +30,8 @@ const typeIcons: Record<MaterialType, React.ElementType> = {
   'Vídeo': Video,
   'Link Externo': LinkIcon,
   'Documento Word': FileText,
+  'Apresentação': Presentation,
+  'Pasta': Folder,
 };
 
 const typeColors: Record<MaterialType, string> = {
@@ -37,6 +39,8 @@ const typeColors: Record<MaterialType, string> = {
     'Vídeo': 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-500/30',
     'Link Externo': 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-500/30',
     'Documento Word': 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-500/30',
+    'Apresentação': 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-500/30',
+    'Pasta': 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-500/30',
 }
 
 
