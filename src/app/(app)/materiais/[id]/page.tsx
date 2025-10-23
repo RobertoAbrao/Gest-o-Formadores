@@ -12,12 +12,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 
 function getGoogleDriveEmbedUrl(url: string): string {
-    const driveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view\?usp=sharing/;
+    // Regex para extrair o ID do arquivo de vários formatos de URL do Google Drive
+    const driveRegex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/;
     const match = url.match(driveRegex);
+    
     if (match && match[1]) {
+        // Usar o endpoint /preview, que é mais adequado para iframes do que /embed
         return `https://drive.google.com/file/d/${match[1]}/preview`;
     }
-    // Return original url if it's not a standard shareable link, it might be a direct link or other type.
+    
+    // Retorna a URL original se não for um link reconhecido do Drive
     return url;
 }
 
@@ -114,4 +118,3 @@ export default function MaterialViewerPage() {
         </div>
     );
 }
-
