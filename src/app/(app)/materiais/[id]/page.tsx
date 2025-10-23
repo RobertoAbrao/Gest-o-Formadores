@@ -6,23 +6,46 @@ import { useEffect, useState, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Material } from '@/lib/types';
-import { Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Loader2, ArrowLeft, ExternalLink, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 
-function getGoogleDriveEmbedUrl(url: string): string {
-    // Regex para extrair o ID do arquivo de vários formatos de URL do Google Drive
-    const driveRegex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/;
-    const match = url.match(driveRegex);
+type UrlInfo = {
+    url: string;
+    isFolder: boolean;
+};
+
+function getGoogleDriveUrlInfo(url: string): UrlInfo {
+    // Regex para extrair o ID de um arquivo
+    const fileRegex = /drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/;
+    const fileMatch = url.match(fileRegex);
     
-    if (match && match[1]) {
-        // Usar o endpoint /preview, que é mais adequado para iframes do que /embed
-        return `https://drive.google.com/file/d/${match[1]}/preview`;
+    if (fileMatch && fileMatch[1]) {
+        // É um arquivo, retorna a URL de preview
+        return {
+            url: `https://drive.google.com/file/d/${fileMatch[1]}/preview`,
+            isFolder: false,
+        };
     }
     
-    // Retorna a URL original se não for um link reconhecido do Drive
-    return url;
+    // Regex para extrair o ID de uma pasta
+    const folderRegex = /drive\.google\.com\/drive\/(?:u\/\d\/)?folders\/([a-zA-Z0-9_-]+)/;
+    const folderMatch = url.match(folderRegex);
+
+    if (folderMatch && folderMatch[1]) {
+        // É uma pasta, retorna a URL original pois não pode ser embutida
+        return {
+            url: url,
+            isFolder: true,
+        };
+    }
+    
+    // Se não for um link do Drive reconhecido, retorna o original assumindo que é um arquivo
+    return {
+        url: url,
+        isFolder: false,
+    };
 }
 
 
@@ -59,12 +82,9 @@ export default function MaterialViewerPage() {
         fetchMaterial();
     }, [materialId]);
     
-    const embedUrl = useMemo(() => {
-        if (!material?.url) return '';
-        if(material.tipoMaterial === 'PDF' || material.tipoMaterial === 'Documento Word') {
-            return getGoogleDriveEmbedUrl(material.url);
-        }
-        return material.url;
+    const urlInfo = useMemo(() => {
+        if (!material?.url) return null;
+        return getGoogleDriveUrlInfo(material.url);
     }, [material]);
 
     if (loading) {
@@ -80,7 +100,7 @@ export default function MaterialViewerPage() {
         return <div className="flex h-screen w-full items-center justify-center text-red-500">{error}</div>;
     }
     
-    if (!material) {
+    if (!material || !urlInfo) {
         return <div className="flex h-screen w-full items-center justify-center">Material não encontrado.</div>;
     }
 
@@ -105,14 +125,34 @@ export default function MaterialViewerPage() {
                     </Button>
                 </div>
             </header>
-            <main className="flex-grow p-4">
+            <main className="flex-grow p-4 flex items-center justify-center">
                 <div className="w-full h-full">
-                     <iframe
-                        src={embedUrl}
-                        className="w-full h-full rounded-md border"
-                        allow="autoplay"
-                        title={material.titulo}
-                    ></iframe>
+                     {urlInfo.isFolder ? (
+                        <Card className="max-w-lg mx-auto my-auto">
+                           <CardHeader className="items-center text-center">
+                              <FolderOpen className="h-12 w-12 text-primary" />
+                              <CardTitle>Este material é uma pasta</CardTitle>
+                              <CardDescription>
+                                 Pastas do Google Drive não podem ser exibidas aqui. Clique no botão abaixo para abri-la em uma nova aba.
+                              </CardDescription>
+                           </CardHeader>
+                           <CardContent>
+                              <Button asChild className="w-full">
+                                 <a href={urlInfo.url} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="mr-2 h-4 w-4" /> Abrir Pasta no Google Drive
+                                 </a>
+                              </Button>
+                           </CardContent>
+                        </Card>
+                     ) : (
+                         <iframe
+                            src={urlInfo.url}
+                            className="w-full h-full rounded-md border"
+                            allow="autoplay"
+                            title={material.titulo}
+                            onError={() => setError('Ocorreu um erro ao carregar o conteúdo. Verifique as permissões de compartilhamento.')}
+                        ></iframe>
+                     )}
                 </div>
             </main>
         </div>
