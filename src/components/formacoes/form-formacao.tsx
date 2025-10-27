@@ -30,7 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Loader2, Check, ChevronsUpDown, CalendarIcon, X, Bell } from 'lucide-react';
 import { Textarea } from '../ui/textarea';
 import type { Formacao, Formador, LogisticaViagem } from '@/lib/types';
@@ -112,7 +112,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
   const [loading, setLoading] = useState(false);
   const [formadores, setFormadores] = useState<Formador[]>([]);
   const [open, setOpen] = React.useState(false);
-  const [availableMunicipios, setAvailableMunicipios] = useState<string[]>([]);
   
   const isEditMode = !!formacao;
 
@@ -155,12 +154,49 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
 
   const selectedFormadoresIds = form.watch('formadoresIds');
 
+  const availableMunicipios = useMemo(() => {
+    if (formadores.length === 0) return [];
+    
+    const selected = formadores.filter(f => selectedFormadoresIds.includes(f.id));
+    const allMunicipios = selected.flatMap(f => f.municipiosResponsaveis);
+    
+    // In edit mode, ensure the saved `municipio` is always in the list
+    if (isEditMode && formacao?.municipio && !allMunicipios.includes(formacao.municipio)) {
+      allMunicipios.push(formacao.municipio);
+    }
+    
+    return [...new Set(allMunicipios)].sort();
+  }, [selectedFormadoresIds, formadores, isEditMode, formacao]);
+
+  useEffect(() => {
+    if (formacao && formadores.length > 0) {
+      form.reset({
+        titulo: formacao.titulo || '',
+        descricao: formacao.descricao || '',
+        formadoresIds: formacao.formadoresIds || [],
+        municipio: formacao.municipio || '',
+        uf: formacao.uf || '',
+        participantes: formacao.participantes || 1,
+        materiaisIds: formacao.materiaisIds || [],
+        dataInicio: toDate(formacao.dataInicio),
+        dataFim: toDate(formacao.dataFim),
+        logistica: formacao.logistica?.map(l => ({
+            ...l,
+            dataIda: toNullableDate(l.dataIda),
+            dataVolta: toNullableDate(l.dataVolta),
+            checkin: toNullableDate(l.checkin),
+            checkout: toNullableDate(l.checkout),
+            valorHospedagem: l.valorHospedagem || undefined,
+            alertaLembrete: l.alertaLembrete || '',
+            diasLembrete: l.diasLembrete || undefined,
+        })) || [],
+      });
+    }
+  }, [formacao, formadores, form]);
+  
   useEffect(() => {
     if (formadores.length > 0) {
       const selected = formadores.filter(f => selectedFormadoresIds.includes(f.id));
-      const allMunicipios = selected.flatMap(f => f.municipiosResponsaveis);
-      const uniqueMunicipios = [...new Set(allMunicipios)].sort();
-      setAvailableMunicipios(uniqueMunicipios);
 
       if (selected.length > 0 && selected[0].uf) {
         form.setValue('uf', selected[0].uf);
@@ -188,45 +224,6 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       replaceLogistica(newLogistica);
     }
   }, [selectedFormadoresIds, formadores, form, replaceLogistica]);
-
-  useEffect(() => {
-    if (formacao && formadores.length > 0) {
-      form.reset({
-        titulo: formacao.titulo || '',
-        descricao: formacao.descricao || '',
-        formadoresIds: formacao.formadoresIds || [],
-        municipio: formacao.municipio || '',
-        uf: formacao.uf || '',
-        participantes: formacao.participantes || 1,
-        materiaisIds: formacao.materiaisIds || [],
-        dataInicio: toDate(formacao.dataInicio),
-        dataFim: toDate(formacao.dataFim),
-        logistica: formacao.logistica?.map(l => ({
-            ...l,
-            dataIda: toNullableDate(l.dataIda),
-            dataVolta: toNullableDate(l.dataVolta),
-            checkin: toNullableDate(l.checkin),
-            checkout: toNullableDate(l.checkout),
-            valorHospedagem: l.valorHospedagem || undefined,
-            alertaLembrete: l.alertaLembrete || '',
-            diasLembrete: l.diasLembrete || undefined,
-        })) || [],
-      });
-    } else {
-        form.reset({
-            titulo: '',
-            descricao: '',
-            formadoresIds: [],
-            municipio: '',
-            uf: '',
-            participantes: 1,
-            materiaisIds: [],
-            dataInicio: undefined,
-            dataFim: undefined,
-            logistica: [],
-        });
-    }
-  }, [formacao, form, formadores]);
 
 
   async function onSubmit(values: FormValues) {
@@ -742,5 +739,3 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
-
-    
