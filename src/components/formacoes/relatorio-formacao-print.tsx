@@ -172,34 +172,6 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
           </section>
         )}
         
-        {formacao.logistica && formacao.logistica.length > 0 && (
-            <section>
-                <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Logística de Viagem</h3>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Formador</TableHead>
-                            <TableHead>Hotel</TableHead>
-                            <TableHead>Check-in/out</TableHead>
-                            <TableHead className='text-right'>Valor Hosp.</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {formacao.logistica.map((item, index) => (
-                            <TableRow key={index}>
-                                <TableCell>{item.formadorNome}</TableCell>
-                                <TableCell>{item.hotel || 'N/A'}</TableCell>
-                                <TableCell>
-                                    {formatDate(item.checkin, {dateStyle: 'short'})} - {formatDate(item.checkout, {dateStyle: 'short'})}
-                                </TableCell>
-                                <TableCell className="text-right">{formatCurrency(item.valorHospedagem)}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </section>
-        )}
-        
          {despesas.length > 0 && (
             <section>
                 <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Relatório de Despesas</h3>
