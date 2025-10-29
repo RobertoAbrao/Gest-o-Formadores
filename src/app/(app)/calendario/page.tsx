@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Calendar } from '@/components/ui/calendar';
@@ -11,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -50,7 +53,7 @@ export default function CalendarioPage() {
   
   const [events, setEvents] = useState<Record<string, CalendarEvent>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDate, setEditingDate] = useState<Date | null>(null);
+  const [editingRange, setEditingRange] = useState<DateRange | undefined>();
   const [currentEventType, setCurrentEventType] = useState<EventType | ''>('');
   const [currentTooltip, setCurrentTooltip] = useState('');
   
@@ -65,32 +68,49 @@ export default function CalendarioPage() {
     }
   }, [currentEventType, isModalOpen]);
 
-  const handleDayClick = (day: Date) => {
-    const dateString = day.toISOString().split('T')[0];
-    const existingEvent = events[dateString];
+  const handleDateSelect = (range: DateRange | undefined) => {
+    if (range?.from) {
+      setEditingRange(range);
 
-    setEditingDate(day);
-    setCurrentEventType(existingEvent?.type || '');
-    setCurrentTooltip(existingEvent?.tooltip || '');
-    setIsModalOpen(true);
+      const fromString = range.from.toISOString().split('T')[0];
+      const existingEvent = events[fromString];
+      
+      setCurrentEventType(existingEvent?.type || '');
+      setCurrentTooltip(existingEvent?.tooltip || '');
+
+      if(range.to) {
+        setIsModalOpen(true);
+      }
+    }
   };
 
   const handleSaveEvent = () => {
-    if (!editingDate) return;
-    const dateString = editingDate.toISOString().split('T')[0];
+    if (!editingRange?.from) return;
+    
+    const newEvents = { ...events };
+    const startDate = editingRange.from;
+    const endDate = editingRange.to || editingRange.from;
 
-    setEvents(prevEvents => {
-      const newEvents = { ...prevEvents };
-      if (currentEventType === '' && currentTooltip === '') {
-        delete newEvents[dateString];
-      } else {
-        newEvents[dateString] = { type: currentEventType, tooltip: currentTooltip };
-      }
-      return newEvents;
-    });
-
+    for (let date = startDate; date <= endDate; date = addDays(date, 1)) {
+        const dateString = date.toISOString().split('T')[0];
+        if (currentEventType === '' && currentTooltip === '') {
+            delete newEvents[dateString];
+        } else {
+            newEvents[dateString] = { type: currentEventType, tooltip: currentTooltip };
+        }
+    }
+    
+    setEvents(newEvents);
     setIsModalOpen(false);
+    setEditingRange(undefined);
   };
+  
+  const handleModalOpenChange = (open: boolean) => {
+    setIsModalOpen(open);
+    if (!open) {
+        setEditingRange(undefined); // Reset range when modal is closed
+    }
+  }
 
   const modifiers = useMemo(() => {
     const mods: Record<string, Date[]> = {};
@@ -141,13 +161,23 @@ export default function CalendarioPage() {
       return <div>{props.date.getDate()}</div>;
   };
 
+  const getModalTitle = () => {
+    if (!editingRange?.from) return 'Editar Dia';
+    const start = format(editingRange.from, 'dd/MM/yyyy');
+    if (!editingRange.to || editingRange.from.getTime() === editingRange.to.getTime()) {
+      return `Editar Dia: ${start}`;
+    }
+    const end = format(editingRange.to, 'dd/MM/yyyy');
+    return `Editar Período: ${start} a ${end}`;
+  };
+
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
           <p className="text-muted-foreground">
-            Visão completa de todos os meses do ano. Clique em um dia para editá-lo.
+            Clique em um dia para começar a selecionar ou em um intervalo para editar.
           </p>
         </div>
       </div>
@@ -186,13 +216,15 @@ export default function CalendarioPage() {
               <CardContent className="flex justify-center">
                 <Calendar
                   month={monthDate}
+                  mode="range"
+                  selected={editingRange}
+                  onSelect={handleDateSelect}
                   className="p-0"
                   classNames={{
                     day: "h-8 w-8 rounded-full",
                     head_cell: "w-8",
                   }}
                   locale={ptBR}
-                  onDayClick={handleDayClick}
                   modifiers={modifiers}
                   modifiersStyles={modifierStyles}
                   components={{ DayContent: DayContent }}
@@ -203,10 +235,10 @@ export default function CalendarioPage() {
         })}
       </div>
 
-       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+       <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Editar Dia: {editingDate?.toLocaleDateString('pt-BR')}</DialogTitle>
+                    <DialogTitle>{getModalTitle()}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -237,7 +269,7 @@ export default function CalendarioPage() {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+                    <Button variant="outline" onClick={() => handleModalOpenChange(false)}>Cancelar</Button>
                     <Button onClick={handleSaveEvent}>Salvar</Button>
                 </DialogFooter>
             </DialogContent>
@@ -246,3 +278,4 @@ export default function CalendarioPage() {
     </div>
   );
 }
+
