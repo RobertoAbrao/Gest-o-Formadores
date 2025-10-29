@@ -4,7 +4,7 @@
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ptBR } from 'date-fns/locale';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,6 +40,17 @@ export default function CalendarioPage() {
   const [editingDate, setEditingDate] = useState<Date | null>(null);
   const [currentEventType, setCurrentEventType] = useState<EventType | ''>('');
   const [currentTooltip, setCurrentTooltip] = useState('');
+  
+  useEffect(() => {
+    if (isModalOpen) {
+        if (currentEventType) {
+            const eventLabel = eventTypes.find(et => et.value === currentEventType)?.label;
+            setCurrentTooltip(eventLabel || '');
+        } else {
+            setCurrentTooltip('');
+        }
+    }
+  }, [currentEventType, isModalOpen]);
 
   const handleDayClick = (day: Date) => {
     const dateString = day.toISOString().split('T')[0];
