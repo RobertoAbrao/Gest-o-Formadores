@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
+import { Printer } from 'lucide-react';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -172,110 +173,138 @@ export default function CalendarioPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 py-6 h-full">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
-          <p className="text-muted-foreground">
-            Clique em um dia para começar a selecionar ou em um intervalo para editar.
-          </p>
+    <>
+      <style jsx global>{`
+        @media print {
+          body {
+            background-color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .printable-area, .printable-area * {
+            visibility: visible;
+          }
+          .printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: auto;
+            padding: 1rem;
+            margin: 0;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="flex flex-col gap-4 py-6 h-full printable-area">
+        <div className="flex items-center justify-between no-print">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
+            <p className="text-muted-foreground">
+              Clique em um dia para começar a selecionar ou em um intervalo para editar.
+            </p>
+          </div>
+          <Button onClick={() => window.print()} variant="outline">
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir / Salvar PDF
+          </Button>
         </div>
-      </div>
-      
-      <Card className='p-4'>
-            <CardHeader className='p-2'>
-                <CardTitle className='text-lg'>Legenda</CardTitle>
-            </CardHeader>
-            <CardContent className='p-2'>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
-                </div>
-            </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {months.map(month => {
-          const monthDate = new Date(year, month);
-          const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
-
-          return (
-            <Card key={month}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
+        
+        <Card className='p-4'>
+              <CardHeader className='p-2'>
+                  <CardTitle className='text-lg'>Legenda</CardTitle>
               </CardHeader>
-              <CardContent className="flex justify-center">
-                <Calendar
-                  month={monthDate}
-                  mode="range"
-                  selected={editingRange}
-                  onSelect={handleDateSelect}
-                  className="p-0"
-                  classNames={{
-                    day: "h-8 w-8 rounded-full",
-                    head_cell: "w-8",
-                  }}
-                  locale={ptBR}
-                  modifiers={modifiers}
-                  modifiersStyles={modifierStyles}
-                  components={{ DayContent: DayContent }}
-                />
+              <CardContent className='p-2'>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
+                  </div>
               </CardContent>
-            </Card>
-          )
-        })}
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {months.map(month => {
+            const monthDate = new Date(year, month);
+            const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
+
+            return (
+              <Card key={month}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <Calendar
+                    month={monthDate}
+                    mode="range"
+                    selected={editingRange}
+                    onSelect={handleDateSelect}
+                    className="p-0"
+                    classNames={{
+                      day: "h-8 w-8 rounded-full",
+                      head_cell: "w-8",
+                    }}
+                    locale={ptBR}
+                    modifiers={modifiers}
+                    modifiersStyles={modifierStyles}
+                    components={{ DayContent: DayContent }}
+                  />
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+
+        <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange} modal={false}>
+              <DialogContent className='no-print'>
+                  <DialogHeader>
+                      <DialogTitle>{getModalTitle()}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="event-type">Tipo de Evento</Label>
+                          <Select 
+                              value={currentEventType} 
+                              onValueChange={(value) => setCurrentEventType(value === 'none' ? '' : value as EventType)}
+                          >
+                              <SelectTrigger id="event-type">
+                                  <SelectValue placeholder="Nenhum (Dia Normal)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="none">Nenhum (Dia Normal)</SelectItem>
+                                  {eventTypes.map(et => (
+                                      <SelectItem key={et.value} value={et.value}>{et.label}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="event-tooltip">Descrição (Tooltip)</Label>
+                          <Input 
+                              id="event-tooltip" 
+                              placeholder="Ex: Feriado de Ano Novo"
+                              value={currentTooltip}
+                              onChange={(e) => setCurrentTooltip(e.target.value)}
+                          />
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <Button variant="outline" onClick={() => handleModalOpenChange(false)}>Cancelar</Button>
+                      <Button onClick={handleSaveEvent}>Salvar</Button>
+                  </DialogFooter>
+              </DialogContent>
+        </Dialog>
       </div>
-
-       <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{getModalTitle()}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="event-type">Tipo de Evento</Label>
-                        <Select 
-                            value={currentEventType} 
-                            onValueChange={(value) => setCurrentEventType(value === 'none' ? '' : value as EventType)}
-                        >
-                            <SelectTrigger id="event-type">
-                                <SelectValue placeholder="Nenhum (Dia Normal)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Nenhum (Dia Normal)</SelectItem>
-                                {eventTypes.map(et => (
-                                    <SelectItem key={et.value} value={et.value}>{et.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="event-tooltip">Descrição (Tooltip)</Label>
-                        <Input 
-                            id="event-tooltip" 
-                            placeholder="Ex: Feriado de Ano Novo"
-                            value={currentTooltip}
-                            onChange={(e) => setCurrentTooltip(e.target.value)}
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => handleModalOpenChange(false)}>Cancelar</Button>
-                    <Button onClick={handleSaveEvent}>Salvar</Button>
-                </DialogFooter>
-            </DialogContent>
-       </Dialog>
-
-    </div>
+    </>
   );
 }
-
