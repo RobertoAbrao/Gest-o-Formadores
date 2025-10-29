@@ -253,6 +253,7 @@ export default function CalendarioPage() {
                     classNames={{
                       day: "h-8 w-8 rounded-full",
                       head_cell: "w-8",
+                      day_today: "",
                     }}
                     locale={ptBR}
                     modifiers={modifiers}
