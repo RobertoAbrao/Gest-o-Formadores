@@ -31,7 +31,7 @@ export default function CalendarioPage() {
                     <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-indigo-200"></div>Recesso escolar</div>
                     <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-200"></div>Conselho de Classe</div>
                     <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-200 border-2 border-orange-300"></div>Avaliação Trimestral</div>
-                    <div className="flex items-center gap-2"><span className="font-bold underline">Dia</span>Início/Término</div>
+                    <div className="flex items-center gap-2"><span className="font-bold underline">__</span>Início/Término</div>
                 </div>
             </CardContent>
         </Card>
