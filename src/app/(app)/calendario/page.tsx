@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Calendar } from '@/components/ui/calendar';
@@ -13,17 +12,31 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-type EventType = 'planejamento' | 'feriado' | 'recesso' | 'conselho' | 'avaliacao' | 'inicio-termino' | 'simulado' | 'devolutiva';
+type EventType = 
+    | 'continuidade-ferias' 
+    | 'feriado'
+    | 'inicio-termino-aulas' 
+    | 'recesso'
+    | 'inicio-termino-trimestre' 
+    | 'conselho'
+    | 'estudo-planejamento' 
+    | 'inicio-ferias-2026'
+    | 'simulado'
+    | 'devolutiva'
+    | 'avaliacao';
 
-const eventTypes: { value: EventType, label: string, className: string }[] = [
-    { value: 'planejamento', label: 'Estudo e Planejamento', className: 'bg-blue-200' },
-    { value: 'feriado', label: 'Feriado', className: 'bg-red-200' },
-    { value: 'recesso', label: 'Recesso escolar', className: 'bg-indigo-200' },
-    { value: 'conselho', label: 'Conselho de Classe', className: 'bg-yellow-200' },
-    { value: 'avaliacao', label: 'Avaliação Trimestral', className: 'border-2 border-orange-300' },
-    { value: 'inicio-termino', label: 'Início/Término', className: 'underline font-bold' },
-    { value: 'simulado', label: 'Simulado', className: 'bg-green-200' },
-    { value: 'devolutiva', label: 'Devolutiva', className: 'bg-purple-200' },
+const eventTypes: { value: EventType, label: string }[] = [
+    { value: 'continuidade-ferias', label: 'Continuidade das férias ano letivo 2025' },
+    { value: 'inicio-termino-aulas', label: 'Início e término das aulas' },
+    { value: 'inicio-termino-trimestre', label: 'Início e término de trimestre' },
+    { value: 'estudo-planejamento', label: 'Estudo e Planejamento' },
+    { value: 'feriado', label: 'Feriado' },
+    { value: 'recesso', label: 'Recesso escolar' },
+    { value: 'conselho', label: 'Conselho de Classe Extraordinário e Fechamento do ano letivo' },
+    { value: 'inicio-ferias-2026', label: 'Início das férias ano letivo 2026' },
+    { value: 'simulado', label: 'Simulado' },
+    { value: 'devolutiva', label: 'Devolutiva' },
+    { value: 'avaliacao', label: 'Avaliação Trimestral' },
 ];
 
 interface CalendarEvent {
@@ -94,14 +107,17 @@ export default function CalendarioPage() {
   }, [events]);
 
   const modifierStyles = {
-    planejamento: { backgroundColor: '#bfdbfe' },
-    feriado: { backgroundColor: '#fecaca' },
-    recesso: { backgroundColor: '#c7d2fe' },
-    conselho: { backgroundColor: '#fef08a' },
-    avaliacao: { border: '2px solid #fb923c' },
-    'inicio-termino': { textDecoration: 'underline', fontWeight: 'bold' },
-    simulado: { backgroundColor: '#bbf7d0' },
-    devolutiva: { backgroundColor: '#e9d5ff' },
+    'continuidade-ferias': { backgroundColor: '#a3c0e8' },
+    'inicio-termino-aulas': { backgroundColor: '#ffff00' },
+    'inicio-termino-trimestre': { backgroundColor: '#3b82f6' },
+    'estudo-planejamento': { backgroundColor: '#90ee90' },
+    'feriado': { backgroundColor: '#ff0000', color: '#fff' },
+    'recesso': { backgroundColor: '#ffc107' },
+    'conselho': { backgroundColor: '#808080', color: '#fff' },
+    'inicio-ferias-2026': { backgroundColor: '#ffc0cb' },
+    'simulado': { backgroundColor: '#bbf7d0' }, // light green
+    'devolutiva': { backgroundColor: '#e9d5ff' }, // light purple
+    'avaliacao': { border: '2px solid #fdba74' }, // orange-300
   };
 
   const DayContent = (props: { date: Date }) => {
@@ -141,15 +157,18 @@ export default function CalendarioPage() {
                 <CardTitle className='text-lg'>Legenda</CardTitle>
             </CardHeader>
             <CardContent className='p-2'>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-blue-200"></div>Estudo e Planejamento</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-200"></div>Feriado</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-indigo-200"></div>Recesso escolar</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-200"></div>Conselho de Classe</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-200 border-2 border-orange-300"></div>Avaliação Trimestral</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-green-200"></div>Simulado</div>
-                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-purple-200"></div>Devolutiva</div>
-                    <div className="flex items-center gap-2"><span className="font-bold underline">__</span>Início/Término</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
                 </div>
             </CardContent>
       </Card>
