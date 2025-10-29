@@ -19,6 +19,23 @@ export default function CalendarioPage() {
           </p>
         </div>
       </div>
+      
+      <Card className='p-4'>
+            <CardHeader className='p-2'>
+                <CardTitle className='text-lg'>Legenda</CardTitle>
+            </CardHeader>
+            <CardContent className='p-2'>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-blue-200"></div>Estudo e Planejamento</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-red-200"></div>Feriado</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-indigo-200"></div>Recesso escolar</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-yellow-200"></div>Conselho de Classe</div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full bg-orange-200 border-2 border-orange-300"></div>Avaliação Trimestral</div>
+                    <div className="flex items-center gap-2"><span className="font-bold underline">Dia</span>Início/Término</div>
+                </div>
+            </CardContent>
+        </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {months.map(month => {
           const monthDate = new Date(year, month);
