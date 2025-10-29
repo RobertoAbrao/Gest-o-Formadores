@@ -18,6 +18,8 @@ import {
   ClipboardList,
   BarChart2,
   Sheet as SheetIcon,
+  CalendarDays,
+  GanttChartSquare,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -75,6 +77,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/planilha', label: 'Planilha Projetos', icon: SheetIcon },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
+          { href: '/implantacao-projeto', label: 'Implantação Projeto', icon: GanttChartSquare },
+          { href: '/calendario', label: 'Calendário', icon: CalendarDays },
         ]
       : [
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
