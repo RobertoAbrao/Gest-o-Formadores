@@ -181,12 +181,15 @@ export default function CalendarioPage() {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="event-type">Tipo de Evento</Label>
-                        <Select value={currentEventType} onValueChange={(value) => setCurrentEventType(value as EventType | '')}>
+                        <Select 
+                            value={currentEventType} 
+                            onValueChange={(value) => setCurrentEventType(value === 'none' ? '' : value as EventType)}
+                        >
                             <SelectTrigger id="event-type">
                                 <SelectValue placeholder="Nenhum (Dia Normal)" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Nenhum (Dia Normal)</SelectItem>
+                                <SelectItem value="none">Nenhum (Dia Normal)</SelectItem>
                                 {eventTypes.map(et => (
                                     <SelectItem key={et.value} value={et.value}>{et.label}</SelectItem>
                                 ))}
