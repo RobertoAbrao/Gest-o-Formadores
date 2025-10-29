@@ -4,10 +4,30 @@
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ptBR } from 'date-fns/locale';
+import { useState } from 'react';
 
 export default function CalendarioPage() {
   const year = new Date().getFullYear();
   const months = Array.from({ length: 12 }, (_, i) => i);
+  const [selectedDays, setSelectedDays] = useState<Date[]>([]);
+
+  const handleDayClick = (day: Date) => {
+    const isSelected = selectedDays.some(selectedDay => 
+        selectedDay.getDate() === day.getDate() &&
+        selectedDay.getMonth() === day.getMonth() &&
+        selectedDay.getFullYear() === day.getFullYear()
+    );
+
+    if (isSelected) {
+      setSelectedDays(selectedDays.filter(selectedDay => 
+          !(selectedDay.getDate() === day.getDate() &&
+            selectedDay.getMonth() === day.getMonth() &&
+            selectedDay.getFullYear() === day.getFullYear())
+      ));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
@@ -15,7 +35,7 @@ export default function CalendarioPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
           <p className="text-muted-foreground">
-            Visão completa de todos os meses do ano.
+            Visão completa de todos os meses do ano. Clique em um dia para selecioná-lo.
           </p>
         </div>
       </div>
@@ -57,8 +77,14 @@ export default function CalendarioPage() {
                     head_cell: "w-8",
                   }}
                   locale={ptBR}
-                  modifiers={{}} // Nenhum modificador para eventos
-                  modifiersStyles={{}}
+                  selected={selectedDays}
+                  onDayClick={handleDayClick}
+                  modifiersStyles={{
+                    selected: { 
+                      backgroundColor: 'hsl(var(--primary))', 
+                      color: 'hsl(var(--primary-foreground))' 
+                    }
+                  }}
                 />
               </CardContent>
             </Card>
