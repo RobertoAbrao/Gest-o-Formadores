@@ -77,7 +77,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/planilha', label: 'Planilha Projetos', icon: SheetIcon },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
-          { href: '/implantacao-projeto', label: 'Implantação Projeto', icon: GanttChartSquare },
           { href: '/calendario', label: 'Calendário', icon: CalendarDays },
         ]
       : [
