@@ -13,9 +13,10 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
-import { addDays, format, isAfter, isBefore } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { Printer } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AppLogo from '@/components/AppLogo';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -156,7 +157,6 @@ export default function CalendarioPage() {
   const cronogramaData = useMemo<CronogramaItem[]>(() => {
     const eventsByTooltip: Record<string, Date[]> = {};
 
-    // Group dates by tooltip
     Object.entries(events).forEach(([dateString, event]) => {
       if (event.tooltip) {
         if (!eventsByTooltip[event.tooltip]) {
@@ -228,6 +228,7 @@ export default function CalendarioPage() {
       <style jsx global>{`
         @media print {
           body {
+            visibility: hidden;
             background-color: #fff !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -241,7 +242,7 @@ export default function CalendarioPage() {
             top: 0;
             width: 100%;
             height: auto;
-            padding: 1rem;
+            padding: 2rem;
             margin: 0;
           }
           .no-print {
@@ -256,112 +257,156 @@ export default function CalendarioPage() {
             border-collapse: collapse;
             width: 100%;
           }
-          .print-section {
-            break-inside: avoid;
-          }
         }
       `}</style>
-      <div className="flex flex-col gap-4 py-6 h-full printable-area">
-        <div className="flex items-center justify-between no-print">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
-            <p className="text-muted-foreground">
-              Clique em um dia para começar a selecionar ou em um intervalo para editar.
-            </p>
-          </div>
-          <Button onClick={() => window.print()} variant="outline">
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir / Salvar PDF
-          </Button>
-        </div>
-        
-        <Card className='p-4 print-section'>
-              <CardHeader className='p-2'>
-                  <CardTitle className='text-lg'>Legenda</CardTitle>
-              </CardHeader>
-              <CardContent className='p-2'>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
-                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.migracao}></div>Migração de Dados</div>
-                  </div>
-              </CardContent>
-        </Card>
-
-        <Card className="print-section">
-            <CardHeader>
-                <CardTitle>Cronograma de Ações - Proposta de Datas</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                    Este cronograma é gerado automaticamente com base nos eventos marcados no calendário acima.
+      <div className="flex flex-col gap-4 py-6 h-full">
+        <div className="no-print">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário Anual {year}</h1>
+                <p className="text-muted-foreground">
+                  Clique em um dia para começar a selecionar ou em um intervalo para editar.
                 </p>
-            </CardHeader>
-            <CardContent>
-                <Table className="print-table">
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[200px]">Evento</TableHead>
-                            <TableHead>Data Sugerida (Editora)</TableHead>
-                            <TableHead>Nova Data (Município)</TableHead>
-                            <TableHead>Status (Aprovado/Pendente)</TableHead>
-                            <TableHead>Observações</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {cronogramaData.map((item, index) => (
-                            <TableRow key={index}>
-                                <TableCell className="font-medium">{item.evento}</TableCell>
-                                <TableCell>{item.dataSugerida}</TableCell>
-                                <TableCell></TableCell>
-                                <TableCell></TableCell>
-                                <TableCell></TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+              </div>
+              <Button onClick={() => window.print()} variant="outline">
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimir / Salvar PDF
+              </Button>
+            </div>
+            
+            <Card className='p-4 mt-4'>
+                  <CardHeader className='p-2'>
+                      <CardTitle className='text-lg'>Legenda</CardTitle>
+                  </CardHeader>
+                  <CardContent className='p-2'>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.migracao}></div>Migração de Dados</div>
+                      </div>
+                  </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 print-section">
-          {months.map(month => {
-            const monthDate = new Date(year, month);
-            const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
-
-            return (
-              <Card key={month} className="print-section">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
+            <Card className="mt-4">
+                <CardHeader>
+                    <CardTitle>Cronograma de Ações - Proposta de Datas</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        Este cronograma é gerado automaticamente com base nos eventos marcados no calendário acima.
+                    </p>
                 </CardHeader>
-                <CardContent className="flex justify-center">
-                  <Calendar
-                    month={monthDate}
-                    mode="range"
-                    selected={editingRange}
-                    onSelect={handleDateSelect}
-                    className="p-0"
-                    classNames={{
-                      day: "h-8 w-8 rounded-full",
-                      head_cell: "w-8",
-                      day_today: "",
-                    }}
-                    locale={ptBR}
-                    modifiers={modifiers}
-                    modifiersStyles={modifierStyles}
-                    components={{ DayContent: DayContent }}
-                  />
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">Evento</TableHead>
+                                <TableHead>Data Sugerida (Editora)</TableHead>
+                                <TableHead>Nova Data (Município)</TableHead>
+                                <TableHead>Status (Aprovado/Pendente)</TableHead>
+                                <TableHead>Observações</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {cronogramaData.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell className="font-medium">{item.evento}</TableCell>
+                                    <TableCell>{item.dataSugerida}</TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell></TableCell>
+                                    <TableCell></TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </CardContent>
-              </Card>
-            )
-          })}
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mt-4">
+              {months.map(month => {
+                const monthDate = new Date(year, month);
+                const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
+
+                return (
+                  <Card key={month}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex justify-center">
+                      <Calendar
+                        month={monthDate}
+                        mode="range"
+                        selected={editingRange}
+                        onSelect={handleDateSelect}
+                        className="p-0"
+                        classNames={{
+                          day: "h-8 w-8 rounded-full",
+                          head_cell: "w-8",
+                          day_today: "",
+                        }}
+                        locale={ptBR}
+                        modifiers={modifiers}
+                        modifiersStyles={modifierStyles}
+                        components={{ DayContent: DayContent }}
+                      />
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+        </div>
+
+        <div className="printable-area">
+          <div className="space-y-12">
+            <header className="flex justify-between items-center pb-4 border-b-2">
+                <AppLogo />
+                <h2 className="text-xl font-bold">Cronograma de Ações - Proposta de Datas</h2>
+            </header>
+
+            <Table className="print-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px] font-bold">Evento</TableHead>
+                  <TableHead className="font-bold">Data Sugerida (Editora)</TableHead>
+                  <TableHead className="font-bold">Nova Data (Município)</TableHead>
+                  <TableHead className="font-bold">Status (Aprovado/Pendente)</TableHead>
+                  <TableHead className="font-bold">Observações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cronogramaData.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{item.evento}</TableCell>
+                    <TableCell>{item.dataSugerida}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            
+            <footer className="pt-24">
+                <div className="grid grid-cols-2 gap-16">
+                    <div className="text-center">
+                        <div className="border-b-2 border-black w-3/4 mx-auto"></div>
+                        <p className="mt-2 text-sm font-semibold">Editora LT</p>
+                    </div>
+                    <div className="text-center">
+                        <div className="border-b-2 border-black w-3/4 mx-auto"></div>
+                        <p className="mt-2 text-sm font-semibold">Secretaria Municipal de Educação</p>
+                    </div>
+                </div>
+            </footer>
+          </div>
         </div>
 
         <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange} modal={false}>
