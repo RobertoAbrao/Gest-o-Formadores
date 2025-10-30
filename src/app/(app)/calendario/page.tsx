@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { Printer } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -27,7 +28,9 @@ type EventType =
     | 'inicio-ferias-2026'
     | 'simulado'
     | 'devolutiva'
-    | 'avaliacao';
+    | 'avaliacao'
+    | 'implantacao'
+    | 'migracao';
 
 const eventTypes: { value: EventType, label: string }[] = [
     { value: 'continuidade-ferias', label: 'Continuidade das férias ano letivo 2025' },
@@ -41,11 +44,18 @@ const eventTypes: { value: EventType, label: string }[] = [
     { value: 'simulado', label: 'Simulado' },
     { value: 'devolutiva', label: 'Devolutiva' },
     { value: 'avaliacao', label: 'Avaliação Trimestral' },
+    { value: 'implantacao', label: 'Implantação' },
+    { value: 'migracao', label: 'Migração de Dados' },
 ];
 
 interface CalendarEvent {
     type: EventType | '';
     tooltip: string;
+}
+
+interface CronogramaItem {
+    evento: string;
+    dataSugerida: string;
 }
 
 export default function CalendarioPage() {
@@ -139,7 +149,32 @@ export default function CalendarioPage() {
     'simulado': { backgroundColor: '#bbf7d0' }, // light green
     'devolutiva': { backgroundColor: '#e9d5ff' }, // light purple
     'avaliacao': { border: '2px solid #fdba74' }, // orange-300
+    'implantacao': { backgroundColor: '#a78bfa' },
+    'migracao': { backgroundColor: '#5eead4' },
   };
+
+  const cronogramaData = useMemo<CronogramaItem[]>(() => {
+    const cronogramaEventTypes: EventType[] = ['migracao', 'implantacao', 'simulado', 'devolutiva'];
+    const foundEvents: Record<string, string> = {}; // { 'Simulado 1': '10/10/2025' }
+
+    Object.entries(events).forEach(([dateString, event]) => {
+        if (cronogramaEventTypes.includes(event.type as EventType)) {
+            if (!foundEvents[event.tooltip]) {
+                foundEvents[event.tooltip] = format(new Date(dateString + 'T12:00:00'), 'dd/MM/yyyy');
+            }
+        }
+    });
+
+    const data: CronogramaItem[] = [];
+    ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'].forEach(eventName => {
+        data.push({
+            evento: eventName,
+            dataSugerida: foundEvents[eventName] || 'A definir',
+        });
+    });
+
+    return data;
+  }, [events]);
 
   const DayContent = (props: { date: Date }) => {
       const dateString = props.date.toISOString().split('T')[0];
@@ -196,6 +231,18 @@ export default function CalendarioPage() {
           .no-print {
             display: none !important;
           }
+          .print-table th, .print-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 10px;
+          }
+          .print-table {
+            border-collapse: collapse;
+            width: 100%;
+          }
+          .print-section {
+            break-inside: avoid;
+          }
         }
       `}</style>
       <div className="flex flex-col gap-4 py-6 h-full printable-area">
@@ -212,7 +259,7 @@ export default function CalendarioPage() {
           </Button>
         </div>
         
-        <Card className='p-4'>
+        <Card className='p-4 print-section'>
               <CardHeader className='p-2'>
                   <CardTitle className='text-lg'>Legenda</CardTitle>
               </CardHeader>
@@ -229,17 +276,52 @@ export default function CalendarioPage() {
                       <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
                       <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
                       <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
+                      <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.migracao}></div>Migração de Dados</div>
                   </div>
               </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <Card className="print-section">
+            <CardHeader>
+                <CardTitle>Cronograma de Ações - Proposta de Datas</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                    Este cronograma é gerado automaticamente com base nos eventos marcados no calendário acima.
+                </p>
+            </CardHeader>
+            <CardContent>
+                <Table className="print-table">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[200px]">Evento</TableHead>
+                            <TableHead>Data Sugerida (Editora)</TableHead>
+                            <TableHead>Nova Data (Município)</TableHead>
+                            <TableHead>Status (Aprovado/Pendente)</TableHead>
+                            <TableHead>Observações</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {cronogramaData.map((item, index) => (
+                            <TableRow key={index}>
+                                <TableCell className="font-medium">{item.evento}</TableCell>
+                                <TableCell>{item.dataSugerida}</TableCell>
+                                <TableCell></TableCell>
+                                <TableCell></TableCell>
+                                <TableCell></TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 print-section">
           {months.map(month => {
             const monthDate = new Date(year, month);
             const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
 
             return (
-              <Card key={month}>
+              <Card key={month} className="print-section">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
                 </CardHeader>
