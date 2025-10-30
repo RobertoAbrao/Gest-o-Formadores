@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
-import { addDays, format } from 'date-fns';
+import { addDays, format, isAfter, isBefore } from 'date-fns';
 import { Printer } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -154,23 +154,39 @@ export default function CalendarioPage() {
   };
 
   const cronogramaData = useMemo<CronogramaItem[]>(() => {
-    const cronogramaEventTypes: EventType[] = ['migracao', 'implantacao', 'simulado', 'devolutiva'];
-    const foundEvents: Record<string, string> = {}; // { 'Simulado 1': '10/10/2025' }
+    const eventsByTooltip: Record<string, Date[]> = {};
 
+    // Group dates by tooltip
     Object.entries(events).forEach(([dateString, event]) => {
-        if (cronogramaEventTypes.includes(event.type as EventType)) {
-            if (!foundEvents[event.tooltip]) {
-                foundEvents[event.tooltip] = format(new Date(dateString + 'T12:00:00'), 'dd/MM/yyyy');
-            }
+      if (event.tooltip) {
+        if (!eventsByTooltip[event.tooltip]) {
+          eventsByTooltip[event.tooltip] = [];
         }
+        eventsByTooltip[event.tooltip].push(new Date(dateString + 'T12:00:00'));
+      }
+    });
+
+    const eventDates: Record<string, string> = {};
+    Object.entries(eventsByTooltip).forEach(([tooltip, dates]) => {
+      if (dates.length === 0) return;
+      
+      const sortedDates = dates.sort((a, b) => a.getTime() - b.getTime());
+      const startDate = sortedDates[0];
+      const endDate = sortedDates[sortedDates.length - 1];
+      
+      if (startDate.getTime() === endDate.getTime()) {
+        eventDates[tooltip] = format(startDate, 'dd/MM/yyyy');
+      } else {
+        eventDates[tooltip] = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
+      }
     });
 
     const data: CronogramaItem[] = [];
     ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'].forEach(eventName => {
-        data.push({
-            evento: eventName,
-            dataSugerida: foundEvents[eventName] || 'A definir',
-        });
+      data.push({
+        evento: eventName,
+        dataSugerida: eventDates[eventName] || 'A definir',
+      });
     });
 
     return data;
