@@ -2,10 +2,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check } from 'lucide-react';
-import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye } from 'lucide-react';
+import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp, startOfDay } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, startOfToday, isWithinInterval, startOfDay } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 
 
 const lembreteSchema = z.object({
@@ -61,6 +62,8 @@ export default function DashboardPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
   const { setNotificationFavicon, clearNotificationFavicon } = useDynamicFavicon();
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
 
 
   const form = useForm<LembreteFormValues>({
@@ -267,6 +270,20 @@ export default function DashboardPage() {
         .filter(event => isSameDay(event.date, date))
         .sort((a,b) => a.date.getTime() - b.date.getTime());
   }, [date, events]);
+  
+  const handleOpenDetails = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleDetailDialogChange = (open: boolean) => {
+    setIsDetailDialogOpen(open);
+    if (!open) {
+      setSelectedFormacao(null);
+      fetchData(); // Re-fetch on close to ensure data is fresh
+    }
+  }
+
 
   const modifiers = {
     formacao: eventDaysByType['formacao'] || [],
@@ -380,10 +397,14 @@ export default function DashboardPage() {
                                                 <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="font-medium truncate">{formacao.titulo}</TableCell>
+                                        <TableCell className="font-medium truncate">
+                                            <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
+                                                {formacao.titulo}
+                                            </span>
+                                        </TableCell>
                                         <TableCell>
                                             <Button variant="link" size="sm" asChild className="h-auto p-0">
-                                                <Link href={`/relatorio/${formacao.id}`}>Ver Relatório</Link>
+                                                <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
                                             </Button>
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -547,6 +568,28 @@ export default function DashboardPage() {
             </div>
         </Card>
       </div>
+
+       <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
+            <DialogContent className="sm:max-w-2xl">
+                {selectedFormacao && (
+                  <>
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
+                        <DialogDescription>
+                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+                                <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DetalhesFormacao 
+                        formacaoId={selectedFormacao.id} 
+                        onClose={() => handleDetailDialogChange(false)} 
+                    />
+                  </>
+                )}
+            </DialogContent>
+        </Dialog>
+
     </div>
   );
 }
