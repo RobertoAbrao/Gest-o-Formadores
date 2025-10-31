@@ -115,7 +115,7 @@ export default function DashboardPage() {
         if(formacao.logistica) {
           formacao.logistica.forEach(item => {
             if(item.alertaLembrete && item.diasLembrete && item.checkin) {
-               const alertDate = subDays(item.checkin.toDate(), item.diasLembrete);
+               const alertDate = addDays(item.checkin.toDate(), -item.diasLembrete);
                allEvents.push({
                  date: alertDate,
                  type: 'lembrete',
@@ -367,64 +367,7 @@ export default function DashboardPage() {
                         </AlertDescription>
                     </Alert>
                 )}
-             {followUpActions.length > 0 && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-                            <AlertCircle className="h-5 w-5" /> Ações de Acompanhamento
-                        </CardTitle>
-                        <CardDescription>
-                            Formações que precisam da sua atenção para a próxima etapa.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Formação</TableHead>
-                                    <TableHead>Relatório</TableHead>
-                                    <TableHead className="text-right">Próxima Ação</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {followUpActions.map((formacao) => (
-                                    <TableRow key={formacao.id}>
-                                        <TableCell>
-                                             {formacao.status === 'pos-formacao' ? (
-                                                <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="font-medium truncate">
-                                            <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
-                                                {formacao.titulo}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button variant="link" size="sm" asChild className="h-auto p-0">
-                                                <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
-                                            </Button>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {formacao.status === 'pos-formacao' ? (
-                                                <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
-                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
-                                                </Button>
-                                            ) : (
-                                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
-                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
-                                                </Button>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
+             
         </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -568,13 +511,72 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+       {followUpActions.length > 0 && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                            <AlertCircle className="h-5 w-5" /> Ações de Acompanhamento
+                        </CardTitle>
+                        <CardDescription>
+                            Formações que precisam da sua atenção para a próxima etapa.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Formação</TableHead>
+                                    <TableHead>Relatório</TableHead>
+                                    <TableHead className="text-right">Próxima Ação</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {followUpActions.map((formacao) => (
+                                    <TableRow key={formacao.id}>
+                                        <TableCell>
+                                             {formacao.status === 'pos-formacao' ? (
+                                                <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="font-medium truncate">
+                                            <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
+                                                {formacao.titulo}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button variant="link" size="sm" asChild className="h-auto p-0">
+                                                <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {formacao.status === 'pos-formacao' ? (
+                                                <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
+                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
+                                                </Button>
+                                            ) : (
+                                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
+                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
+
        <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
             <DialogContent className="sm:max-w-2xl">
                 {selectedFormacao && (
                   <>
                     <DialogHeader>
                         <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription asChild>
                             <div className='flex items-center gap-2 text-sm text-muted-foreground'>
                                 <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
                             </div>
@@ -592,5 +594,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
