@@ -320,6 +320,36 @@ export default function DashboardPage() {
       </div>
 
        <div className='space-y-4'>
+            {upcomingEvents.length > 0 && (
+                    <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
+                        <BellRing className="h-4 w-4" />
+                        <AlertTitle>Eventos da Semana</AlertTitle>
+                        <AlertDescription>
+                            <ul className='space-y-2 mt-2'>
+                                {upcomingEvents.map((event, index) => (
+                                <li key={index} className='flex items-center justify-between gap-2 text-sm'>
+                                    <div className='flex items-center gap-2 truncate'>
+                                        <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                        <span className='truncate' title={event.title}>{event.title}</span>
+                                    </div>
+                                    {event.details === 'Lembrete pessoal' && (
+                                        <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className='h-6 w-6 flex-shrink-0' 
+                                        onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
+                                        title="Marcar como concluído"
+                                        >
+                                            <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
+                                        </Button>
+                                    )}
+                                </li>
+                                ))}
+                            </ul>
+                            <p className='mt-3 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
+                        </AlertDescription>
+                    </Alert>
+                )}
             {followUpActions.length > 0 && (
                  <Card>
                     <CardHeader>
@@ -374,36 +404,6 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             )}
-            {upcomingEvents.length > 0 && (
-                    <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
-                        <BellRing className="h-4 w-4" />
-                        <AlertTitle>Eventos da Semana</AlertTitle>
-                        <AlertDescription>
-                            <ul className='space-y-2 mt-2'>
-                                {upcomingEvents.map((event, index) => (
-                                <li key={index} className='flex items-center justify-between gap-2 text-sm'>
-                                    <div className='flex items-center gap-2 truncate'>
-                                        <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
-                                        <span className='truncate' title={event.title}>{event.title}</span>
-                                    </div>
-                                    {event.details === 'Lembrete pessoal' && (
-                                        <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className='h-6 w-6 flex-shrink-0' 
-                                        onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
-                                        title="Marcar como concluído"
-                                        >
-                                            <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
-                                        </Button>
-                                    )}
-                                </li>
-                                ))}
-                            </ul>
-                            <p className='mt-3 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
-                        </AlertDescription>
-                    </Alert>
-                )}
         </div>
 
 
