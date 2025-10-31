@@ -220,7 +220,7 @@ export default function DashboardPage() {
         fetchData();
       } catch (error) {
         console.error("Error updating lembrete: ", error);
-        toast({ variant: 'destructive', title: "Erro", description: "Não foi possível atualizar o lembrete." });
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o lembrete." });
       }
   }
 
@@ -305,7 +305,7 @@ export default function DashboardPage() {
                                 <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
                                 <span className='truncate' title={event.title}>{event.title}</span>
                              </div>
-                             {event.type === 'lembrete' && (
+                             {event.details === 'Lembrete pessoal' && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
@@ -416,7 +416,7 @@ export default function DashboardPage() {
                                             {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : <Milestone className='h-3 w-3'/>}
                                             {event.details}
                                        </span>
-                                       {event.type === 'lembrete' && (
+                                       {event.details === 'Lembrete pessoal' && (
                                             <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
                                                 <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
                                             </Button>
@@ -467,5 +467,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
