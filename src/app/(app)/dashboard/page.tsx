@@ -3,9 +3,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye } from 'lucide-react';
-import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp, startOfDay } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -174,7 +174,7 @@ export default function DashboardPage() {
 
       setEvents(allEvents);
       
-      const today = startOfToday();
+      const today = startOfDay(new Date());
       const sevenDaysFromNow = addDays(today, 7);
       
       const upcoming = allEvents
@@ -335,7 +335,7 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
-
+      
        <div className='space-y-4'>
             {upcomingEvents.length > 0 && (
                     <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                         </AlertDescription>
                     </Alert>
                 )}
-            {followUpActions.length > 0 && (
+             {followUpActions.length > 0 && (
                  <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
@@ -426,7 +426,6 @@ export default function DashboardPage() {
                 </Card>
             )}
         </div>
-
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
@@ -593,3 +592,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
