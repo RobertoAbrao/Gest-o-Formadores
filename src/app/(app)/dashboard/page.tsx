@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, startOfToday, isWithinInterval } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, startOfToday, isWithinInterval, startOfDay } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -550,7 +550,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
