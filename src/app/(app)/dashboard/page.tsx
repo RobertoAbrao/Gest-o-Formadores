@@ -320,7 +320,7 @@ export default function DashboardPage() {
                                  </div>
                                   <Button variant="link" size="sm" asChild className='h-auto p-0 text-blue-600'>
                                       <Link href={`/relatorio/${formacao.id}`}>
-                                        Ver Relatório
+                                         {formacao.status === 'pos-formacao' ? 'Concluir' : 'Arquivar'}
                                       </Link>
                                   </Button>
                                </li>
