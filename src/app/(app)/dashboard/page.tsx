@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, startOfDay, subDays, isWithinInterval, addDays, isToday, isTomorrow, startOfToday } from 'date-fns';
@@ -54,6 +54,7 @@ export default function DashboardPage() {
   ]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [followUpActions, setFollowUpActions] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
@@ -95,9 +96,14 @@ export default function DashboardPage() {
       ]);
         
       const allEvents: CalendarEvent[] = [];
+      const followUps: Formacao[] = [];
 
       const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
       formacoesData.forEach(formacao => {
+        if (formacao.status === 'pos-formacao' || formacao.status === 'concluido') {
+            followUps.push(formacao);
+        }
+
         if (formacao.dataInicio) allEvents.push({ date: formacao.dataInicio.toDate(), type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}`, relatedId: formacao.id });
         if (formacao.dataFim) allEvents.push({ date: formacao.dataFim.toDate(), type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}`, relatedId: formacao.id });
       
@@ -116,6 +122,8 @@ export default function DashboardPage() {
           })
         }
       });
+
+      setFollowUpActions(followUps);
 
       const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
       projetosData.forEach(projeto => {
@@ -186,12 +194,12 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    if (upcomingEvents.length > 0) {
+    if (upcomingEvents.length > 0 || followUpActions.length > 0) {
       setNotificationFavicon();
     } else {
       clearNotificationFavicon();
     }
-  }, [upcomingEvents, setNotificationFavicon, clearNotificationFavicon]);
+  }, [upcomingEvents, followUpActions, setNotificationFavicon, clearNotificationFavicon]);
 
 
   const onLembreteSubmit = async (values: LembreteFormValues) => {
@@ -293,36 +301,66 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
 
-       {upcomingEvents.length > 0 && (
-            <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
-                <BellRing className="h-4 w-4" />
-                <AlertTitle>Eventos da Semana</AlertTitle>
-                <AlertDescription>
-                    <ul className='space-y-2 mt-2'>
-                        {upcomingEvents.map((event, index) => (
-                           <li key={index} className='flex items-center justify-between gap-2 text-sm'>
-                             <div className='flex items-center gap-2 truncate'>
-                                <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
-                                <span className='truncate' title={event.title}>{event.title}</span>
-                             </div>
-                             {event.details === 'Lembrete pessoal' && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className='h-6 w-6 flex-shrink-0' 
-                                  onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
-                                  title="Marcar como concluído"
-                                >
-                                    <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
-                                </Button>
-                             )}
-                           </li>
-                        ))}
-                    </ul>
-                    <p className='mt-3 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
-                </AlertDescription>
-            </Alert>
-        )}
+       <div className='space-y-4'>
+            {followUpActions.length > 0 && (
+                 <Alert className='bg-blue-100/60 border-blue-200/80 text-blue-900 dark:bg-blue-900/20 dark:border-blue-500/30 dark:text-blue-200 [&>svg]:text-blue-500'>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Ações de Acompanhamento</AlertTitle>
+                    <AlertDescription>
+                         <ul className='space-y-2 mt-2'>
+                            {followUpActions.map((formacao) => (
+                               <li key={formacao.id} className='flex items-center justify-between gap-2 text-sm'>
+                                 <div className='flex items-center gap-2 truncate'>
+                                    {formacao.status === 'pos-formacao' ? (
+                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
+                                    ) : (
+                                        <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
+                                    )}
+                                    <span className='truncate' title={formacao.titulo}>{formacao.titulo}</span>
+                                 </div>
+                                  <Button variant="link" size="sm" asChild className='h-auto p-0 text-blue-600'>
+                                      <Link href={`/relatorio/${formacao.id}`}>
+                                        {formacao.status === 'pos-formacao' ? "Concluir" : "Arquivar"}
+                                      </Link>
+                                  </Button>
+                               </li>
+                            ))}
+                        </ul>
+                    </AlertDescription>
+                </Alert>
+            )}
+            {upcomingEvents.length > 0 && (
+                    <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
+                        <BellRing className="h-4 w-4" />
+                        <AlertTitle>Eventos da Semana</AlertTitle>
+                        <AlertDescription>
+                            <ul className='space-y-2 mt-2'>
+                                {upcomingEvents.map((event, index) => (
+                                <li key={index} className='flex items-center justify-between gap-2 text-sm'>
+                                    <div className='flex items-center gap-2 truncate'>
+                                        <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                        <span className='truncate' title={event.title}>{event.title}</span>
+                                    </div>
+                                    {event.details === 'Lembrete pessoal' && (
+                                        <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className='h-6 w-6 flex-shrink-0' 
+                                        onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
+                                        title="Marcar como concluído"
+                                        >
+                                            <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
+                                        </Button>
+                                    )}
+                                </li>
+                                ))}
+                            </ul>
+                            <p className='mt-3 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
+                        </AlertDescription>
+                    </Alert>
+                )}
+        </div>
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
@@ -467,3 +505,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
