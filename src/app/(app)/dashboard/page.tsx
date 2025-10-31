@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, startOfDay, subDays, isWithinInterval, addDays, isToday, isTomorrow } from 'date-fns';
+import { format, isSameDay, startOfDay, subDays, isWithinInterval, addDays, isToday, isTomorrow, startOfToday } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
