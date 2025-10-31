@@ -57,6 +57,7 @@ export default function ArquivadosPage() {
     setIsDetailDialogOpen(open);
     if (!open) {
       setSelectedFormacao(null);
+      fetchFormacoesArquivadas();
     }
   }
 

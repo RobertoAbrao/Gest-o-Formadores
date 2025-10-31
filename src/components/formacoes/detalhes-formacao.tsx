@@ -19,7 +19,7 @@ import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -369,7 +369,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   };
 
   const handleStatusChange = async (newStatus: FormadorStatus) => {
-    if (!formacao || isArchived) return;
+    if (!formacao) return;
     try {
       const formacaoRef = doc(db, 'formacoes', formacao.id);
       await updateDoc(formacaoRef, { status: newStatus });
@@ -394,6 +394,18 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
     }
   }
+
+  const handleUnarchive = async () => {
+    if (!formacao || !window.confirm('Tem certeza que deseja desarquivar esta formação?')) return;
+
+    const success = await handleStatusChange('concluido');
+    if (success) {
+        toast({ title: "Sucesso", description: "Formação desarquivada com sucesso." });
+        onClose();
+    } else {
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível desarquivar a formação." });
+    }
+  };
   
   const handleToggleAvaliacoes = async (checked: boolean) => {
     if (!formacao) return;
@@ -874,31 +886,38 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         )}
                     </div>
-                    {!isArchived && (
-                        <div className="space-y-4 pt-4 border-t">
-                            <h4 className="font-semibold text-lg">Ações</h4>
-                            <div className="flex flex-wrap items-center gap-4">
-                                {formacao.status === 'concluido' && (
-                                    <Button variant="outline" onClick={handleArchive}>
-                                        <Archive className="mr-2 h-4 w-4" />
-                                        Arquivar Formação
-                                    </Button>
-                                )}
-                                <div className="flex items-center space-x-2">
-                                    <Switch 
-                                        id="avaliacoes-switch" 
-                                        checked={formacao.avaliacoesAbertas}
-                                        onCheckedChange={handleToggleAvaliacoes}
-                                    />
-                                    <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
-                                        {formacao.avaliacoesAbertas 
-                                            ? <><ToggleRight className="text-green-600"/> Avaliações Abertas</> 
-                                            : <><ToggleLeft/> Avaliações Fechadas</>}
-                                    </Label>
-                                </div>
-                            </div>
+                    <div className="space-y-4 pt-4 border-t">
+                        <h4 className="font-semibold text-lg">Ações</h4>
+                        <div className="flex flex-wrap items-center gap-4">
+                            {isArchived ? (
+                                <Button variant="outline" onClick={handleUnarchive}>
+                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                    Desarquivar Formação
+                                </Button>
+                            ) : (
+                                <>
+                                    {formacao.status === 'concluido' && (
+                                        <Button variant="outline" onClick={handleArchive}>
+                                            <Archive className="mr-2 h-4 w-4" />
+                                            Arquivar Formação
+                                        </Button>
+                                    )}
+                                    <div className="flex items-center space-x-2">
+                                        <Switch 
+                                            id="avaliacoes-switch" 
+                                            checked={formacao.avaliacoesAbertas}
+                                            onCheckedChange={handleToggleAvaliacoes}
+                                        />
+                                        <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
+                                            {formacao.avaliacoesAbertas 
+                                                ? <><ToggleRight className="text-green-600"/> Avaliações Abertas</> 
+                                                : <><ToggleLeft/> Avaliações Fechadas</>}
+                                        </Label>
+                                    </div>
+                                </>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </TabsContent>
             <TabsContent value="logistica">
