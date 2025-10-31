@@ -2,17 +2,17 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, startOfDay, subDays, isWithinInterval, addDays, isToday, isTomorrow, startOfToday } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, startOfToday, isWithinInterval } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
-import type { Formacao, ProjetoImplatancao, Lembrete } from '@/lib/types';
+import type { Formacao, ProjetoImplatancao, Lembrete, FormadorStatus } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 const lembreteSchema = z.object({
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [followUpActions, setFollowUpActions] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
   const { setNotificationFavicon, clearNotificationFavicon } = useDynamicFavicon();
@@ -232,6 +234,22 @@ export default function DashboardPage() {
       }
   }
 
+  const handleUpdateStatus = async (formacaoId: string, newStatus: FormadorStatus) => {
+    setLoadingAction(formacaoId);
+    try {
+      const formacaoRef = doc(db, 'formacoes', formacaoId);
+      await updateDoc(formacaoRef, { status: newStatus });
+      toast({ title: "Sucesso", description: `Status da formação alterado.` });
+      fetchData(); // Re-fetch all data to update the UI
+    } catch (error) {
+      console.error("Erro ao alterar status:", error);
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+
   const eventDaysByType = useMemo(() => {
     return events.reduce((acc, event) => {
         const eventType = event.type;
@@ -303,31 +321,58 @@ export default function DashboardPage() {
 
        <div className='space-y-4'>
             {followUpActions.length > 0 && (
-                 <Alert className='bg-blue-100/60 border-blue-200/80 text-blue-900 dark:bg-blue-900/20 dark:border-blue-500/30 dark:text-blue-200 [&>svg]:text-blue-500'>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Ações de Acompanhamento</AlertTitle>
-                    <AlertDescription>
-                         <ul className='space-y-2 mt-2'>
-                            {followUpActions.map((formacao) => (
-                               <li key={formacao.id} className='flex items-center justify-between gap-2 text-sm'>
-                                 <div className='flex items-center gap-2 truncate'>
-                                    {formacao.status === 'pos-formacao' ? (
-                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
-                                    ) : (
-                                        <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
-                                    )}
-                                    <span className='truncate' title={formacao.titulo}>{formacao.titulo}</span>
-                                 </div>
-                                  <Button variant="link" size="sm" asChild className='h-auto p-0 text-blue-600'>
-                                      <Link href={`/relatorio/${formacao.id}`}>
-                                         {formacao.status === 'pos-formacao' ? 'Concluir' : 'Arquivar'}
-                                      </Link>
-                                  </Button>
-                               </li>
-                            ))}
-                        </ul>
-                    </AlertDescription>
-                </Alert>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                            <AlertCircle className="h-5 w-5" /> Ações de Acompanhamento
+                        </CardTitle>
+                        <CardDescription>
+                            Formações que precisam da sua atenção para a próxima etapa.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Formação</TableHead>
+                                    <TableHead>Relatório</TableHead>
+                                    <TableHead className="text-right">Próxima Ação</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {followUpActions.map((formacao) => (
+                                    <TableRow key={formacao.id}>
+                                        <TableCell>
+                                             {formacao.status === 'pos-formacao' ? (
+                                                <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
+                                            ) : (
+                                                <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="font-medium truncate">{formacao.titulo}</TableCell>
+                                        <TableCell>
+                                            <Button variant="link" size="sm" asChild className="h-auto p-0">
+                                                <Link href={`/relatorio/${formacao.id}`}>Ver Relatório</Link>
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {formacao.status === 'pos-formacao' ? (
+                                                <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
+                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
+                                                </Button>
+                                            ) : (
+                                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
+                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             )}
             {upcomingEvents.length > 0 && (
                     <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
@@ -505,5 +550,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
