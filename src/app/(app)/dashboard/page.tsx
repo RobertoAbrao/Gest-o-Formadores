@@ -109,6 +109,11 @@ export default function DashboardPage() {
             followUps.push(formacao);
         }
 
+        // Se a formação for uma devolutiva de projeto, não adiciona aqui para evitar duplicidade
+        if (formacao.titulo.toLowerCase().includes('devolutiva')) {
+            return;
+        }
+
         if (formacao.dataInicio) allEvents.push({ date: formacao.dataInicio.toDate(), type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}`, relatedId: formacao.id });
         if (formacao.dataFim) allEvents.push({ date: formacao.dataFim.toDate(), type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}`, relatedId: formacao.id });
       
