@@ -56,6 +56,11 @@ export default function AgendaRelatorioPage() {
         const formacoesSnap = await getDocs(activeFormacoesQuery);
         formacoesSnap.forEach(doc => {
             const formacao = { id: doc.id, ...doc.data() } as Formacao;
+            // Se a formação for uma devolutiva de projeto, não adiciona aqui para evitar duplicidade
+            if (formacao.titulo.toLowerCase().includes('devolutiva')) {
+                return;
+            }
+
             if (formacao.dataInicio) {
                 allEvents.push({ date: formacao.dataInicio, type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}` });
             }
