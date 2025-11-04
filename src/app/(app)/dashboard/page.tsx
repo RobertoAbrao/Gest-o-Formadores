@@ -342,26 +342,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8 py-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
-        <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-6 w-6 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">Total registrado no sistema</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-       
        <div className='space-y-4'>
             {upcomingEvents.length > 0 && (
                 <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
@@ -423,7 +403,26 @@ export default function DashboardPage() {
                 </Alert>
             )}
         </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
+        <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
+      </div>
       
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => (
+          <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className={`h-6 w-6 ${stat.color}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">Total registrado no sistema</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2">
             <CardHeader>
