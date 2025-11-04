@@ -322,6 +322,12 @@ export default function DashboardPage() {
     return format(eventDate, 'dd/MM');
   }
 
+  const { simulados, outrosEventos } = useMemo(() => {
+    const simulados = upcomingEvents.filter(e => e.title.toLowerCase().includes('simulado'));
+    const outrosEventos = upcomingEvents.filter(e => !e.title.toLowerCase().includes('simulado'));
+    return { simulados, outrosEventos };
+  }, [upcomingEvents]);
+
 
   if (!user || user.perfil !== 'administrador' || loading) {
     return (
@@ -341,40 +347,6 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
       
-       <div className='space-y-4'>
-            {upcomingEvents.length > 0 && (
-                    <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
-                        <BellRing className="h-4 w-4" />
-                        <AlertTitle>Eventos da Semana</AlertTitle>
-                        <AlertDescription>
-                            <ul className='space-y-2 mt-2'>
-                                {upcomingEvents.map((event, index) => (
-                                <li key={index} className='flex items-center justify-between gap-2 text-sm'>
-                                    <div className='flex items-center gap-2 truncate'>
-                                        <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
-                                        <span className='truncate' title={event.title}>{event.title}</span>
-                                    </div>
-                                    {event.details === 'Lembrete pessoal' && (
-                                        <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className='h-6 w-6 flex-shrink-0' 
-                                        onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
-                                        title="Marcar como concluído"
-                                        >
-                                            <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
-                                        </Button>
-                                    )}
-                                </li>
-                                ))}
-                            </ul>
-                            <p className='mt-3 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
-                        </AlertDescription>
-                    </Alert>
-                )}
-             
-        </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -389,6 +361,69 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+       
+       <div className='space-y-4'>
+            {upcomingEvents.length > 0 && (
+                <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
+                    <BellRing className="h-4 w-4" />
+                    <AlertTitle>Eventos da Semana</AlertTitle>
+                    <AlertDescription>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-2">
+                            {/* Coluna de Simulados */}
+                            <div>
+                                <h4 className="font-semibold mb-2">Simulados</h4>
+                                {simulados.length > 0 ? (
+                                    <ul className='space-y-2'>
+                                        {simulados.map((event, index) => (
+                                        <li key={`sim-${index}`} className='flex items-center justify-between gap-2 text-sm'>
+                                            <div className='flex items-center gap-2 truncate'>
+                                                <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                                <span className='truncate' title={event.title}>{event.title}</span>
+                                            </div>
+                                        </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground italic">Nenhum simulado na próxima semana.</p>
+                                )}
+                            </div>
+                            
+                            {/* Coluna de Formações e Outros */}
+                            <div>
+                                <h4 className="font-semibold mb-2">Formações e Lembretes</h4>
+                                {outrosEventos.length > 0 ? (
+                                    <ul className='space-y-2'>
+                                        {outrosEventos.map((event, index) => (
+                                        <li key={`otr-${index}`} className='flex items-center justify-between gap-2 text-sm'>
+                                            <div className='flex items-center gap-2 truncate'>
+                                                <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                                <span className='truncate' title={event.title}>{event.title}</span>
+                                            </div>
+                                            {event.details === 'Lembrete pessoal' && (
+                                                <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className='h-6 w-6 flex-shrink-0' 
+                                                onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
+                                                title="Marcar como concluído"
+                                                >
+                                                    <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
+                                                </Button>
+                                            )}
+                                        </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                     <p className="text-xs text-muted-foreground italic">Nenhuma formação ou lembrete na próxima semana.</p>
+                                )}
+                            </div>
+                        </div>
+                        <p className='mt-4 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
+                    </AlertDescription>
+                </Alert>
+            )}
+        </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2">
             <CardHeader>
