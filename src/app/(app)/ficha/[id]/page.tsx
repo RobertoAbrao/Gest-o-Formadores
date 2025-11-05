@@ -20,7 +20,7 @@ import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { format, isValid } from 'date-fns';
+import { format, isValid, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 
@@ -166,9 +166,20 @@ export default function FichaDevolutivaPage() {
      return <div className="flex h-screen w-full items-center justify-center">Formação não encontrada.</div>;
   }
 
-  const formattedStartDate = formacao.dataInicio && isValid(formacao.dataInicio.toDate())
-    ? format(formacao.dataInicio.toDate(), "EEEE, dd 'de' MMMM", { locale: ptBR })
-    : 'Data a confirmar';
+  const formattedPeriod = (() => {
+    const startDate = formacao.dataInicio?.toDate();
+    const endDate = formacao.dataFim?.toDate();
+
+    if (!startDate || !isValid(startDate)) {
+      return 'Data a confirmar';
+    }
+
+    if (!endDate || !isValid(endDate) || isSameDay(startDate, endDate)) {
+      return format(startDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
+    }
+
+    return `De ${format(startDate, 'dd')} a ${format(endDate, "dd 'de' MMMM")}`;
+  })();
 
   return (
     <>
@@ -238,8 +249,8 @@ export default function FichaDevolutivaPage() {
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
                         <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
-                        <p>
-                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>{formattedStartDate}</span>
+                         <p>
+                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>{formattedPeriod}</span>
                         </p>
                         <p>
                             • <strong>Horário:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>19h00 às 20h30</span>
