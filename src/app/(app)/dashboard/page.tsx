@@ -361,7 +361,15 @@ export default function DashboardPage() {
                                         {simulados.map((event, index) => (
                                         <li key={`sim-${index}`} className='flex items-center justify-between gap-2 text-sm'>
                                             <div className='flex items-center gap-2 truncate'>
-                                                <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                                <Badge
+                                                    variant={isToday(event.date) || isTomorrow(event.date) ? 'default' : 'outline'}
+                                                    className={cn('text-xs', {
+                                                        'bg-primary text-primary-foreground': isToday(event.date),
+                                                        'bg-accent text-accent-foreground': isTomorrow(event.date),
+                                                    })}
+                                                >
+                                                    {formatEventDate(event.date)}
+                                                </Badge>
                                                 <span className='truncate' title={event.title}>{event.title}</span>
                                             </div>
                                         </li>
@@ -380,7 +388,15 @@ export default function DashboardPage() {
                                         {outrosEventos.map((event, index) => (
                                         <li key={`otr-${index}`} className='flex items-center justify-between gap-2 text-sm'>
                                             <div className='flex items-center gap-2 truncate'>
-                                                <Badge variant="outline" className='text-xs'>{formatEventDate(event.date)}</Badge>
+                                                 <Badge
+                                                    variant={isToday(event.date) || isTomorrow(event.date) ? 'default' : 'outline'}
+                                                    className={cn('text-xs', {
+                                                        'bg-primary text-primary-foreground': isToday(event.date),
+                                                        'bg-accent text-accent-foreground': isTomorrow(event.date),
+                                                    })}
+                                                >
+                                                    {formatEventDate(event.date)}
+                                                </Badge>
                                                 <span className='truncate' title={event.title}>{event.title}</span>
                                             </div>
                                             {event.details === 'Lembrete pessoal' && (
@@ -633,3 +649,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
+
+    
