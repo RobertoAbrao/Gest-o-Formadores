@@ -20,6 +20,9 @@ import AppLogo from '@/components/AppLogo';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { format, isValid } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
 
 const DIAS_DA_SEMANA = [
     'Segunda-feira',
@@ -163,6 +166,10 @@ export default function FichaDevolutivaPage() {
      return <div className="flex h-screen w-full items-center justify-center">Formação não encontrada.</div>;
   }
 
+  const formattedStartDate = formacao.dataInicio && isValid(formacao.dataInicio.toDate())
+    ? format(formacao.dataInicio.toDate(), "EEEE, dd 'de' MMMM", { locale: ptBR })
+    : 'Data a confirmar';
+
   return (
     <>
       <style jsx global>{`
@@ -211,11 +218,9 @@ export default function FichaDevolutivaPage() {
                     <header className="flex justify-between items-center pb-4 border-b-2">
                         <AppLogo textClassName='text-2xl' iconClassName='h-10 w-10' />
                         <h2 
-                          className="text-xl font-bold text-right editable-field" 
-                          contentEditable 
-                          suppressContentEditableWarning
+                          className="text-xl font-bold text-right"
                         >
-                          Divulgação de Links - {formacao.titulo}
+                          {modalidade === 'online' ? 'Divulgação de Links -' : 'Divulgação -'} {formacao.titulo}
                         </h2>
                     </header>
                     
@@ -227,19 +232,24 @@ export default function FichaDevolutivaPage() {
                          >
                             Prezadas Diretoria de Formação e Equipe Pedagógica,
                             <br />
-                            Informamos a agenda e os links de acesso para as Formações On-line focadas no Simulado X de cada ano/área, conforme o cronograma abaixo.
+                            Informamos a agenda {modalidade === 'online' && 'e os links de acesso'} para a formação "{formacao.titulo}", conforme o cronograma abaixo.
                         </p>
                     </section>
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
                         <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
                         <p>
-                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>Segunda-feira, 13 de outubro</span>
+                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>{formattedStartDate}</span>
                         </p>
                         <p>
-                            • <strong>Horário:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>7:00 – 8:30pm (19h00 às 20h30)</span>
+                            • <strong>Horário:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>19h00 às 20h30</span>
                         </p>
-                        <p className="mt-2 text-xs">Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.</p>
+                        <p className="mt-2 text-xs">
+                          {modalidade === 'online' 
+                            ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
+                            : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.'
+                          }
+                        </p>
                     </section>
                     
                      {modalidade === 'presencial' && (
