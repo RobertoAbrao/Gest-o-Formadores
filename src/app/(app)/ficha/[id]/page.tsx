@@ -178,7 +178,7 @@ export default function FichaDevolutivaPage() {
       return format(startDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
     }
 
-    return `De ${format(startDate, 'dd')} a ${format(endDate, "dd 'de' MMMM")}`;
+    return `De ${format(startDate, 'dd')} a ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
   })();
 
   return (
