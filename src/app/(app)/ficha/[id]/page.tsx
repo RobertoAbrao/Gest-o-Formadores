@@ -8,11 +8,13 @@ import {
   query,
   where,
   getDocs,
+  setDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador } from '@/lib/types';
+import type { Formacao, Formador, FichaDevolutiva, AgendasState, AgendaRow, LinkOnline } from '@/lib/types';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -22,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { format, isValid, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 
 const DIAS_DA_SEMANA = [
@@ -34,25 +37,45 @@ const DIAS_DA_SEMANA = [
     'Domingo',
 ];
 
-type AgendaRow = {
-    dia: string;
-    horario: string;
-    area: string;
-};
-
-type AgendasState = {
-    [formadorId: string]: AgendaRow[];
-};
-
 export default function FichaDevolutivaPage() {
   const params = useParams();
   const formacaoId = params.id as string;
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  // Dados da Formação
   const [formacao, setFormacao] = useState<Formacao | null>(null);
   const [formadores, setFormadores] = useState<Formador[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Estado da Ficha (dados que podem ser salvos)
+  const [fichaId, setFichaId] = useState<string | null>(null);
   const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
+  const [introducao, setIntroducao] = useState('');
+  const [horario, setHorario] = useState('19h00 às 20h30');
+  const [endereco, setEndereco] = useState('');
   const [agendas, setAgendas] = useState<AgendasState>({});
+  const [linksOnline, setLinksOnline] = useState<LinkOnline[]>([]);
+
+  const [error, setError] = useState<string | null>(null);
+
+  const initializeDefaultState = (formacaoData: Formacao, formadoresData: Formador[]) => {
+      setIntroducao(`Prezadas Diretoria de Formação e Equipe Pedagógica,\nInformamos a agenda${modalidade === 'online' ? ' e os links de acesso' : ''} para a formação "${formacaoData.titulo}", conforme o cronograma abaixo.`);
+      setEndereco('Endereço (Anos Iniciais): Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA\nEndereço (Anos Finais): Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA');
+
+      const initialAgendas: AgendasState = {};
+      formadoresData.forEach(f => {
+          initialAgendas[f.id] = [{ dia: '', horario: '', area: '' }];
+      });
+      setAgendas(initialAgendas);
+
+      const initialLinks: LinkOnline[] = formadoresData.map(f => ({
+          formadorNome: f.nomeCompleto,
+          anoArea: '',
+          linkUrl: '',
+      }));
+      setLinksOnline(initialLinks);
+  };
 
   const fetchData = useCallback(async () => {
     if (!formacaoId) return;
@@ -60,39 +83,78 @@ export default function FichaDevolutivaPage() {
     try {
         const formacaoRef = doc(db, 'formacoes', formacaoId);
         const formacaoSnap = await getDoc(formacaoRef);
-        if (!formacaoSnap.exists()) {
-            throw new Error("Formação não encontrada.");
-        }
+        if (!formacaoSnap.exists()) throw new Error("Formação não encontrada.");
+        
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         setFormacao(formacaoData);
 
+        let formadoresData: Formador[] = [];
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
             const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
             const formadoresSnap = await getDocs(qFormadores);
-            const formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
+            formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
             setFormadores(formadoresData);
-            
-            const initialAgendas: AgendasState = {};
-            formadoresData.forEach(f => {
-                initialAgendas[f.id] = [{ dia: '', horario: '', area: '' }];
-            });
-            setAgendas(initialAgendas);
-
         } else {
             setFormadores([]);
         }
 
+        // Tenta buscar a ficha salva
+        const fichaRef = doc(db, 'fichas_devolutivas', formacaoId);
+        const fichaSnap = await getDoc(fichaRef);
+
+        if (fichaSnap.exists()) {
+            const fichaData = fichaSnap.data() as FichaDevolutiva;
+            setFichaId(fichaData.id);
+            setModalidade(fichaData.modalidade);
+            setIntroducao(fichaData.introducao);
+            setHorario(fichaData.horario);
+            setEndereco(fichaData.endereco);
+            setAgendas(fichaData.agendas || {});
+            setLinksOnline(fichaData.links || []);
+        } else {
+            // Se não existir, inicializa com os padrões
+            initializeDefaultState(formacaoData, formadoresData);
+        }
+
     } catch (error: any) {
-        console.error('Erro ao buscar detalhes da formação: ', error);
+        console.error('Erro ao buscar detalhes da ficha: ', error);
         setError(error.message);
     } finally {
         setLoading(false);
     }
-  }, [formacaoId]);
+  }, [formacaoId, modalidade]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleSaveChanges = async () => {
+    if (!formacao) return;
+    setSaving(true);
+    try {
+      const fichaData: Omit<FichaDevolutiva, 'id' | 'lastUpdated'> = {
+        formacaoId: formacao.id,
+        modalidade,
+        introducao,
+        horario,
+        endereco,
+        agendas,
+        links,
+      };
+
+      const fichaRef = doc(db, 'fichas_devolutivas', formacao.id);
+      await setDoc(fichaRef, { ...fichaData, lastUpdated: serverTimestamp() }, { merge: true });
+
+      if(!fichaId) setFichaId(formacao.id);
+
+      toast({ title: 'Sucesso!', description: 'Ficha salva com sucesso.' });
+    } catch (error) {
+      console.error("Erro ao salvar a ficha: ", error);
+      toast({ variant: 'destructive', title: 'Erro ao salvar', description: 'Não foi possível salvar as alterações da ficha.' });
+    } finally {
+      setSaving(false);
+    }
+  };
   
   const handleAddRow = (formadorId: string) => {
     setAgendas(prev => ({
@@ -111,6 +173,14 @@ export default function FichaDevolutivaPage() {
           newAgendas[formadorId] = formadorAgenda;
           return newAgendas;
       });
+  };
+
+  const handleLinkChange = (index: number, field: keyof LinkOnline, value: string) => {
+      const newLinks = [...linksOnline];
+      if (newLinks[index]) {
+          (newLinks[index] as any)[field] = value;
+          setLinksOnline(newLinks);
+      }
   };
 
   const generalSchedule = useMemo(() => {
@@ -138,7 +208,6 @@ export default function FichaDevolutivaPage() {
         return acc;
     }, {} as Record<string, (AgendaRow & { formadorNome: string })[]>);
 
-    // Sort days
     const sortedDays = DIAS_DA_SEMANA.filter(day => groupedByDay[day]);
     
     return sortedDays.map(day => ({
@@ -181,6 +250,14 @@ export default function FichaDevolutivaPage() {
     return `De ${format(startDate, 'dd')} a ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
   })();
 
+  const dynamicTitle = modalidade === 'online' 
+    ? `Divulgação de Links - ${formacao.titulo}` 
+    : `Divulgação - ${formacao.titulo}`;
+
+  const dynamicFooter = modalidade === 'online'
+    ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
+    : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.';
+
   return (
     <>
       <style jsx global>{`
@@ -215,6 +292,10 @@ export default function FichaDevolutivaPage() {
                         <p className="text-muted-foreground mt-2 text-sm">Pré-visualização da Ficha de Devolutiva</p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleSaveChanges} disabled={saving}>
+                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+                            Salvar Alterações
+                        </Button>
                         <Button variant="outline" onClick={() => setModalidade(modalidade === 'online' ? 'presencial' : 'online')}>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Alterar para {modalidade === 'online' ? 'Presencial' : 'Online'}
@@ -228,53 +309,48 @@ export default function FichaDevolutivaPage() {
                 <div className="printable-area bg-white text-black font-sans space-y-6">
                     <header className="flex justify-between items-center pb-4 border-b-2">
                         <AppLogo textClassName='text-2xl' iconClassName='h-10 w-10' />
-                        <h2 
-                          className="text-xl font-bold text-right"
-                        >
-                          {modalidade === 'online' ? 'Divulgação de Links -' : 'Divulgação -'} {formacao.titulo}
+                        <h2 className="text-xl font-bold text-right">
+                          {dynamicTitle}
                         </h2>
                     </header>
                     
                     <section>
-                         <p 
-                           className="text-sm editable-field"
-                           contentEditable
-                           suppressContentEditableWarning
-                         >
-                            Prezadas Diretoria de Formação e Equipe Pedagógica,
-                            <br />
-                            Informamos a agenda {modalidade === 'online' && 'e os links de acesso'} para a formação "{formacao.titulo}", conforme o cronograma abaixo.
-                        </p>
+                         <textarea
+                           value={introducao}
+                           onChange={(e) => setIntroducao(e.target.value)}
+                           className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px]"
+                         />
                     </section>
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
                         <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
                          <p>
-                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>{formattedPeriod}</span>
+                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => e.currentTarget.textContent}>{formattedPeriod}</span>
                         </p>
                         <p>
-                            • <strong>Horário:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning>19h00 às 20h30</span>
+                            • <strong>Horário:</strong> 
+                            <span 
+                                className="editable-field" 
+                                contentEditable 
+                                suppressContentEditableWarning
+                                onBlur={e => setHorario(e.currentTarget.textContent || '')}
+                            >
+                                {horario}
+                            </span>
                         </p>
                         <p className="mt-2 text-xs">
-                          {modalidade === 'online' 
-                            ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
-                            : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.'
-                          }
+                          {dynamicFooter}
                         </p>
                     </section>
                     
                      {modalidade === 'presencial' && (
                         <section>
                              <h3 className="text-lg font-bold mb-2">Endereço do Evento</h3>
-                              <p 
-                                className="text-sm editable-field"
-                                contentEditable
-                                suppressContentEditableWarning
-                              >
-                                <strong>Endereço (Anos Iniciais):</strong> Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA
-                                <br />
-                                <strong>Endereço (Anos Finais):</strong> Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA
-                            </p>
+                              <textarea
+                                value={endereco}
+                                onChange={(e) => setEndereco(e.target.value)}
+                                className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px]"
+                              />
                         </section>
                     )}
 
@@ -330,11 +406,11 @@ export default function FichaDevolutivaPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {formadores.map((formador) => (
-                                                <TableRow key={formador.id}>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
-                                                    <TableCell>{formador.nomeCompleto}</TableCell>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning></TableCell>
+                                            {linksOnline.map((link, index) => (
+                                                <TableRow key={index}>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => handleLinkChange(index, 'anoArea', e.currentTarget.textContent || '')}>{link.anoArea}</TableCell>
+                                                    <TableCell>{link.formadorNome}</TableCell>
+                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => handleLinkChange(index, 'linkUrl', e.currentTarget.textContent || '')}>{link.linkUrl}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -410,13 +486,13 @@ export default function FichaDevolutivaPage() {
                                                                 contentEditable 
                                                                 suppressContentEditableWarning
                                                                 onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.currentTarget.textContent || '')}
-                                                            />
+                                                            >{agendaRow.horario}</TableCell>
                                                             <TableCell 
                                                                 className="editable-field" 
                                                                 contentEditable 
                                                                 suppressContentEditableWarning
                                                                 onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '')}
-                                                            />
+                                                            >{agendaRow.area}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>

@@ -67,5 +67,10 @@ service cloud.firestore {
     match /anexos/{anexoId} {
         allow read, write: if isUserAdmin(request.auth.uid);
     }
+
+    // Fichas Devolutivas collection: only admins can manage
+    match /fichas_devolutivas/{fichaId} {
+      allow read, write: if isUserAdmin(request.auth.uid);
+    }
   }
 }

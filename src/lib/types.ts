@@ -49,9 +49,13 @@ export interface Material {
 }
 
 export interface Anexo {
+    id?: string;
     nome: string;
     url: string;
     dataUpload: Timestamp;
+    formacaoId?: string;
+    projetoId?: string;
+    etapa?: string;
 }
 
 export interface LogisticaViagem {
@@ -138,6 +142,7 @@ interface EtapaStatus {
   data: Timestamp | null;
   ok?: boolean;
   detalhes?: string;
+  anexoId?: string;
 }
 
 interface PeriodoStatus {
@@ -145,6 +150,7 @@ interface PeriodoStatus {
   dataFim?: Timestamp | null;
   ok?: boolean;
   detalhes?: string;
+  anexoId?: string;
 }
 
 export interface DevolutivaLink {
@@ -155,6 +161,7 @@ export interface DevolutivaLink {
   formadores?: string[];
   ok?: boolean;
   detalhes?: string;
+  anexoId?: string;
 }
 
 interface LinkReuniao {
@@ -197,4 +204,32 @@ export interface ProjetoImplatancao {
   reunioes?: Reuniao[];
 
   dataCriacao: Timestamp;
+}
+
+export type AgendaRow = {
+    dia: string;
+    horario: string;
+    area: string;
+};
+
+export type AgendasState = {
+    [formadorId: string]: AgendaRow[];
+};
+
+export type LinkOnline = {
+    anoArea: string;
+    formadorNome: string;
+    linkUrl: string;
+};
+
+export interface FichaDevolutiva {
+    id: string;
+    formacaoId: string;
+    modalidade: 'online' | 'presencial';
+    introducao: string;
+    horario: string;
+    endereco: string;
+    agendas: AgendasState;
+    links: LinkOnline[];
+    lastUpdated?: Timestamp;
 }
