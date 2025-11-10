@@ -139,7 +139,7 @@ export default function FichaDevolutivaPage() {
         horario,
         endereco,
         agendas,
-        links,
+        links: linksOnline,
       };
 
       const fichaRef = doc(db, 'fichas_devolutivas', formacao.id);
@@ -247,7 +247,7 @@ export default function FichaDevolutivaPage() {
       return format(startDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
     }
 
-    return `De ${format(startDate, 'dd')} a ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
+    return `De ${format(startDate, 'dd', { locale: ptBR })} a ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
   })();
 
   const dynamicTitle = modalidade === 'online' 
