@@ -189,7 +189,8 @@ type FileUploadKey =
   | 'devolutivas.d1'
   | 'devolutivas.d2'
   | 'devolutivas.d3'
-  | 'devolutivas.d4';
+  | 'devolutivas.d4'
+  | 'migracao';
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
@@ -761,11 +762,11 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 )}
             />
           </div>
-            {projeto?.anexo && (
+            {form.getValues('anexo') && (
                 <div className="space-y-2 pt-4 border-t">
                     <Label className="text-destructive">Anexo Legado</Label>
                     <div className="flex items-center justify-between p-2 border border-destructive/50 rounded-md bg-destructive/10">
-                        <p className="text-sm text-destructive">{projeto.anexo.nome}</p>
+                        <p className="text-sm text-destructive">{form.getValues('anexo.nome')}</p>
                         <Button type="button" size="sm" variant="destructive" onClick={handleDeleteAnexoLegado} disabled={loading}>
                             <Trash2 className="mr-2 h-4 w-4" /> Excluir Anexo Legado
                         </Button>
