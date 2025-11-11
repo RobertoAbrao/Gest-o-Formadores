@@ -103,12 +103,10 @@ const MilestoneCard = ({
 
 export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
-  const anexosMap = new Map((anexos || []).map(anexo => [anexo.id, anexo]));
 
-  const getAnexosByIds = (ids?: string[]): Anexo[] => {
-    if (!ids) return [];
-    return ids.map(id => anexosMap.get(id)).filter((anexo): anexo is Anexo => !!anexo);
-  };
+  const getAnexosForEtapa = (etapa: string): Anexo[] => {
+    return anexos.filter(anexo => anexo.etapa === etapa);
+  }
   
   const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
     const devolutiva = projeto.devolutivas?.[devolutivaKey];
@@ -136,7 +134,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
-        anexos: getAnexosByIds(projeto.implantacaoAnexosIds),
+        anexos: getAnexosForEtapa('implantacao'),
         sortDate: projeto.dataImplantacao?.toDate()
     },
     {
@@ -144,7 +142,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Avaliação Diagnóstica',
         date: formatDate(projeto.diagnostica?.data),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
-        anexos: getAnexosByIds(projeto.diagnostica?.anexosIds),
+        anexos: getAnexosForEtapa('diagnostica'),
         isComplete: !!projeto.diagnostica?.ok,
         sortDate: projeto.diagnostica?.data?.toDate()
     },
@@ -153,7 +151,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: `Simulado ${i}`,
         date: `De ${formatDate(projeto.simulados?.[`s${i}`]?.dataInicio)} a ${formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.[`s${i}`]?.detalhes || '' },
-        anexos: getAnexosByIds(projeto.simulados?.[`s${i}`]?.anexosIds),
+        anexos: getAnexosForEtapa(`simulados.s${i}`),
         isComplete: !!projeto.simulados?.[`s${i}`]?.ok,
         sortDate: projeto.simulados?.[`s${i}`]?.dataInicio?.toDate()
     })),
@@ -162,7 +160,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: `Devolutiva ${i}`,
         date: `De ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataInicio)} a ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataFim)}`,
         description: getDevolutivaDescription(`d${i}`),
-        anexos: getAnexosByIds(projeto.devolutivas?.[`d${i}`]?.anexosIds),
+        anexos: getAnexosForEtapa(`devolutivas.d${i}`),
         isComplete: !!projeto.devolutivas?.[`d${i}`]?.ok,
         sortDate: projeto.devolutivas?.[`d${i}`]?.dataInicio?.toDate()
     })),
