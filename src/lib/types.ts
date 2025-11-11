@@ -142,7 +142,7 @@ interface EtapaStatus {
   data: Timestamp | null;
   ok?: boolean;
   detalhes?: string;
-  anexoId?: string;
+  anexosIds?: string[];
 }
 
 interface PeriodoStatus {
@@ -150,7 +150,7 @@ interface PeriodoStatus {
   dataFim?: Timestamp | null;
   ok?: boolean;
   detalhes?: string;
-  anexoId?: string;
+  anexosIds?: string[];
 }
 
 export interface DevolutivaLink {
@@ -161,7 +161,7 @@ export interface DevolutivaLink {
   formadores?: string[];
   ok?: boolean;
   detalhes?: string;
-  anexoId?: string;
+  anexosIds?: string[];
 }
 
 interface LinkReuniao {
@@ -185,7 +185,7 @@ export interface ProjetoImplatancao {
   formacoesPendentes?: number;
   formadoresIds?: string[];
   dataImplantacao: Timestamp | null;
-  implantacaoAnexoId?: string;
+  implantacaoAnexosIds?: string[];
   implantacaoFormacaoId?: string;
   
   diagnostica: EtapaStatus;

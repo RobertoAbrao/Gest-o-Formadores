@@ -29,7 +29,7 @@ const MilestoneCard = ({
     title,
     date,
     description,
-    anexo,
+    anexos,
     isComplete,
     isFirst = false,
     isLast = false
@@ -38,7 +38,7 @@ const MilestoneCard = ({
     title: string,
     date?: string,
     description?: { formadores: string; detalhes: string; },
-    anexo?: Anexo,
+    anexos?: Anexo[],
     isComplete: boolean,
     isFirst?: boolean,
     isLast?: boolean
@@ -60,13 +60,17 @@ const MilestoneCard = ({
                 <div className="w-1/2 pr-8 text-right">
                     <h4 className="font-bold text-lg mt-3">{title}</h4>
                      {date && <p className="text-xs text-gray-500 mt-1">{date}</p>}
-                     {anexo?.url && (
-                        <div className="mt-4 border rounded-lg p-2 bg-gray-50">
-                            <img 
-                                src={anexo.url}
-                                alt={`Anexo para ${title}`}
-                                className="w-full rounded-md object-contain max-h-60"
-                            />
+                     {anexos && anexos.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                           {anexos.map((anexo, index) => (
+                             <div key={index} className="border rounded-lg p-2 bg-gray-50">
+                                <img 
+                                    src={anexo.url}
+                                    alt={`Anexo para ${title} ${index + 1}`}
+                                    className="w-full rounded-md object-contain max-h-60"
+                                />
+                            </div>
+                           ))}
                         </div>
                      )}
                 </div>
@@ -101,6 +105,11 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
   const anexosMap = new Map((anexos || []).map(anexo => [anexo.id, anexo]));
 
+  const getAnexosByIds = (ids?: string[]): Anexo[] => {
+    if (!ids) return [];
+    return ids.map(id => anexosMap.get(id)).filter((anexo): anexo is Anexo => !!anexo);
+  };
+  
   const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
     const devolutiva = projeto.devolutivas?.[devolutivaKey];
     if (!devolutiva) return { formadores: '', detalhes: '' };
@@ -118,7 +127,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
         description: { formadores: '', detalhes: '' },
-        anexo: undefined,
+        anexos: [],
         isComplete: !!projeto.dataMigracao,
         sortDate: projeto.dataMigracao?.toDate()
     },
@@ -127,7 +136,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
-        anexo: projeto.implantacaoAnexoId ? anexosMap.get(projeto.implantacaoAnexoId) : undefined,
+        anexos: getAnexosByIds(projeto.implantacaoAnexosIds),
         sortDate: projeto.dataImplantacao?.toDate()
     },
     {
@@ -135,7 +144,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Avaliação Diagnóstica',
         date: formatDate(projeto.diagnostica?.data),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
-        anexo: projeto.diagnostica?.anexoId ? anexosMap.get(projeto.diagnostica.anexoId) : undefined,
+        anexos: getAnexosByIds(projeto.diagnostica?.anexosIds),
         isComplete: !!projeto.diagnostica?.ok,
         sortDate: projeto.diagnostica?.data?.toDate()
     },
@@ -144,7 +153,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: `Simulado ${i}`,
         date: `De ${formatDate(projeto.simulados?.[`s${i}`]?.dataInicio)} a ${formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}`,
         description: { formadores: '', detalhes: projeto.simulados?.[`s${i}`]?.detalhes || '' },
-        anexo: projeto.simulados?.[`s${i}`]?.anexoId ? anexosMap.get(projeto.simulados?.[`s${i}`].anexoId!) : undefined,
+        anexos: getAnexosByIds(projeto.simulados?.[`s${i}`]?.anexosIds),
         isComplete: !!projeto.simulados?.[`s${i}`]?.ok,
         sortDate: projeto.simulados?.[`s${i}`]?.dataInicio?.toDate()
     })),
@@ -153,7 +162,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: `Devolutiva ${i}`,
         date: `De ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataInicio)} a ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataFim)}`,
         description: getDevolutivaDescription(`d${i}`),
-        anexo: projeto.devolutivas?.[`d${i}`]?.anexoId ? anexosMap.get(projeto.devolutivas?.[`d${i}`].anexoId!) : undefined,
+        anexos: getAnexosByIds(projeto.devolutivas?.[`d${i}`]?.anexosIds),
         isComplete: !!projeto.devolutivas?.[`d${i}`]?.ok,
         sortDate: projeto.devolutivas?.[`d${i}`]?.dataInicio?.toDate()
     })),
@@ -166,7 +175,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         icon: CheckCircle,
         title: 'Projeto Concluído',
         description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-        anexo: undefined,
+        anexos: [],
         isComplete: true,
         sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
     });
