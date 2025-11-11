@@ -117,8 +117,8 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         icon: UploadCloud,
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
-        description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
-        anexo: projeto.diagnostica?.anexoId ? anexosMap.get(projeto.diagnostica.anexoId) : undefined,
+        description: { formadores: '', detalhes: '' },
+        anexo: undefined,
         isComplete: !!projeto.dataMigracao,
         sortDate: projeto.dataMigracao?.toDate()
     },
