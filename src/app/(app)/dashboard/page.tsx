@@ -359,7 +359,7 @@ export default function DashboardPage() {
             {yesterdayEvents.length > 0 && (
                 <Alert className='bg-blue-100/60 border-blue-200/80 text-blue-900 dark:bg-blue-900/20 dark:border-blue-500/30 dark:text-blue-200 [&>svg]:text-blue-500'>
                     <History className="h-4 w-4" />
-                    <AlertTitle>Pendências de Ontem</AlertTitle>
+                    <AlertTitle>Resumo de Ontem</AlertTitle>
                     <AlertDescription>
                         <ul className='space-y-2 mt-2'>
                           {yesterdayEvents.map((event, index) => (
@@ -681,6 +681,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
 
