@@ -125,7 +125,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
         description: { formadores: '', detalhes: '' },
-        anexos: [],
+        anexos: getAnexosForEtapa('migracao'),
         isComplete: !!projeto.dataMigracao,
         sortDate: projeto.dataMigracao?.toDate()
     },
@@ -134,6 +134,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
+        description: { formadores: '', detalhes: '' },
         anexos: getAnexosForEtapa('implantacao'),
         sortDate: projeto.dataImplantacao?.toDate()
     },
