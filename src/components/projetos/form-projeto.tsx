@@ -54,7 +54,7 @@ const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
-  anexoId: z.string().optional(),
+  anexosIds: z.array(z.string()).optional(),
 });
 
 const periodoStatusSchema = z.object({
@@ -62,7 +62,7 @@ const periodoStatusSchema = z.object({
   dataFim: z.date().nullable().optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
-  anexoId: z.string().optional(),
+  anexosIds: z.array(z.string()).optional(),
 });
 
 const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
@@ -73,7 +73,7 @@ const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
   formadores: z.array(z.string()).optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
-  anexoId: z.string().optional(),
+  anexosIds: z.array(z.string()).optional(),
 });
 
 
@@ -95,7 +95,7 @@ const formSchema = z.object({
   material: z.string().optional(),
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
-  implantacaoAnexoId: z.string().optional(),
+  implantacaoAnexosIds: z.array(z.string()).optional(),
   implantacaoFormacaoId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
@@ -196,6 +196,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
+  const [allAnexos, setAllAnexos] = useState<Anexo[]>([]);
   const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
   const [estados, setEstados] = useState<Estado[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
@@ -204,16 +205,22 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const isEditMode = !!projeto;
 
   useEffect(() => {
-    const fetchFormadoresAndEstados = async () => {
+    const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [formadoresSnap, estadosResponse] = await Promise.all([
+            const [formadoresSnap, estadosResponse, anexosSnap] = await Promise.all([
                 getDocs(collection(db, 'formadores')),
-                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'),
+                projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null)
             ]);
             
             const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setAllFormadores(formadoresData);
+
+            if (anexosSnap) {
+                const anexosData = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
+                setAllAnexos(anexosData);
+            }
 
             const estadosData = await estadosResponse.json();
             setEstados(estadosData);
@@ -225,8 +232,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             setLoading(false);
         }
     };
-    fetchFormadoresAndEstados();
-  }, [toast]);
+    fetchInitialData();
+  }, [toast, projeto]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -237,23 +244,23 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       material: projeto?.material || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
-      implantacaoAnexoId: projeto?.implantacaoAnexoId || '',
+      implantacaoAnexosIds: projeto?.implantacaoAnexosIds || [],
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
-      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '', anexoId: projeto?.diagnostica?.anexoId || undefined },
+      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '', anexosIds: projeto?.diagnostica?.anexosIds || [] },
       simulados: {
-        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '', anexoId: projeto?.simulados?.s1?.anexoId || undefined },
-        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '', anexoId: projeto?.simulados?.s2?.anexoId || undefined },
-        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '', anexoId: projeto?.simulados?.s3?.anexoId || undefined },
-        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '', anexoId: projeto?.simulados?.s4?.anexoId || undefined },
+        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '', anexosIds: projeto?.simulados?.s1?.anexosIds || [] },
+        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '', anexosIds: projeto?.simulados?.s2?.anexosIds || [] },
+        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '', anexosIds: projeto?.simulados?.s3?.anexosIds || [] },
+        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '', anexosIds: projeto?.simulados?.s4?.anexosIds || [] },
       },
       devolutivas: {
-        d1: { ...projeto?.devolutivas?.d1, dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim) },
-        d2: { ...projeto?.devolutivas?.d2, dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim) },
-        d3: { ...projeto?.devolutivas?.d3, dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim) },
-        d4: { ...projeto?.devolutivas?.d4, dataInicio: toDate(projeto?.devolutivas?.d4?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d4?.dataFim) },
+        d1: { ...projeto?.devolutivas?.d1, dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), anexosIds: projeto?.devolutivas?.d1?.anexosIds || [] },
+        d2: { ...projeto?.devolutivas?.d2, dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), anexosIds: projeto?.devolutivas?.d2?.anexosIds || [] },
+        d3: { ...projeto?.devolutivas?.d3, dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), anexosIds: projeto?.devolutivas?.d3?.anexosIds || [] },
+        d4: { ...projeto?.devolutivas?.d4, dataInicio: toDate(projeto?.devolutivas?.d4?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d4?.dataFim), anexosIds: projeto?.devolutivas?.d4?.anexosIds || [] },
       },
       reunioes: projeto?.reunioes?.map(r => ({
           data: toDate(r.data),
@@ -305,8 +312,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, etapa: FileUploadKey) => {
     const file = event.target.files?.[0];
-    if (!file || (!projeto && !isEditMode)) return; // Need project ID for new anexo
-  
+    if (!file || (!projeto && !isEditMode)) return;
+
     setUploading(etapa);
     try {
       const projetoId = projeto?.id;
@@ -315,15 +322,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           return;
       }
       
-      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexoId' : `${etapa}.anexoId`;
+      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
       
-      // 1. Delete old anexo if it exists
-      const oldAnexoId = form.getValues(anexoPath as any);
-      if(oldAnexoId) {
-        await deleteDoc(doc(db, 'anexos', oldAnexoId));
-      }
-
-      // 2. Upload new file and create anexo document
       const dataUrl = await fileToDataURL(file);
       const novoAnexo: Omit<Anexo, 'id'> = { 
         nome: file.name, 
@@ -334,8 +334,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       };
       const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
   
-      // 3. Update the form state with the new anexoId
-      form.setValue(anexoPath as any, anexoDocRef.id);
+      const currentAnexosIds = form.getValues(anexoPath as any) || [];
+      form.setValue(anexoPath as any, [...currentAnexosIds, anexoDocRef.id]);
+      setAllAnexos(prev => [...prev, { ...novoAnexo, id: anexoDocRef.id }]);
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
     } catch (error) {
@@ -349,33 +350,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   };
 
-  const handleDeleteAnexo = async (etapa: FileUploadKey) => {
+  const handleDeleteAnexo = async (anexoIdToDelete: string, etapa: FileUploadKey) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
 
-    setUploading(etapa); // Show loading state on delete
+    setUploading(etapa);
     try {
-        const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexoId' : `${etapa}.anexoId`;
-        const anexoIdToDelete = form.getValues(anexoPath as any);
-        if (!anexoIdToDelete) {
-            toast({ variant: 'destructive', title: 'Erro', description: 'Nenhum anexo encontrado para excluir.' });
-            return;
-        }
-
-        // 1. Delete the anexo document
         await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
         
-        // 2. Clear the anexoId from the form state
-        form.setValue(anexoPath as any, undefined);
-
-        // 3. (Optional but good practice) Update the project document in Firestore immediately
-        if (isEditMode && projeto) {
-             const updatePath = etapa.replace(/\./g, '_'); // Firestore doesn't like dots in field paths for updates
-             const updates: any = {};
-             updates[`${etapa.replace('.', '.anexoId')}`] = null; // or deleteField() if you prefer
-             
-             // This part is complex to do dynamically. A simpler way is to just let the main form save handle it.
-             // For now, we will rely on the main "Save" button to persist the cleared anexoId.
-        }
+        const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
+        const currentAnexosIds = form.getValues(anexoPath as any) || [];
+        form.setValue(anexoPath as any, currentAnexosIds.filter((id: string) => id !== anexoIdToDelete));
+        setAllAnexos(prev => prev.filter(anexo => anexo.id !== anexoIdToDelete));
 
         toast({ title: "Sucesso", description: "Anexo excluído." });
 
@@ -385,7 +370,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     } finally {
         setUploading(null);
     }
-};
+  };
 
   const handleAnexoTrigger = (etapa: FileUploadKey) => {
     if (fileInputRef.current) {
@@ -405,13 +390,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             data: timestampOrNull(values.diagnostica.data),
             ok: values.diagnostica.ok,
             detalhes: values.diagnostica.detalhes,
-            anexoId: values.diagnostica.anexoId,
+            anexosIds: values.diagnostica.anexosIds,
           },
           simulados: {
-            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes, anexoId: values.simulados.s1.anexoId },
-            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes, anexoId: values.simulados.s2.anexoId },
-            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes, anexoId: values.simulados.s3.anexoId },
-            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes, anexoId: values.simulados.s4.anexoId },
+            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes, anexosIds: values.simulados.s1.anexosIds },
+            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes, anexosIds: values.simulados.s2.anexosIds },
+            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes, anexosIds: values.simulados.s3.anexosIds },
+            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes, anexosIds: values.simulados.s4.anexosIds },
           },
            devolutivas: {
             d1: { ...values.devolutivas.d1, dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim) },
@@ -566,6 +551,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
 };
 
+  const getAnexosForEtapa = (etapa: FileUploadKey): Anexo[] => {
+    const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
+    const ids = form.getValues(anexoPath as any) || [];
+    return allAnexos.filter(anexo => ids.includes(anexo.id));
+  };
+
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -661,6 +653,14 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <FormMessage />
                     </FormItem>
                 )}/>
+                {getAnexosForEtapa('implantacao').map(anexo => (
+                    <div key={anexo.id} className="text-sm text-green-600 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" /> Anexo: {anexo.nome}
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'implantacao')} disabled={uploading === 'implantacao'}>
+                            <Trash2 className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                ))}
                  {form.watch("implantacaoFormacaoId") ? (
                     <div className="text-sm text-green-600 flex items-center gap-2">
                         <Check className="h-4 w-4" /> Formação de implantação criada.
@@ -670,12 +670,6 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
                     </Button>
                 )}
-                 {form.watch('implantacaoAnexoId') && <div className="text-sm text-green-600 flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" /> Anexo salvo.
-                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo('implantacao')} disabled={uploading === 'implantacao'}>
-                        <Trash2 className="h-4 w-4"/>
-                    </Button>
-                </div>}
             </div>
             <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
               <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
@@ -817,15 +811,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 )}/>
                 <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger('diagnostica')} disabled={uploading === 'diagnostica' || !isEditMode}>
                     {uploading === 'diagnostica' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                    {form.watch('diagnostica.anexoId') ? 'Substituir Anexo' : 'Enviar Anexo'}
+                    Enviar Anexo
                 </Button>
               </div>
-               {form.watch('diagnostica.anexoId') && <div className="text-sm text-green-600 flex items-center gap-2">
-                    <ImageIcon className="h-4 w-4" /> Anexo salvo.
-                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo('diagnostica')} disabled={uploading === 'diagnostica'}>
-                        <Trash2 className="h-4 w-4"/>
-                    </Button>
-                </div>}
+               {getAnexosForEtapa('diagnostica').map(anexo => (
+                    <div key={anexo.id} className="text-sm text-green-600 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" /> Anexo: {anexo.nome}
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'diagnostica')} disabled={uploading === 'diagnostica'}>
+                            <Trash2 className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                ))}
               <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
                   <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )}/>
@@ -867,15 +863,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         )}/>
                         <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
                             {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                            {form.watch(`${etapaKey}.anexoId`) ? 'Substituir' : 'Anexar'}
+                            Enviar Anexo
                         </Button>
                     </div>
-                    {form.watch(`${etapaKey}.anexoId`) && <div className="text-xs text-green-600 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" /> Anexo salvo.
-                         <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(etapaKey)} disabled={uploading === etapaKey}>
-                            <Trash2 className="h-4 w-4"/>
-                        </Button>
-                    </div>}
+                    {getAnexosForEtapa(etapaKey).map(anexo => (
+                        <div key={anexo.id} className="text-xs text-green-600 flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4" /> {anexo.nome}
+                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    ))}
                     <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                         <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
@@ -998,21 +996,19 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                               <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
                             <div className='flex justify-between items-center gap-2 pt-2 border-t'>
-                                <FormField control={form.control} name={`${etapaKey}.anexoId`} render={({ field }) => (
-                                <FormItem>
-                                    <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
-                                        {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                        {field.value ? 'Substituir Anexo' : 'Enviar Anexo'}
-                                    </Button>
-                                    {field.value && <div className="text-xs text-green-600 flex items-center gap-2 pt-2">
-                                        <ImageIcon className="h-4 w-4" /> Anexo salvo.
-                                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(etapaKey)} disabled={uploading === etapaKey}>
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
-                                    </div>}
-                                </FormItem>
-                                )}/>
+                                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                    {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                    Enviar Anexo
+                                </Button>
                             </div>
+                             {getAnexosForEtapa(etapaKey).map(anexo => (
+                                <div key={anexo.id} className="text-xs text-green-600 flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4" /> {anexo.nome}
+                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                </div>
+                             ))}
                             <Separator className="!my-4"/>
                             {devolutiva?.formacaoId ? (
                                 <div className="space-y-2">
@@ -1059,6 +1055,3 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
-
-
-    
