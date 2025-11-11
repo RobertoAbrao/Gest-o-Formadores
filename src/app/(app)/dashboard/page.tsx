@@ -441,7 +441,7 @@ export default function DashboardPage() {
                                             <div className='flex items-center gap-2 truncate'>
                                                 <Badge
                                                     variant={'outline'}
-                                                    className={'text-xs border-amber-400'}
+                                                    className="border-amber-400 bg-amber-200/80 text-amber-900"
                                                 >
                                                     Ontem
                                                 </Badge>
