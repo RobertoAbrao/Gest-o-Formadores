@@ -2,10 +2,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,6 +56,7 @@ export default function DashboardPage() {
   ]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [yesterdayEvents, setYesterdayEvents] = useState<CalendarEvent[]>([]);
   const [followUpActions, setFollowUpActions] = useState<Formacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -187,6 +188,12 @@ export default function DashboardPage() {
         .sort((a, b) => a.date.getTime() - b.date.getTime());
       
       setUpcomingEvents(upcoming);
+      
+      const yesterday = allEvents
+        .filter(event => isYesterday(event.date))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      setYesterdayEvents(yesterday);
 
 
     } catch (error) {
@@ -204,12 +211,13 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    if (upcomingEvents.length > 0 || followUpActions.length > 0) {
+    const hasPendingActions = upcomingEvents.length > 0 || followUpActions.length > 0 || yesterdayEvents.length > 0;
+    if (hasPendingActions) {
       setNotificationFavicon();
     } else {
       clearNotificationFavicon();
     }
-  }, [upcomingEvents, followUpActions, setNotificationFavicon, clearNotificationFavicon]);
+  }, [upcomingEvents, followUpActions, yesterdayEvents, setNotificationFavicon, clearNotificationFavicon]);
 
 
   const onLembreteSubmit = async (values: LembreteFormValues) => {
@@ -319,6 +327,7 @@ export default function DashboardPage() {
   const formatEventDate = (eventDate: Date) => {
     if (isToday(eventDate)) return 'Hoje';
     if (isTomorrow(eventDate)) return 'Amanhã';
+    if (isYesterday(eventDate)) return 'Ontem';
     return format(eventDate, 'dd/MM');
   }
 
@@ -347,6 +356,29 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
        <div className='space-y-4'>
+            {yesterdayEvents.length > 0 && (
+                <Alert className='bg-blue-100/60 border-blue-200/80 text-blue-900 dark:bg-blue-900/20 dark:border-blue-500/30 dark:text-blue-200 [&>svg]:text-blue-500'>
+                    <History className="h-4 w-4" />
+                    <AlertTitle>Pendências de Ontem</AlertTitle>
+                    <AlertDescription>
+                        <ul className='space-y-2 mt-2'>
+                          {yesterdayEvents.map((event, index) => (
+                            <li key={`yest-${index}`} className='flex items-center justify-between gap-2 text-sm'>
+                                <div className='flex items-center gap-2 truncate'>
+                                      <Badge
+                                        variant={'outline'}
+                                        className={'text-xs border-blue-400'}
+                                    >
+                                        Ontem
+                                    </Badge>
+                                    <span className='truncate' title={event.title}>{event.title}</span>
+                                </div>
+                            </li>
+                          ))}
+                        </ul>
+                    </AlertDescription>
+                </Alert>
+            )}
             {upcomingEvents.length > 0 && (
                 <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
                     <BellRing className="h-4 w-4" />
