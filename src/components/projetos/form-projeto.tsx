@@ -344,6 +344,43 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   };
 
+  const handleDeleteAnexo = async (etapa: FileUploadKey) => {
+    if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
+
+    setUploading(etapa); // Show loading state on delete
+    try {
+        const anexoIdToDelete = form.getValues(`${etapa}.anexoId`);
+        if (!anexoIdToDelete) {
+            toast({ variant: 'destructive', title: 'Erro', description: 'Nenhum anexo encontrado para excluir.' });
+            return;
+        }
+
+        // 1. Delete the anexo document
+        await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
+        
+        // 2. Clear the anexoId from the form state
+        form.setValue(`${etapa}.anexoId`, undefined);
+
+        // 3. (Optional but good practice) Update the project document in Firestore immediately
+        if (isEditMode && projeto) {
+             const updatePath = etapa.replace(/\./g, '_'); // Firestore doesn't like dots in field paths for updates
+             const updates: any = {};
+             updates[`${etapa.replace('.', '.anexoId')}`] = null; // or deleteField() if you prefer
+             
+             // This part is complex to do dynamically. A simpler way is to just let the main form save handle it.
+             // For now, we will rely on the main "Save" button to persist the cleared anexoId.
+        }
+
+        toast({ title: "Sucesso", description: "Anexo excluído." });
+
+    } catch (error) {
+        console.error("Erro ao excluir anexo:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir o anexo.' });
+    } finally {
+        setUploading(null);
+    }
+};
+
   const handleAnexoTrigger = (etapa: FileUploadKey) => {
     if (fileInputRef.current) {
         fileInputRef.current.onchange = (e) => handleFileUpload(e as any, etapa);
@@ -764,7 +801,12 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     {form.watch('diagnostica.anexoId') ? 'Substituir Anexo' : 'Enviar Anexo'}
                 </Button>
               </div>
-               {form.watch('diagnostica.anexoId') && <div className="text-sm text-green-600 flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Anexo salvo.</div>}
+               {form.watch('diagnostica.anexoId') && <div className="text-sm text-green-600 flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" /> Anexo salvo.
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo('diagnostica')} disabled={uploading === 'diagnostica'}>
+                        <Trash2 className="h-4 w-4"/>
+                    </Button>
+                </div>}
               <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
                   <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )}/>
@@ -809,7 +851,12 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                             {form.watch(`${etapaKey}.anexoId`) ? 'Substituir' : 'Anexar'}
                         </Button>
                     </div>
-                    {form.watch(`${etapaKey}.anexoId`) && <div className="text-xs text-green-600 flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Anexo salvo.</div>}
+                    {form.watch(`${etapaKey}.anexoId`) && <div className="text-xs text-green-600 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" /> Anexo salvo.
+                         <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(etapaKey)} disabled={uploading === etapaKey}>
+                            <Trash2 className="h-4 w-4"/>
+                        </Button>
+                    </div>}
                     <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                         <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
@@ -977,3 +1024,6 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
+
+
+    
