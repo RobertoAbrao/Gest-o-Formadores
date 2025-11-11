@@ -15,6 +15,7 @@ import {
   query,
   where,
   addDoc,
+  deleteDoc,
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
@@ -33,9 +34,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { useState, useEffect, useMemo } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw } from 'lucide-react';
-import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink } from '@/lib/types';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -53,6 +54,7 @@ const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
+  anexoId: z.string().optional(),
 });
 
 const periodoStatusSchema = z.object({
@@ -60,6 +62,7 @@ const periodoStatusSchema = z.object({
   dataFim: z.date().nullable().optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
+  anexoId: z.string().optional(),
 });
 
 const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
@@ -70,6 +73,7 @@ const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
   formadores: z.array(z.string()).optional(),
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
+  anexoId: z.string().optional(),
 });
 
 
@@ -144,6 +148,15 @@ const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
   return date ? Timestamp.fromDate(date) : null;
 };
 
+const fileToDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+};
+
 const cleanObject = (obj: any): any => {
     if (obj === null || typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
       return obj;
@@ -163,9 +176,23 @@ const cleanObject = (obj: any): any => {
     return newObj;
 };
 
+type FileUploadKey = 
+  | 'diagnostica' 
+  | 'simulados.s1' 
+  | 'simulados.s2' 
+  | 'simulados.s3' 
+  | 'simulados.s4'
+  | 'devolutivas.d1'
+  | 'devolutivas.d2'
+  | 'devolutivas.d3'
+  | 'devolutivas.d4';
+
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState<FileUploadKey | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
   const [estados, setEstados] = useState<Estado[]>([]);
@@ -212,12 +239,12 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
-      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '' },
+      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '', anexoId: projeto?.diagnostica?.anexoId || undefined },
       simulados: {
-        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '' },
-        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '' },
-        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '' },
-        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '' },
+        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '', anexoId: projeto?.simulados?.s1?.anexoId || undefined },
+        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '', anexoId: projeto?.simulados?.s2?.anexoId || undefined },
+        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '', anexoId: projeto?.simulados?.s3?.anexoId || undefined },
+        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '', anexoId: projeto?.simulados?.s4?.anexoId || undefined },
       },
       devolutivas: {
         d1: { ...projeto?.devolutivas?.d1, dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim) },
@@ -273,6 +300,57 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   
   const selectedFormadores = allFormadores.filter(f => form.watch('formadoresIds')?.includes(f.id));
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, etapa: FileUploadKey) => {
+    const file = event.target.files?.[0];
+    if (!file || (!projeto && !isEditMode)) return; // Need project ID for new anexo
+  
+    setUploading(etapa);
+    try {
+      const projetoId = projeto?.id;
+      if (!projetoId) {
+          toast({ variant: "destructive", title: "Erro", description: "Salve o projeto primeiro antes de adicionar anexos." });
+          return;
+      }
+      
+      // 1. Delete old anexo if it exists
+      const oldAnexoId = form.getValues(`${etapa}.anexoId`);
+      if(oldAnexoId) {
+        await deleteDoc(doc(db, 'anexos', oldAnexoId));
+      }
+
+      // 2. Upload new file and create anexo document
+      const dataUrl = await fileToDataURL(file);
+      const novoAnexo: Omit<Anexo, 'id'> = { 
+        nome: file.name, 
+        url: dataUrl,
+        dataUpload: Timestamp.now(),
+        projetoId: projetoId,
+        etapa: etapa,
+      };
+      const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
+  
+      // 3. Update the form state with the new anexoId
+      form.setValue(`${etapa}.anexoId`, anexoDocRef.id);
+      
+      toast({ title: "Sucesso", description: "Anexo enviado." });
+    } catch (error) {
+      console.error("Erro no upload do arquivo:", error);
+      toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
+    } finally {
+      setUploading(null);
+      if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleAnexoTrigger = (etapa: FileUploadKey) => {
+    if (fileInputRef.current) {
+        fileInputRef.current.onchange = (e) => handleFileUpload(e as any, etapa);
+        fileInputRef.current.click();
+    }
+  }
+
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
@@ -284,12 +362,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             data: timestampOrNull(values.diagnostica.data),
             ok: values.diagnostica.ok,
             detalhes: values.diagnostica.detalhes,
+            anexoId: values.diagnostica.anexoId,
           },
           simulados: {
-            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes },
-            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes },
-            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes },
-            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes },
+            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes, anexoId: values.simulados.s1.anexoId },
+            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes, anexoId: values.simulados.s2.anexoId },
+            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes, anexoId: values.simulados.s3.anexoId },
+            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes, anexoId: values.simulados.s4.anexoId },
           },
            devolutivas: {
             d1: { ...values.devolutivas.d1, dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim) },
@@ -447,6 +526,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        
+        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
         
         {/* DADOS GERAIS */}
         <div className="space-y-4 p-4 border rounded-lg">
@@ -656,7 +737,6 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             ))}
         </div>
 
-
         {/* AVALIAÇÕES E SIMULADOS */}
         <div className="space-y-4 p-4 border rounded-lg">
           <h3 className="font-semibold text-lg">Avaliações e Simulados</h3>
@@ -679,48 +759,63 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
                   <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
                 )}/>
+                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger('diagnostica')} disabled={uploading === 'diagnostica' || !isEditMode}>
+                    {uploading === 'diagnostica' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                    {form.watch('diagnostica.anexoId') ? 'Substituir Anexo' : 'Enviar Anexo'}
+                </Button>
               </div>
+               {form.watch('diagnostica.anexoId') && <div className="text-sm text-green-600 flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Anexo salvo.</div>}
               <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
                   <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )}/>
             </div>
             {/* Simulados */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {([1, 2, 3, 4] as const).map(i => (
-                <div key={`s${i}`} className='p-2 rounded-md border space-y-3'>
-                  <h4 className='font-medium'>Simulado {i}</h4>
-                  <FormField control={form.control} name={`simulados.s${i}.dataInicio`} render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
-                      <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+              {([1, 2, 3, 4] as const).map(i => {
+                const etapaKey = `simulados.s${i}` as const;
+                return (
+                    <div key={etapaKey} className='p-3 rounded-md border space-y-3'>
+                    <h4 className='font-medium'>Simulado {i}</h4>
+                    <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
+                        <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
+                        <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                        </PopoverContent></Popover><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
+                        <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
+                        <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                        </PopoverContent></Popover><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <div className="flex items-center justify-between gap-4">
+                        <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                        )}/>
+                        <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                            {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                            {form.watch(`${etapaKey}.anexoId`) ? 'Substituir' : 'Anexar'}
                         </Button>
-                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                      </PopoverContent></Popover><FormMessage />
-                    </FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`simulados.s${i}.dataFim`} render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
-                      <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                      </PopoverContent></Popover><FormMessage />
-                    </FormItem>
-                  )}/>
-                   <FormField control={form.control} name={`simulados.s${i}.ok`} render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                  )}/>
-                  <FormField control={form.control} name={`simulados.s${i}.detalhes`} render={({ field }) => (
-                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                  )}/>
-                </div>
-              ))}
+                    </div>
+                    {form.watch(`${etapaKey}.anexoId`) && <div className="text-xs text-green-600 flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Anexo salvo.</div>}
+                    <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                        <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    </div>
+                )
+              })}
             </div>
         </div>
         
@@ -733,16 +828,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             <Separator />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {([1, 2, 3, 4] as const).map(i => {
-                    const devolutiva = form.watch(`devolutivas.d${i}`);
+                    const etapaKey = `devolutivas.d${i}` as const;
+                    const devolutiva = form.watch(etapaKey);
                     return (
-                        <div key={`d${i}`} className='p-3 rounded-md border space-y-3'>
+                        <div key={etapaKey} className='p-3 rounded-md border space-y-3'>
                             <div className="flex justify-between items-start">
                               <h4 className='font-medium'>Devolutiva {i}</h4>
-                              <FormField control={form.control} name={`devolutivas.d${i}.ok`} render={({ field }) => (
+                              <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
                                 <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
                               )}/>
                             </div>
-                            <FormField control={form.control} name={`devolutivas.d${i}.dataInicio`} render={({ field }) => (
+                            <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
                               <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
                                 <Popover><PopoverTrigger asChild><FormControl>
                                   <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -754,7 +850,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                 </PopoverContent></Popover><FormMessage />
                               </FormItem>
                             )}/>
-                             <FormField control={form.control} name={`devolutivas.d${i}.dataFim`} render={({ field }) => (
+                             <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
                               <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
                                 <Popover><PopoverTrigger asChild><FormControl>
                                   <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -768,7 +864,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                             )}/>
                             <FormField
                                 control={form.control}
-                                name={`devolutivas.d${i}.formadores`}
+                                name={`${etapaKey}.formadores`}
                                 render={({ field }) => {
                                     const selectedDevolutivaFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
 
@@ -832,7 +928,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                     );
                                 }}
                             />
-                            <FormField control={form.control} name={`devolutivas.d${i}.detalhes`} render={({ field }) => (
+                            <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                               <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
                             <Separator className="!my-4"/>

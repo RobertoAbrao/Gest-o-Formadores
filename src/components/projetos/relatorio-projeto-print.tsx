@@ -1,16 +1,17 @@
 
 'use client';
 
-import type { ProjetoImplatancao } from '@/lib/types';
+import type { ProjetoImplatancao, Anexo } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud } from 'lucide-react';
+import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
 interface RelatorioProps {
   projeto: ProjetoImplatancao;
+  anexos: Anexo[];
 }
 
 const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
@@ -28,6 +29,7 @@ const MilestoneCard = ({
     title,
     date,
     description,
+    anexo,
     isComplete,
     isFirst = false,
     isLast = false
@@ -36,6 +38,7 @@ const MilestoneCard = ({
     title: string,
     date?: string,
     description?: { formadores: string; detalhes: string; },
+    anexo?: Anexo,
     isComplete: boolean,
     isFirst?: boolean,
     isLast?: boolean
@@ -53,10 +56,19 @@ const MilestoneCard = ({
 
             {/* Conteúdo */}
             <div className="flex w-full items-start">
-                {/* Lado Esquerdo: Título */}
+                {/* Lado Esquerdo: Título e Imagem */}
                 <div className="w-1/2 pr-8 text-right">
                     <h4 className="font-bold text-lg mt-3">{title}</h4>
                      {date && <p className="text-xs text-gray-500 mt-1">{date}</p>}
+                     {anexo?.url && (
+                        <div className="mt-4 border rounded-lg p-2 bg-gray-50">
+                            <img 
+                                src={anexo.url}
+                                alt={`Anexo para ${title}`}
+                                className="w-full rounded-md object-contain max-h-60"
+                            />
+                        </div>
+                     )}
                 </div>
                 
                 {/* Centro: Ícone */}
@@ -85,8 +97,9 @@ const MilestoneCard = ({
 };
 
 
-export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
+export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
+  const anexosMap = new Map(anexos.map(anexo => [anexo.id, anexo]));
 
   const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
     const devolutiva = projeto.devolutivas?.[devolutivaKey];
@@ -105,6 +118,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         title: 'Migração de Dados',
         date: formatDate(projeto.dataMigracao),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
+        anexo: projeto.diagnostica?.anexoId ? anexosMap.get(projeto.diagnostica.anexoId) : undefined,
         isComplete: !!projeto.dataMigracao,
         sortDate: projeto.dataMigracao?.toDate()
     },
@@ -120,73 +134,28 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         title: 'Avaliação Diagnóstica',
         date: formatDate(projeto.diagnostica?.data),
         description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
+        anexo: projeto.diagnostica?.anexoId ? anexosMap.get(projeto.diagnostica.anexoId) : undefined,
         isComplete: !!projeto.diagnostica?.ok,
         sortDate: projeto.diagnostica?.data?.toDate()
     },
-    {
+    ...([1,2,3,4] as const).map(i => ({
         icon: Target,
-        title: 'Simulado 1',
-        date: `De ${formatDate(projeto.simulados?.s1?.dataInicio)} a ${formatDate(projeto.simulados?.s1?.dataFim)}`,
-        description: { formadores: '', detalhes: projeto.simulados?.s1?.detalhes || '' },
-        isComplete: !!projeto.simulados?.s1?.ok,
-        sortDate: projeto.simulados?.s1?.dataInicio?.toDate()
-    },
-     {
+        title: `Simulado ${i}`,
+        date: `De ${formatDate(projeto.simulados?.[`s${i}`]?.dataInicio)} a ${formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}`,
+        description: { formadores: '', detalhes: projeto.simulados?.[`s${i}`]?.detalhes || '' },
+        anexo: projeto.simulados?.[`s${i}`]?.anexoId ? anexosMap.get(projeto.simulados?.[`s${i}`].anexoId!) : undefined,
+        isComplete: !!projeto.simulados?.[`s${i}`]?.ok,
+        sortDate: projeto.simulados?.[`s${i}`]?.dataInicio?.toDate()
+    })),
+    ...([1,2,3,4] as const).map(i => ({
         icon: Flag,
-        title: 'Devolutiva 1',
-        date: `De ${formatDate(projeto.devolutivas?.d1?.dataInicio)} a ${formatDate(projeto.devolutivas?.d1?.dataFim)}`,
-        description: getDevolutivaDescription('d1'),
-        isComplete: !!projeto.devolutivas?.d1?.ok,
-        sortDate: projeto.devolutivas?.d1?.dataInicio?.toDate()
-    },
-    {
-        icon: Target,
-        title: 'Simulado 2',
-        date: `De ${formatDate(projeto.simulados?.s2?.dataInicio)} a ${formatDate(projeto.simulados?.s2?.dataFim)}`,
-        description: { formadores: '', detalhes: projeto.simulados?.s2?.detalhes || '' },
-        isComplete: !!projeto.simulados?.s2?.ok,
-        sortDate: projeto.simulados?.s2?.dataInicio?.toDate()
-    },
-     {
-        icon: Flag,
-        title: 'Devolutiva 2',
-        date: `De ${formatDate(projeto.devolutivas?.d2?.dataInicio)} a ${formatDate(projeto.devolutivas?.d2?.dataFim)}`,
-        description: getDevolutivaDescription('d2'),
-        isComplete: !!projeto.devolutivas?.d2?.ok,
-        sortDate: projeto.devolutivas?.d2?.dataInicio?.toDate()
-    },
-    {
-        icon: Target,
-        title: 'Simulado 3',
-        date: `De ${formatDate(projeto.simulados?.s3?.dataInicio)} a ${formatDate(projeto.simulados?.s3?.dataFim)}`,
-        description: { formadores: '', detalhes: projeto.simulados?.s3?.detalhes || '' },
-        isComplete: !!projeto.simulados?.s3?.ok,
-        sortDate: projeto.simulados?.s3?.dataInicio?.toDate()
-    },
-     {
-        icon: Flag,
-        title: 'Devolutiva 3',
-        date: `De ${formatDate(projeto.devolutivas?.d3?.dataInicio)} a ${formatDate(projeto.devolutivas?.d3?.dataFim)}`,
-        description: getDevolutivaDescription('d3'),
-        isComplete: !!projeto.devolutivas?.d3?.ok,
-        sortDate: projeto.devolutivas?.d3?.dataInicio?.toDate()
-    },
-     {
-        icon: Target,
-        title: 'Simulado 4',
-        date: `De ${formatDate(projeto.simulados?.s4?.dataInicio)} a ${formatDate(projeto.simulados?.s4?.dataFim)}`,
-        description: { formadores: '', detalhes: projeto.simulados?.s4?.detalhes || '' },
-        isComplete: !!projeto.simulados?.s4?.ok,
-        sortDate: projeto.simulados?.s4?.dataInicio?.toDate()
-    },
-     {
-        icon: Flag,
-        title: 'Devolutiva 4',
-        date: `De ${formatDate(projeto.devolutivas?.d4?.dataInicio)} a ${formatDate(projeto.devolutivas?.d4?.dataFim)}`,
-        description: getDevolutivaDescription('d4'),
-        isComplete: !!projeto.devolutivas?.d4?.ok,
-        sortDate: projeto.devolutivas?.d4?.dataInicio?.toDate()
-    },
+        title: `Devolutiva ${i}`,
+        date: `De ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataInicio)} a ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataFim)}`,
+        description: getDevolutivaDescription(`d${i}`),
+        anexo: projeto.devolutivas?.[`d${i}`]?.anexoId ? anexosMap.get(projeto.devolutivas?.[`d${i}`].anexoId!) : undefined,
+        isComplete: !!projeto.devolutivas?.[`d${i}`]?.ok,
+        sortDate: projeto.devolutivas?.[`d${i}`]?.dataInicio?.toDate()
+    })),
   ];
 
     const scheduledMilestones = allMilestones.filter(m => m.sortDate);
@@ -196,6 +165,7 @@ export function RelatorioProjetoPrint({ projeto }: RelatorioProps) {
         icon: CheckCircle,
         title: 'Projeto Concluído',
         description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
+        anexo: undefined,
         isComplete: true,
         sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
     });
