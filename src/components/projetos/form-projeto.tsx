@@ -16,6 +16,7 @@ import {
   where,
   addDoc,
   deleteDoc,
+  deleteField,
 } from 'firebase/firestore';
 import * as React from 'react';
 import { format } from "date-fns"
@@ -94,6 +95,7 @@ const formSchema = z.object({
   versao: z.string().optional(),
   material: z.string().optional(),
   dataMigracao: z.date().nullable(),
+  anexo: z.any().optional(), // Campo legado
   dataImplantacao: z.date().nullable(),
   implantacaoAnexosIds: z.array(z.string()).optional(),
   implantacaoFormacaoId: z.string().optional(),
@@ -243,6 +245,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       versao: projeto?.versao || '',
       material: projeto?.material || '',
       dataMigracao: toDate(projeto?.dataMigracao),
+      anexo: projeto?.anexo || null,
       dataImplantacao: toDate(projeto?.dataImplantacao),
       implantacaoAnexosIds: projeto?.implantacaoAnexosIds || [],
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
@@ -379,6 +382,23 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   }
 
+  const handleDeleteAnexoLegado = async () => {
+    if (!projeto || !window.confirm("Tem certeza que deseja excluir este anexo legado?")) return;
+    setLoading(true);
+    try {
+        await updateDoc(doc(db, 'projetos', projeto.id), {
+            anexo: deleteField()
+        });
+        form.setValue('anexo', null);
+        toast({ title: "Sucesso", description: "Anexo legado excluído." });
+    } catch (error) {
+        console.error("Erro ao excluir anexo legado:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir o anexo legado." });
+    } finally {
+        setLoading(false);
+    }
+  };
+
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
@@ -411,6 +431,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       };
 
       const cleanedData = cleanObject(dataToSave);
+      delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
 
       if (isEditMode && projeto) {
          await updateDoc(doc(db, 'projetos', projeto.id), cleanedData);
@@ -740,6 +761,18 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 )}
             />
           </div>
+            {projeto?.anexo && (
+                <div className="space-y-2 pt-4 border-t">
+                    <Label className="text-destructive">Anexo Legado</Label>
+                    <div className="flex items-center justify-between p-2 border border-destructive/50 rounded-md bg-destructive/10">
+                        <p className="text-sm text-destructive">{projeto.anexo.nome}</p>
+                        <Button type="button" size="sm" variant="destructive" onClick={handleDeleteAnexoLegado} disabled={loading}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir Anexo Legado
+                        </Button>
+                    </div>
+                    <FormDescription className="text-destructive">Este anexo está em um formato antigo. Exclua-o e envie novamente usando o novo sistema de anexos por etapa.</FormDescription>
+                </div>
+            )}
         </div>
         
         {/* Agendamento de Reunião */}
