@@ -648,7 +648,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <div className="flex gap-2 items-center">
                             <Popover><PopoverTrigger asChild><FormControl>
                             <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                             </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
@@ -997,6 +997,22 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                             <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                               <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
+                            <div className='flex justify-between items-center gap-2 pt-2 border-t'>
+                                <FormField control={form.control} name={`${etapaKey}.anexoId`} render={({ field }) => (
+                                <FormItem>
+                                    <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                        {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                        {field.value ? 'Substituir Anexo' : 'Enviar Anexo'}
+                                    </Button>
+                                    {field.value && <div className="text-xs text-green-600 flex items-center gap-2 pt-2">
+                                        <ImageIcon className="h-4 w-4" /> Anexo salvo.
+                                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(etapaKey)} disabled={uploading === etapaKey}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>}
+                                </FormItem>
+                                )}/>
+                            </div>
                             <Separator className="!my-4"/>
                             {devolutiva?.formacaoId ? (
                                 <div className="space-y-2">

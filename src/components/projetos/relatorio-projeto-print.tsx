@@ -99,7 +99,7 @@ const MilestoneCard = ({
 
 export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
-  const anexosMap = new Map(anexos.map(anexo => [anexo.id, anexo]));
+  const anexosMap = new Map((anexos || []).map(anexo => [anexo.id, anexo]));
 
   const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
     const devolutiva = projeto.devolutivas?.[devolutivaKey];
