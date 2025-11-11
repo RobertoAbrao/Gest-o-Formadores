@@ -2,14 +2,17 @@
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao } from '@/lib/types';
-import { Timestamp, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteField } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Waypoints, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
+import { Button } from '../ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
@@ -63,10 +66,12 @@ const DevolutivaCard = ({ numero, devolutiva, formacao }: { numero: number, devo
 };
 
 
-export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
+export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProps) {
+    const [projeto, setProjeto] = useState<ProjetoImplatancao>(initialProjeto);
     const [formadores, setFormadores] = useState<Formador[]>([]);
     const [formacoes, setFormacoes] = useState<Map<string, Formacao>>(new Map());
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -118,6 +123,28 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
 
         fetchData();
     }, [projeto]);
+
+    const handleDeleteAnexoLegado = async () => {
+        if (!projeto || !window.confirm("Tem certeza que deseja excluir este anexo legado? Esta ação não pode ser desfeita.")) return;
+        setLoading(true);
+        try {
+            const projetoRef = doc(db, 'projetos', projeto.id);
+            await updateDoc(projetoRef, {
+                anexo: deleteField()
+            });
+            // Update local state to remove the `anexo` field
+            const { anexo, ...rest } = projeto;
+            setProjeto(rest as ProjetoImplatancao);
+
+            toast({ title: "Sucesso", description: "Anexo legado excluído." });
+        } catch (error) {
+            console.error("Erro ao excluir anexo legado:", error);
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir o anexo legado." });
+        } finally {
+            setLoading(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -172,7 +199,7 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Milestone className="h-5 w-5 text-muted-foreground" />
-                        Datas Importantes
+                        Implementação e Métricas
                     </CardTitle>
                 </CardHeader>
                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -191,6 +218,23 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
                         </div>
                     </div>
                  </CardContent>
+                 {projeto.anexo && (
+                     <CardContent>
+                        <Alert variant="destructive">
+                            <AlertTitle>Anexo Legado Encontrado</AlertTitle>
+                            <AlertDescription className="flex items-center justify-between">
+                                <div>
+                                    <p>Este projeto contém um anexo no formato antigo.</p>
+                                    <p className="font-mono text-xs">{projeto.anexo.nome}</p>
+                                </div>
+                                <Button size="sm" variant="destructive" onClick={handleDeleteAnexoLegado} disabled={loading}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Excluir
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    </CardContent>
+                 )}
             </Card>
 
             {projeto.reunioes && projeto.reunioes.length > 0 && (
@@ -285,3 +329,5 @@ export function DetalhesProjeto({ projeto }: DetalhesProjetoProps) {
         </div>
     );
 }
+
+    
