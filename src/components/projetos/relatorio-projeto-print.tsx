@@ -127,6 +127,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
+        anexo: projeto.implantacaoAnexoId ? anexosMap.get(projeto.implantacaoAnexoId) : undefined,
         sortDate: projeto.dataImplantacao?.toDate()
     },
     {

@@ -95,6 +95,7 @@ const formSchema = z.object({
   material: z.string().optional(),
   dataMigracao: z.date().nullable(),
   dataImplantacao: z.date().nullable(),
+  implantacaoAnexoId: z.string().optional(),
   implantacaoFormacaoId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
@@ -178,6 +179,7 @@ const cleanObject = (obj: any): any => {
 
 type FileUploadKey = 
   | 'diagnostica' 
+  | 'implantacao'
   | 'simulados.s1' 
   | 'simulados.s2' 
   | 'simulados.s3' 
@@ -235,6 +237,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       material: projeto?.material || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       dataImplantacao: toDate(projeto?.dataImplantacao),
+      implantacaoAnexoId: projeto?.implantacaoAnexoId || '',
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
@@ -312,8 +315,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           return;
       }
       
+      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexoId' : `${etapa}.anexoId`;
+      
       // 1. Delete old anexo if it exists
-      const oldAnexoId = form.getValues(`${etapa}.anexoId`);
+      const oldAnexoId = form.getValues(anexoPath as any);
       if(oldAnexoId) {
         await deleteDoc(doc(db, 'anexos', oldAnexoId));
       }
@@ -330,7 +335,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
   
       // 3. Update the form state with the new anexoId
-      form.setValue(`${etapa}.anexoId`, anexoDocRef.id);
+      form.setValue(anexoPath as any, anexoDocRef.id);
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
     } catch (error) {
@@ -349,7 +354,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
 
     setUploading(etapa); // Show loading state on delete
     try {
-        const anexoIdToDelete = form.getValues(`${etapa}.anexoId`);
+        const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexoId' : `${etapa}.anexoId`;
+        const anexoIdToDelete = form.getValues(anexoPath as any);
         if (!anexoIdToDelete) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Nenhum anexo encontrado para excluir.' });
             return;
@@ -359,7 +365,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
         
         // 2. Clear the anexoId from the form state
-        form.setValue(`${etapa}.anexoId`, undefined);
+        form.setValue(anexoPath as any, undefined);
 
         // 3. (Optional but good practice) Update the project document in Firestore immediately
         if (isEditMode && projeto) {
@@ -637,16 +643,23 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             )}/>
             <div className="space-y-2">
                 <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
-                  <FormItem className="flex flex-col"><FormLabel>Data de Implantação</FormLabel>
-                    <Popover><PopoverTrigger asChild><FormControl>
-                      <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                    </PopoverContent></Popover><FormMessage />
-                  </FormItem>
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Data de Implantação</FormLabel>
+                        <div className="flex gap-2 items-center">
+                            <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                            </PopoverContent></Popover>
+                             <Button type="button" size="icon" variant="outline" onClick={() => handleAnexoTrigger('implantacao')} disabled={uploading === 'implantacao' || !isEditMode}>
+                                {uploading === 'implantacao' ? <Loader2 className="h-4 w-4 animate-spin"/> : <UploadCloud className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        <FormMessage />
+                    </FormItem>
                 )}/>
                  {form.watch("implantacaoFormacaoId") ? (
                     <div className="text-sm text-green-600 flex items-center gap-2">
@@ -657,6 +670,12 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
                     </Button>
                 )}
+                 {form.watch('implantacaoAnexoId') && <div className="text-sm text-green-600 flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" /> Anexo salvo.
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo('implantacao')} disabled={uploading === 'implantacao'}>
+                        <Trash2 className="h-4 w-4"/>
+                    </Button>
+                </div>}
             </div>
             <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
               <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
