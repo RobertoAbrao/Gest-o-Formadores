@@ -134,7 +134,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         title: 'Implantação do Sistema',
         date: formatDate(projeto.dataImplantacao),
         isComplete: !!projeto.dataImplantacao,
-        description: { formadores: '', detalhes: '' },
+        description: { formadores: '', detalhes: projeto.implantacaoDetalhes || '' },
         anexos: getAnexosForEtapa('implantacao'),
         sortDate: projeto.dataImplantacao?.toDate()
     },

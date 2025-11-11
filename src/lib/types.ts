@@ -187,6 +187,7 @@ export interface ProjetoImplatancao {
   formadoresIds?: string[];
   dataImplantacao: Timestamp | null;
   implantacaoAnexosIds?: string[];
+  implantacaoDetalhes?: string;
   implantacaoFormacaoId?: string;
   
   diagnostica: EtapaStatus;

@@ -98,6 +98,7 @@ const formSchema = z.object({
   anexo: z.any().optional(), // Campo legado
   dataImplantacao: z.date().nullable(),
   implantacaoAnexosIds: z.array(z.string()).optional(),
+  implantacaoDetalhes: z.string().optional(),
   implantacaoFormacaoId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
@@ -230,7 +231,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
 
         } catch (error) {
             console.error("Failed to fetch initial data", error);
-            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados necessários.' });
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os dados necessários." });
         } finally {
             setLoading(false);
         }
@@ -249,6 +250,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       anexo: projeto?.anexo || null,
       dataImplantacao: toDate(projeto?.dataImplantacao),
       implantacaoAnexosIds: projeto?.implantacaoAnexosIds || [],
+      implantacaoDetalhes: projeto?.implantacaoDetalhes || '',
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
@@ -683,6 +685,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         </Button>
                     </div>
                 ))}
+                 <FormField control={form.control} name="implantacaoDetalhes" render={({ field }) => (
+                    <FormItem className='mt-2'>
+                        <FormLabel>Detalhes da Implantação</FormLabel>
+                        <FormControl><Textarea placeholder="Descreva observações sobre a implantação..." {...field} value={field.value ?? ''} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                 )}/>
                  {form.watch("implantacaoFormacaoId") ? (
                     <div className="text-sm text-green-600 flex items-center gap-2">
                         <Check className="h-4 w-4" /> Formação de implantação criada.
