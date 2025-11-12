@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -580,7 +580,32 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     const ids = form.getValues(anexoPath as any) || [];
     return allAnexos.filter(anexo => ids.includes(anexo.id));
   };
+  
+  const handleClearImplantacao = () => {
+    if (!window.confirm("Tem certeza que deseja limpar todos os dados desta etapa de Implantação?")) return;
+    form.setValue('dataImplantacao', null);
+    form.setValue('implantacaoDetalhes', '');
+    // Note: We don't clear formacaoId automatically to avoid accidental unlinking. 
+    // And we don't delete annexes to prevent data loss.
+    toast({ title: 'Dados de implantação limpos.', description: 'Anexos não foram removidos.'});
+  };
 
+  const handleClearDevolutiva = (devolutivaNumber: 1 | 2 | 3 | 4) => {
+    if (!window.confirm(`Tem certeza que deseja limpar todos os dados da Devolutiva ${devolutivaNumber}?`)) return;
+    const etapaKey = `devolutivas.d${devolutivaNumber}` as const;
+    form.setValue(etapaKey, {
+      dataInicio: null,
+      dataFim: null,
+      detalhes: '',
+      formadores: [],
+      ok: false,
+      // Keep formacaoId and formacaoTitulo to avoid breaking links
+      formacaoId: form.getValues(etapaKey).formacaoId,
+      formacaoTitulo: form.getValues(etapaKey).formacaoTitulo,
+      anexosIds: form.getValues(etapaKey).anexosIds // Keep annexes
+    });
+     toast({ title: `Dados da Devolutiva ${devolutivaNumber} limpos.`, description: 'Anexos não foram removidos.' });
+  }
 
   return (
     <Form {...form}>
@@ -677,14 +702,6 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <FormMessage />
                     </FormItem>
                 )}/>
-                {getAnexosForEtapa('implantacao').map(anexo => (
-                    <div key={anexo.id} className="text-sm text-green-600 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" /> Anexo: {anexo.nome}
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'implantacao')} disabled={uploading === 'implantacao'}>
-                            <Trash2 className="h-4 w-4"/>
-                        </Button>
-                    </div>
-                ))}
                  <FormField control={form.control} name="implantacaoDetalhes" render={({ field }) => (
                     <FormItem className='mt-2'>
                         <FormLabel>Detalhes da Implantação</FormLabel>
@@ -701,6 +718,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
                     </Button>
                 )}
+                 {getAnexosForEtapa('implantacao').map(anexo => (
+                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'implantacao')} disabled={uploading === 'implantacao'}>
+                            <Trash2 className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                ))}
+                 <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10" onClick={handleClearImplantacao}>
+                    <Eraser className="mr-2 h-3 w-3" /> Limpar Dados da Implantação
+                </Button>
             </div>
             <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
               <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
@@ -857,17 +885,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     Enviar Anexo
                 </Button>
               </div>
+              <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
+                  <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+              )}/>
                {getAnexosForEtapa('diagnostica').map(anexo => (
-                    <div key={anexo.id} className="text-sm text-green-600 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" /> Anexo: {anexo.nome}
+                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
                         <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'diagnostica')} disabled={uploading === 'diagnostica'}>
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                     </div>
                 ))}
-              <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
-                  <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-              )}/>
             </div>
             {/* Simulados */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -906,20 +934,20 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         )}/>
                         <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
                             {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                            Enviar Anexo
+                            Anexar
                         </Button>
                     </div>
+                    <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                        <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
                     {getAnexosForEtapa(etapaKey).map(anexo => (
-                        <div key={anexo.id} className="text-xs text-green-600 flex items-center gap-2">
-                            <ImageIcon className="h-4 w-4" /> {anexo.nome}
+                        <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                            <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
                             <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
                                 <Trash2 className="h-4 w-4"/>
                             </Button>
                         </div>
                     ))}
-                    <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
-                        <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                    )}/>
                     </div>
                 )
               })}
@@ -941,9 +969,9 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         <div key={etapaKey} className='p-3 rounded-md border space-y-3'>
                             <div className="flex justify-between items-start">
                               <h4 className='font-medium'>Devolutiva {i}</h4>
-                              <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                              )}/>
+                               <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
+                                    <Eraser className="mr-2 h-3 w-3" /> Limpar
+                                </Button>
                             </div>
                             <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
                               <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
@@ -1039,14 +1067,17 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                               <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
                             <div className='flex justify-between items-center gap-2 pt-2 border-t'>
+                                <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                                )}/>
                                 <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
                                     {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                    Enviar Anexo
+                                    Anexar
                                 </Button>
                             </div>
-                             {getAnexosForEtapa(etapaKey).map(anexo => (
-                                <div key={anexo.id} className="text-xs text-green-600 flex items-center gap-2">
-                                    <ImageIcon className="h-4 w-4" /> {anexo.nome}
+                            {getAnexosForEtapa(etapaKey).map(anexo => (
+                                <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                    <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
                                     <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
                                         <Trash2 className="h-4 w-4"/>
                                     </Button>
@@ -1098,3 +1129,4 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
+
