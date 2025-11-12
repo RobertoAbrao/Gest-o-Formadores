@@ -5,7 +5,7 @@ import type { ProjetoImplatancao, Anexo } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -165,19 +165,30 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         isComplete: !!projeto.devolutivas?.[`d${i}`]?.ok,
         sortDate: projeto.devolutivas?.[`d${i}`]?.dataInicio?.toDate()
     })),
+     ...(projeto.eventosAdicionais || []).map(evento => ({
+        icon: Star,
+        title: evento.titulo,
+        date: formatDate(evento.data),
+        description: { formadores: '', detalhes: evento.detalhes || ''},
+        anexos: anexos.filter(a => evento.anexosIds?.includes(a.id || '')),
+        isComplete: true, // Custom events are always "complete" in this context
+        sortDate: evento.data?.toDate()
+    }))
   ];
 
     const scheduledMilestones = allMilestones.filter(m => m.sortDate);
     const sortedMilestones = scheduledMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
     
-    sortedMilestones.push({
-        icon: CheckCircle,
-        title: 'Projeto Concluído',
-        description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-        anexos: [],
-        isComplete: true,
-        sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
-    });
+    if (sortedMilestones.length > 0) {
+        sortedMilestones.push({
+            icon: CheckCircle,
+            title: 'Projeto Concluído',
+            description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
+            anexos: [],
+            isComplete: true,
+            sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
+        });
+    }
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">

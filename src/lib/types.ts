@@ -174,6 +174,13 @@ interface Reuniao {
     links: LinkReuniao[];
 }
 
+interface EventoAdicional {
+  titulo: string;
+  data: Timestamp | null;
+  detalhes?: string;
+  anexosIds?: string[];
+}
+
 export interface ProjetoImplatancao {
   id: string;
   municipio: string;
@@ -205,6 +212,7 @@ export interface ProjetoImplatancao {
   };
 
   reunioes?: Reuniao[];
+  eventosAdicionais?: EventoAdicional[];
 
   dataCriacao: Timestamp;
 }

@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -88,6 +88,13 @@ const reuniaoSchema = z.object({
     links: z.array(linkReuniaoSchema).optional(),
 });
 
+const eventoAdicionalSchema = z.object({
+  titulo: z.string().min(1, "O título é obrigatório."),
+  data: z.date().nullable().optional(),
+  detalhes: z.string().optional(),
+  anexosIds: z.array(z.string()).optional(),
+});
+
 
 const formSchema = z.object({
   municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
@@ -123,6 +130,7 @@ const formSchema = z.object({
     d4: devolutivaLinkSchema,
   }),
   reunioes: z.array(reuniaoSchema).optional(),
+  eventosAdicionais: z.array(eventoAdicionalSchema).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -191,7 +199,8 @@ type FileUploadKey =
   | 'devolutivas.d2'
   | 'devolutivas.d3'
   | 'devolutivas.d4'
-  | 'migracao';
+  | 'migracao'
+  | `eventosAdicionais.${number}`;
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { toast } = useToast();
@@ -272,6 +281,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           data: toDate(r.data),
           links: r.links ? [...r.links, ...Array(4 - r.links.length).fill({ url: '', descricao: '' })].slice(0, 4) : Array(4).fill({ url: '', descricao: '' }),
       })) || [],
+      eventosAdicionais: projeto?.eventosAdicionais?.map(e => ({
+          ...e,
+          data: toDate(e.data),
+      })) || [],
     },
   });
 
@@ -312,6 +325,11 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   const { fields: reuniaoFields, append: appendReuniao, remove: removeReuniao } = useFieldArray({
     control: form.control,
     name: "reunioes",
+  });
+  
+  const { fields: eventoFields, append: appendEvento, remove: removeEvento } = useFieldArray({
+    control: form.control,
+    name: "eventosAdicionais",
   });
   
   const selectedFormadores = allFormadores.filter(f => form.watch('formadoresIds')?.includes(f.id));
@@ -431,6 +449,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             data: timestampOrNull(reuniao.data),
             links: reuniao.links?.filter(link => link && link.url) || []
           })),
+          eventosAdicionais: values.eventosAdicionais?.map(evento => ({
+            ...evento,
+            data: timestampOrNull(evento.data),
+          }))
       };
 
       const cleanedData = cleanObject(dataToSave);
@@ -858,6 +880,64 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             ))}
         </div>
 
+        {/* EVENTOS ADICIONAIS */}
+        <div className="space-y-4 p-4 border rounded-lg">
+            <div className='flex justify-between items-center'>
+                <h3 className="font-semibold text-lg">Eventos Adicionais</h3>
+                <Button type="button" size="sm" variant="outline" onClick={() => appendEvento({ titulo: '', data: null, detalhes: '', anexosIds: [] })}>
+                    <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Evento
+                </Button>
+            </div>
+            <Separator />
+            {eventoFields.map((field, index) => {
+                const etapaKey = `eventosAdicionais.${index}` as const;
+                return (
+                    <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
+                        <div className='flex justify-between items-center'>
+                            <h4 className='font-semibold text-base'>Evento #{index + 1}</h4>
+                            <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeEvento(index)}>
+                                <Trash2 className='h-4 w-4'/>
+                            </Button>
+                        </div>
+                        <FormField control={form.control} name={`${etapaKey}.titulo`} render={({ field }) => (
+                            <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input placeholder="Ex: Visita Técnica" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <FormField control={form.control} name={`${etapaKey}.data`} render={({ field }) => (
+                                <FormItem className="flex flex-col"><FormLabel>Data do Evento</FormLabel>
+                                    <Popover><PopoverTrigger asChild><FormControl>
+                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                    </PopoverContent></Popover><FormMessage />
+                                </FormItem>
+                            )}/>
+                             <div className="flex flex-col justify-end">
+                                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                    {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                    Enviar Anexo
+                                </Button>
+                             </div>
+                        </div>
+                        <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                            <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Descreva o evento..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        {getAnexosForEtapa(etapaKey).map(anexo => (
+                            <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )
+            })}
+        </div>
+
         {/* AVALIAÇÕES E SIMULADOS */}
         <div className="space-y-4 p-4 border rounded-lg">
           <h3 className="font-semibold text-lg">Avaliações e Simulados</h3>
@@ -1129,4 +1209,3 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     </Form>
   );
 }
-
