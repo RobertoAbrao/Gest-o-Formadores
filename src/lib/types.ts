@@ -61,15 +61,25 @@ export interface Anexo {
 export interface LogisticaViagem {
   formadorId: string;
   formadorNome: string;
-  localPartida: string;
-  dataIda: Timestamp | null;
-  dataVolta: Timestamp | null;
-  hotel: string;
-  checkin: Timestamp | null;
-  checkout: Timestamp | null;
-  valorHospedagem?: number | null;
-  alertaLembrete?: string;
-  diasLembrete?: number;
+  // Dados do formador (para referência, podem ser preenchidos no form)
+  cpf?: string;
+  rg?: string;
+  dataNascimento?: Timestamp | null;
+  pix?: string;
+
+  // Transporte
+  valorPassagem?: number | null;
+  trecho?: string;
+
+  // Hospedagem
+  hotel?: string;
+  checkin?: Timestamp | null;
+  checkout?: Timestamp | null;
+  valorDiaria?: number | null;
+
+  // Remuneração
+  adiantamento?: number | null;
+  custosExtras?: number | null;
 }
 
 export interface Formacao {
