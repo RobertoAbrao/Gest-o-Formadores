@@ -645,37 +645,39 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     </div>
                                 </div>
                                  <Separator/>
-                                <div className="space-y-4">
+                                 <div className="space-y-4">
                                     <h4 className="font-semibold text-md">Hospedagem</h4>
                                     <FormField control={form.control} name={`logistica.${index}.hotel`} render={({ field }) => (
                                         <FormItem><FormLabel>Hotel</FormLabel><FormControl><Input placeholder="Nome do Hotel" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
-                                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                                        <FormField control={form.control} name={`logistica.${index}.checkin`} render={({ field }) => (
-                                            <FormItem className="flex flex-col"><FormLabel>Check-in</FormLabel>
-                                                <Popover><PopoverTrigger asChild><FormControl>
-                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                </PopoverContent></Popover><FormMessage />
-                                            </FormItem>
-                                        )}/>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <FormField control={form.control} name={`logistica.${index}.checkin`} render={({ field }) => (
+                                                <FormItem className="flex flex-col"><FormLabel>Check-in</FormLabel>
+                                                    <Popover><PopoverTrigger asChild><FormControl>
+                                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                    </PopoverContent></Popover><FormMessage />
+                                                </FormItem>
+                                            )}/>
                                             <FormField control={form.control} name={`logistica.${index}.checkout`} render={({ field }) => (
-                                            <FormItem className="flex flex-col"><FormLabel>Check-out</FormLabel>
-                                                <Popover><PopoverTrigger asChild><FormControl>
-                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                </PopoverContent></Popover><FormMessage />
-                                            </FormItem>
-                                        )}/>
-                                            <FormField control={form.control} name={`logistica.${index}.valorDiaria`} render={({ field }) => (
+                                                <FormItem className="flex flex-col"><FormLabel>Check-out</FormLabel>
+                                                    <Popover><PopoverTrigger asChild><FormControl>
+                                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                    </PopoverContent></Popover><FormMessage />
+                                                </FormItem>
+                                            )}/>
+                                        </div>
+                                        <FormField control={form.control} name={`logistica.${index}.valorDiaria`} render={({ field }) => (
                                             <FormItem><FormLabel>Valor da Diária (R$)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 350,50" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                         )}/>
                                     </div>
@@ -711,5 +713,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
 
     
