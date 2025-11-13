@@ -67,6 +67,10 @@ const logisticaSchema = z.object({
       z.number().optional()
     ),
     
+    valorAcertadoPeriodo: z.preprocess(
+      (a) => a ? parseFloat(String(a).replace(",", ".")) : undefined,
+      z.number().optional()
+    ),
     adiantamento: z.preprocess(
       (a) => a ? parseFloat(String(a).replace(",", ".")) : undefined,
       z.number().optional()
@@ -199,6 +203,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             checkout: toNullableDate(l.checkout),
             valorDiaria: l.valorDiaria || undefined,
             valorPassagem: l.valorPassagem || undefined,
+            valorAcertadoPeriodo: l.valorAcertadoPeriodo || undefined,
             adiantamento: l.adiantamento || undefined,
             custosExtras: l.custosExtras || undefined,
             dataNascimento: toNullableDate(l.dataNascimento),
@@ -233,6 +238,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
           checkin: null,
           checkout: null,
           valorDiaria: undefined,
+          valorAcertadoPeriodo: undefined,
           adiantamento: undefined,
           custosExtras: undefined,
         };
@@ -261,6 +267,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
             checkout: l.checkout ? Timestamp.fromDate(l.checkout) : null,
             valorDiaria: l.valorDiaria || null,
             valorPassagem: l.valorPassagem || null,
+            valorAcertadoPeriodo: l.valorAcertadoPeriodo || null,
             adiantamento: l.adiantamento || null,
             custosExtras: l.custosExtras || null,
             dataNascimento: l.dataNascimento ? Timestamp.fromDate(l.dataNascimento) : null,
@@ -332,6 +339,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     const passagem = logisticaItem.valorPassagem || 0;
     const adiantamento = logisticaItem.adiantamento || 0;
     const extras = logisticaItem.custosExtras || 0;
+    const valorAcertado = logisticaItem.valorAcertadoPeriodo || 0;
 
     const checkin = logisticaItem.checkin;
     const checkout = logisticaItem.checkout;
@@ -346,7 +354,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       }
     }
     
-    return passagem + adiantamento + extras + hospedagemTotal;
+    return passagem + adiantamento + extras + hospedagemTotal + valorAcertado;
   };
 
   return (
@@ -608,6 +616,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                 </CardTitle>
                             </CardHeader>
                              <CardContent className="space-y-6">
+                                {/* Dados Pessoais */}
                                 <div className="space-y-4">
                                     <h4 className="font-semibold text-md">Dados Pessoais</h4>
                                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -633,6 +642,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     </div>
                                 </div>
                                 <Separator/>
+                                {/* Transporte */}
                                 <div className="space-y-4">
                                      <h4 className="font-semibold text-md">Transporte</h4>
                                      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -645,9 +655,10 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     </div>
                                 </div>
                                  <Separator/>
+                                 {/* Hospedagem */}
                                  <div className="space-y-4">
                                     <h4 className="font-semibold text-md">Hospedagem</h4>
-                                    <FormField control={form.control} name={`logistica.${index}.hotel`} render={({ field }) => (
+                                     <FormField control={form.control} name={`logistica.${index}.hotel`} render={({ field }) => (
                                         <FormItem><FormLabel>Hotel</FormLabel><FormControl><Input placeholder="Nome do Hotel" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -683,9 +694,13 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     </div>
                                 </div>
                                 <Separator/>
+                                {/* Remuneração */}
                                 <div className="space-y-4">
                                     <h4 className="font-semibold text-md">Remuneração</h4>
                                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField control={form.control} name={`logistica.${index}.valorAcertadoPeriodo`} render={({ field }) => (
+                                          <FormItem><FormLabel>Valor Acertado (Período)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 2000,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
                                         <FormField control={form.control} name={`logistica.${index}.adiantamento`} render={({ field }) => (
                                             <FormItem><FormLabel>Adiantamento (Ajuda de Custo)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 1000,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                         )}/>

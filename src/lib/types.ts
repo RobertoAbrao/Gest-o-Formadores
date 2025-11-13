@@ -78,6 +78,7 @@ export interface LogisticaViagem {
   valorDiaria?: number | null;
 
   // Remuneração
+  valorAcertadoPeriodo?: number | null;
   adiantamento?: number | null;
   custosExtras?: number | null;
 }
