@@ -607,92 +607,91 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
                                     </Badge>
                                 </CardTitle>
                             </CardHeader>
-                             <CardContent>
-                                <Tabs defaultValue="transporte" className="w-full">
-                                    <TabsList className="grid w-full grid-cols-4">
-                                        <TabsTrigger value="pessoal">Dados Pessoais</TabsTrigger>
-                                        <TabsTrigger value="transporte">Transporte</TabsTrigger>
-                                        <TabsTrigger value="hospedagem">Hospedagem</TabsTrigger>
-                                        <TabsTrigger value="remuneracao">Remuneração</TabsTrigger>
-                                    </TabsList>
-                                    <TabsContent value="pessoal" className="pt-4 space-y-4">
-                                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                                          <FormField control={form.control} name={`logistica.${index}.rg`} render={({ field }) => (
-                                            <FormItem><FormLabel>RG</FormLabel><FormControl><Input placeholder="00.000.000-0" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
-                                          )}/>
-                                          <FormField control={form.control} name={`logistica.${index}.dataNascimento`} render={({ field }) => (
-                                              <FormItem className="flex flex-col"><FormLabel>Data de Nascimento</FormLabel>
-                                                  <Popover><PopoverTrigger asChild><FormControl>
-                                                  <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                      {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                  </Button>
-                                                  </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                      <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={1950} toYear={new Date().getFullYear()} initialFocus locale={ptBR}/>
-                                                  </PopoverContent></Popover><FormMessage />
-                                              </FormItem>
-                                          )}/>
-                                          <div className="md:col-span-2">
-                                              <p className="text-sm font-medium text-muted-foreground">CPF: <span className="font-mono text-foreground">{field.cpf || 'N/A'}</span></p>
-                                              <p className="text-sm font-medium text-muted-foreground">PIX: <span className="font-mono text-foreground">{field.pix || 'N/A'}</span></p>
-                                          </div>
-                                        </div>
-                                    </TabsContent>
-                                    <TabsContent value="transporte" className="pt-4 space-y-4">
-                                        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                                            <FormField control={form.control} name={`logistica.${index}.valorPassagem`} render={({ field }) => (
-                                                <FormItem><FormLabel>Valor da Passagem (R$)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 550,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                            )}/>
-                                            <FormField control={form.control} name={`logistica.${index}.trecho`} render={({ field }) => (
-                                                <FormItem><FormLabel>Trecho</FormLabel><FormControl><Input placeholder="Ex: Curitiba, PR - Barreiras, BA" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
-                                            )}/>
-                                        </div>
-                                    </TabsContent>
-                                    <TabsContent value="hospedagem" className="pt-4 space-y-4">
-                                        <FormField control={form.control} name={`logistica.${index}.hotel`} render={({ field }) => (
-                                            <FormItem><FormLabel>Hotel</FormLabel><FormControl><Input placeholder="Nome do Hotel" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                             <CardContent className="space-y-6">
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-md">Dados Pessoais</h4>
+                                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField control={form.control} name={`logistica.${index}.rg`} render={({ field }) => (
+                                        <FormItem><FormLabel>RG</FormLabel><FormControl><Input placeholder="00.000.000-0" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
                                         )}/>
-                                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-                                            <FormField control={form.control} name={`logistica.${index}.checkin`} render={({ field }) => (
-                                                <FormItem className="flex flex-col"><FormLabel>Check-in</FormLabel>
-                                                    <Popover><PopoverTrigger asChild><FormControl>
-                                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                    </PopoverContent></Popover><FormMessage />
-                                                </FormItem>
-                                            )}/>
-                                             <FormField control={form.control} name={`logistica.${index}.checkout`} render={({ field }) => (
-                                                <FormItem className="flex flex-col"><FormLabel>Check-out</FormLabel>
-                                                    <Popover><PopoverTrigger asChild><FormControl>
-                                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                    </PopoverContent></Popover><FormMessage />
-                                                </FormItem>
-                                            )}/>
-                                             <FormField control={form.control} name={`logistica.${index}.valorDiaria`} render={({ field }) => (
-                                                <FormItem><FormLabel>Valor da Diária (R$)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 350,50" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                            )}/>
+                                        <FormField control={form.control} name={`logistica.${index}.dataNascimento`} render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Data de Nascimento</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={1950} toYear={new Date().getFullYear()} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                        <div className="md:col-span-2">
+                                            <p className="text-sm font-medium text-muted-foreground">CPF: <span className="font-mono text-foreground">{field.cpf || 'N/A'}</span></p>
+                                            <p className="text-sm font-medium text-muted-foreground">PIX: <span className="font-mono text-foreground">{field.pix || 'N/A'}</span></p>
                                         </div>
-                                    </TabsContent>
-                                    <TabsContent value="remuneracao" className="pt-4 space-y-4">
-                                         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                                            <FormField control={form.control} name={`logistica.${index}.adiantamento`} render={({ field }) => (
-                                                <FormItem><FormLabel>Adiantamento (Ajuda de Custo)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 1000,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                            )}/>
-                                            <FormField control={form.control} name={`logistica.${index}.custosExtras`} render={({ field }) => (
-                                                <FormItem><FormLabel>Custos Extras</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 150,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                            )}/>
-                                         </div>
-                                    </TabsContent>
-                                </Tabs>
+                                    </div>
+                                </div>
+                                <Separator/>
+                                <div className="space-y-4">
+                                     <h4 className="font-semibold text-md">Transporte</h4>
+                                     <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField control={form.control} name={`logistica.${index}.valorPassagem`} render={({ field }) => (
+                                            <FormItem><FormLabel>Valor da Passagem (R$)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 550,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                        <FormField control={form.control} name={`logistica.${index}.trecho`} render={({ field }) => (
+                                            <FormItem><FormLabel>Trecho</FormLabel><FormControl><Input placeholder="Ex: Curitiba, PR - Barreiras, BA" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                    </div>
+                                </div>
+                                 <Separator/>
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-md">Hospedagem</h4>
+                                    <FormField control={form.control} name={`logistica.${index}.hotel`} render={({ field }) => (
+                                        <FormItem><FormLabel>Hotel</FormLabel><FormControl><Input placeholder="Nome do Hotel" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                                        <FormField control={form.control} name={`logistica.${index}.checkin`} render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Check-in</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                            <FormField control={form.control} name={`logistica.${index}.checkout`} render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Check-out</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                            <FormField control={form.control} name={`logistica.${index}.valorDiaria`} render={({ field }) => (
+                                            <FormItem><FormLabel>Valor da Diária (R$)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 350,50" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                    </div>
+                                </div>
+                                <Separator/>
+                                <div className="space-y-4">
+                                    <h4 className="font-semibold text-md">Remuneração</h4>
+                                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                        <FormField control={form.control} name={`logistica.${index}.adiantamento`} render={({ field }) => (
+                                            <FormItem><FormLabel>Adiantamento (Ajuda de Custo)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 1000,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                        <FormField control={form.control} name={`logistica.${index}.custosExtras`} render={({ field }) => (
+                                            <FormItem><FormLabel>Custos Extras</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Ex: 150,00" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                    </div>
+                                </div>
                              </CardContent>
                         </Card>
                       )
@@ -712,3 +711,5 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     </Form>
   );
 }
+
+    
