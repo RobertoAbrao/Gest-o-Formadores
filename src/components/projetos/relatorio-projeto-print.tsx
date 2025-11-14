@@ -196,9 +196,6 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-200">
         <AppLogo textClassName='text-3xl' iconClassName='h-10 w-10' />
-        {brasaoAnexo ? (
-            <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-20 w-auto object-contain"/>
-        ) : null}
         <div className='text-right'>
             <h2 className="text-2xl font-bold">Linha do Tempo</h2>
             <p className="text-sm text-gray-500">Data de Emissão: {dataEmissao}</p>
@@ -208,13 +205,18 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
       <main className="mt-8 space-y-10">
         <section>
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes do Projeto</h3>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <p><strong>Município:</strong> {projeto.municipio}</p>
-            <div><strong>UF:</strong> <Badge variant="outline" className="text-sm">{projeto.uf}</Badge></div>
-            <p><strong>Versão:</strong> {projeto.versao || 'N/A'}</p>
-            <p><strong>Material:</strong> {projeto.material || 'N/A'}</p>
-            <p><strong>Alunos:</strong> {projeto.qtdAlunos || 'N/A'}</p>
-            <p><strong>Formações Pendentes:</strong> {projeto.formacoesPendentes || '0'}</p>
+          <div className="flex items-start justify-between">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              <p><strong>Município:</strong> {projeto.municipio}</p>
+              <div><strong>UF:</strong> <Badge variant="outline" className="text-sm">{projeto.uf}</Badge></div>
+              <p><strong>Versão:</strong> {projeto.versao || 'N/A'}</p>
+              <p><strong>Material:</strong> {projeto.material || 'N/A'}</p>
+              <p><strong>Alunos:</strong> {projeto.qtdAlunos || 'N/A'}</p>
+              <p><strong>Formações Pendentes:</strong> {projeto.formacoesPendentes || '0'}</p>
+            </div>
+             {brasaoAnexo ? (
+                <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-24 w-auto object-contain"/>
+            ) : null}
           </div>
         </section>
         
