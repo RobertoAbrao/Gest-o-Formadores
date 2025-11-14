@@ -198,11 +198,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
         <AppLogo textClassName='text-3xl' iconClassName='h-10 w-10' />
         {brasaoAnexo ? (
             <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-20 w-auto object-contain"/>
-        ) : (
-             <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded-md">
-                <Shield className="h-10 w-10 text-gray-400"/>
-             </div>
-        )}
+        ) : null}
         <div className='text-right'>
             <h2 className="text-2xl font-bold">Linha do Tempo</h2>
             <p className="text-sm text-gray-500">Data de Emissão: {dataEmissao}</p>
