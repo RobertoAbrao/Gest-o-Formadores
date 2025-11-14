@@ -205,18 +205,22 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
       <main className="mt-8 space-y-10">
         <section>
           <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Detalhes do Projeto</h3>
-          <div className="flex items-start justify-between">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              <p><strong>Município:</strong> {projeto.municipio}</p>
-              <div><strong>UF:</strong> <Badge variant="outline" className="text-sm">{projeto.uf}</Badge></div>
+           <div className="flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                     {brasaoAnexo ? (
+                        <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-20 w-auto object-contain"/>
+                    ) : null}
+                    <div>
+                        <p className="text-lg font-bold">{projeto.municipio}</p>
+                        <Badge variant="outline" className="text-sm">{projeto.uf}</Badge>
+                    </div>
+                </div>
+            </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mt-4">
               <p><strong>Versão:</strong> {projeto.versao || 'N/A'}</p>
               <p><strong>Material:</strong> {projeto.material || 'N/A'}</p>
               <p><strong>Alunos:</strong> {projeto.qtdAlunos || 'N/A'}</p>
               <p><strong>Formações Pendentes:</strong> {projeto.formacoesPendentes || '0'}</p>
-            </div>
-             {brasaoAnexo ? (
-                <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-24 w-auto object-contain"/>
-            ) : null}
           </div>
         </section>
         
