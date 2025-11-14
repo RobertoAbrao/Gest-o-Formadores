@@ -76,7 +76,7 @@ export interface LogisticaViagem {
   checkin?: Timestamp | null;
   checkout?: Timestamp | null;
   valorDiaria?: number | null;
-
+  
   // Remuneração
   valorAcertadoPeriodo?: number | null;
   adiantamento?: number | null;
@@ -198,6 +198,7 @@ export interface ProjetoImplatancao {
   uf: string;
   versao?: string;
   material?: string;
+  brasaoId?: string;
   dataMigracao: Timestamp | null;
   anexo?: { nome: string; url: string; dataUpload: Timestamp; }; // Campo legado
   qtdAlunos?: number;

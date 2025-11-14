@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -101,6 +101,7 @@ const formSchema = z.object({
   uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   versao: z.string().optional(),
   material: z.string().optional(),
+  brasaoId: z.string().optional(),
   dataMigracao: z.date().nullable(),
   anexo: z.any().optional(), // Campo legado
   dataImplantacao: z.date().nullable(),
@@ -199,7 +200,7 @@ type FileUploadKey =
   | 'devolutivas.d2'
   | 'devolutivas.d3'
   | 'devolutivas.d4'
-  | 'migracao'
+  | 'brasao'
   | `eventosAdicionais.${number}`;
 
 export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
@@ -255,6 +256,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       uf: projeto?.uf || '',
       versao: projeto?.versao || '',
       material: projeto?.material || '',
+      brasaoId: projeto?.brasaoId || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       anexo: projeto?.anexo || null,
       dataImplantacao: toDate(projeto?.dataImplantacao),
@@ -289,6 +291,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   });
 
   const selectedUf = form.watch('uf');
+  const brasaoId = form.watch('brasaoId');
 
   useEffect(() => {
     if (!selectedUf) {
@@ -346,7 +349,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
           return;
       }
       
-      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
+      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : etapa === 'brasao' ? 'brasaoId' : `${etapa}.anexosIds`;
       
       const dataUrl = await fileToDataURL(file);
       const novoAnexo: Omit<Anexo, 'id'> = { 
@@ -358,8 +361,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       };
       const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
   
-      const currentAnexosIds = form.getValues(anexoPath as any) || [];
-      form.setValue(anexoPath as any, [...currentAnexosIds, anexoDocRef.id]);
+      if (etapa === 'brasao') {
+        form.setValue('brasaoId', anexoDocRef.id);
+      } else {
+        const currentAnexosIds = form.getValues(anexoPath as any) || [];
+        form.setValue(anexoPath as any, [...currentAnexosIds, anexoDocRef.id]);
+      }
+      
       setAllAnexos(prev => [...prev, { ...novoAnexo, id: anexoDocRef.id }]);
       
       toast({ title: "Sucesso", description: "Anexo enviado." });
@@ -374,16 +382,23 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     }
   };
 
-  const handleDeleteAnexo = async (anexoIdToDelete: string, etapa: FileUploadKey) => {
+  const handleDeleteAnexo = async (anexoIdToDelete: string, etapa: FileUploadKey | null) => {
     if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
 
-    setUploading(etapa);
+    if (etapa) setUploading(etapa);
     try {
         await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
         
-        const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
-        const currentAnexosIds = form.getValues(anexoPath as any) || [];
-        form.setValue(anexoPath as any, currentAnexosIds.filter((id: string) => id !== anexoIdToDelete));
+        if (etapa) {
+          const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : etapa === 'brasao' ? 'brasaoId' : `${etapa}.anexosIds`;
+          if (etapa === 'brasao') {
+            form.setValue('brasaoId', undefined);
+          } else {
+            const currentAnexosIds = form.getValues(anexoPath as any) || [];
+            form.setValue(anexoPath as any, currentAnexosIds.filter((id: string) => id !== anexoIdToDelete));
+          }
+        }
+        
         setAllAnexos(prev => prev.filter(anexo => anexo.id !== anexoIdToDelete));
 
         toast({ title: "Sucesso", description: "Anexo excluído." });
@@ -392,7 +407,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         console.error("Erro ao excluir anexo:", error);
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir o anexo.' });
     } finally {
-        setUploading(null);
+        if (etapa) setUploading(null);
     }
   };
 
@@ -598,6 +613,10 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
 };
 
   const getAnexosForEtapa = (etapa: FileUploadKey): Anexo[] => {
+    if (etapa === 'brasao') {
+      const id = form.getValues('brasaoId');
+      return allAnexos.filter(anexo => anexo.id === id);
+    }
     const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
     const ids = form.getValues(anexoPath as any) || [];
     return allAnexos.filter(anexo => ids.includes(anexo.id));
@@ -627,6 +646,8 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
     });
      toast({ title: `Dados da Devolutiva ${devolutivaNumber} limpos.`, description: 'A formação foi desvinculada e os anexos foram mantidos.' });
   }
+
+  const brasaoAnexo = allAnexos.find(a => a.id === brasaoId);
 
   return (
     <Form {...form}>
@@ -683,6 +704,23 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     <FormMessage />
                 </FormItem>
             )}/>
+          </div>
+          <div className="space-y-2">
+            <FormLabel>Brasão do Município</FormLabel>
+            {brasaoAnexo ? (
+              <div className="flex items-center gap-4">
+                <img src={brasaoAnexo.url} alt="Preview do Brasão" className="h-16 w-16 rounded-md object-contain border p-1" />
+                <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteAnexo(brasaoAnexo.id!, 'brasao')}>
+                  <Trash2 className="mr-2 h-4 w-4"/> Remover Brasão
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" onClick={() => handleAnexoTrigger('brasao')} disabled={uploading === 'brasao' || !isEditMode}>
+                {uploading === 'brasao' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Shield className="mr-2 h-4 w-4" />}
+                Enviar Brasão
+              </Button>
+            )}
+            {!isEditMode && <FormDescription className="text-xs">Salve o projeto primeiro para poder enviar um brasão.</FormDescription>}
           </div>
         </div>
 
@@ -742,7 +780,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                  {getAnexosForEtapa('implantacao').map(anexo => (
                     <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                         <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'implantacao')} disabled={uploading === 'implantacao'}>
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'implantacao')} disabled={uploading === 'implantacao'}>
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                     </div>
@@ -927,7 +965,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         {getAnexosForEtapa(etapaKey).map(anexo => (
                             <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                                 <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
                                     <Trash2 className="h-4 w-4"/>
                                 </Button>
                             </div>
@@ -970,7 +1008,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                {getAnexosForEtapa('diagnostica').map(anexo => (
                     <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                         <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, 'diagnostica')} disabled={uploading === 'diagnostica'}>
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'diagnostica')} disabled={uploading === 'diagnostica'}>
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                     </div>
@@ -1022,7 +1060,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     {getAnexosForEtapa(etapaKey).map(anexo => (
                         <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                             <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
                                 <Trash2 className="h-4 w-4"/>
                             </Button>
                         </div>
@@ -1157,7 +1195,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                             {getAnexosForEtapa(etapaKey).map(anexo => (
                                 <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                                     <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id, etapaKey)} disabled={uploading === etapaKey}>
+                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
                                         <Trash2 className="h-4 w-4"/>
                                     </Button>
                                 </div>

@@ -5,7 +5,7 @@ import type { ProjetoImplatancao, Anexo } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star } from 'lucide-react';
+import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -119,6 +119,8 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
     return { formadores, detalhes: devolutiva.detalhes || '' };
   }
 
+  const brasaoAnexo = anexos.find(a => a.id === projeto.brasaoId);
+
   const allMilestones = [
     {
         icon: UploadCloud,
@@ -194,6 +196,13 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
       <header className="flex justify-between items-center pb-4 border-b-2 border-gray-200">
         <AppLogo textClassName='text-3xl' iconClassName='h-10 w-10' />
+        {brasaoAnexo ? (
+            <img src={brasaoAnexo.url} alt="Brasão do Município" className="h-20 w-auto object-contain"/>
+        ) : (
+             <div className="h-20 w-20 flex items-center justify-center bg-gray-100 rounded-md">
+                <Shield className="h-10 w-10 text-gray-400"/>
+             </div>
+        )}
         <div className='text-right'>
             <h2 className="text-2xl font-bold">Linha do Tempo</h2>
             <p className="text-sm text-gray-500">Data de Emissão: {dataEmissao}</p>
