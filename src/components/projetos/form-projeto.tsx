@@ -613,7 +613,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   };
 
   const handleClearDevolutiva = (devolutivaNumber: 1 | 2 | 3 | 4) => {
-    if (!window.confirm(`Tem certeza que deseja limpar todos os dados da Devolutiva ${devolutivaNumber}?`)) return;
+    if (!window.confirm(`Tem certeza que deseja limpar todos os dados da Devolutiva ${devolutivaNumber}, incluindo o vínculo com a formação?`)) return;
     const etapaKey = `devolutivas.d${devolutivaNumber}` as const;
     form.setValue(etapaKey, {
       dataInicio: null,
@@ -621,12 +621,11 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       detalhes: '',
       formadores: [],
       ok: false,
-      // Keep formacaoId and formacaoTitulo to avoid breaking links
-      formacaoId: form.getValues(etapaKey).formacaoId,
-      formacaoTitulo: form.getValues(etapaKey).formacaoTitulo,
-      anexosIds: form.getValues(etapaKey).anexosIds // Keep annexes
+      formacaoId: undefined, // Desvincular formação
+      formacaoTitulo: undefined,
+      anexosIds: form.getValues(etapaKey).anexosIds // Manter anexos
     });
-     toast({ title: `Dados da Devolutiva ${devolutivaNumber} limpos.`, description: 'Anexos não foram removidos.' });
+     toast({ title: `Dados da Devolutiva ${devolutivaNumber} limpos.`, description: 'A formação foi desvinculada e os anexos foram mantidos.' });
   }
 
   return (
