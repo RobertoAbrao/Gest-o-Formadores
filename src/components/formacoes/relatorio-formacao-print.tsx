@@ -160,7 +160,7 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                                 <TableCell>
                                     <div className='flex items-center gap-2'>
                                         {!isImage && getFileIcon(anexo.nome)}
-                                        <span className='truncate'>{anexo.nome}</span>
+                                        <span className='truncate'>{anexo.nome.replace(/\.[^/.]+$/, "")}</span>
                                     </div>
                                     {isImage && <img src={anexo.url} alt={anexo.nome} className="max-w-xs rounded-md mt-2 border p-1" />}
                                 </TableCell>
