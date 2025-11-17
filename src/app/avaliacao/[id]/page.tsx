@@ -42,8 +42,8 @@ const funcoes = [
 
 const etapasEnsino = [
     'Educação Infantil',
-    'Ensino Fundamental I - Anos Iniciais',
-    'Ensino Fundamental I - Anos Finais',
+    'Ensino Fundamental - Anos Iniciais',
+    'Ensino Fundamental - Anos Finais',
     'Ensino Médio',
     'EJA',
 ];
@@ -644,7 +644,3 @@ export default function AvaliacaoPage() {
     </div>
   );
 }
-
-    
-
-  
