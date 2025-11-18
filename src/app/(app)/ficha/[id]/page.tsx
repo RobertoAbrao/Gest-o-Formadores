@@ -297,7 +297,6 @@ export default function FichaDevolutivaPage() {
           .print-only { visibility: visible !important; display: inline !important; }
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
           .editable-textarea {
-             border: 1px dashed #ccc;
              padding: 8px;
              width: 100%;
              white-space: pre-wrap; /* Preserve line breaks */
