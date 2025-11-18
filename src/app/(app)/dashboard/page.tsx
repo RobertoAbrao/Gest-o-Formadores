@@ -299,7 +299,7 @@ export default function DashboardPage() {
 
   const generateEmailBody = (upcoming: CalendarEvent[], yesterday: CalendarEvent[], followUps: Formacao[]): string => {
     let body = "Olá equipe,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
-
+  
     const generateSection = (title: string, data: any[], formatter: (item: any) => string) => {
         if (data.length === 0) return "";
         let section = `--- ${title.toUpperCase()} ---\n`;
@@ -308,31 +308,31 @@ export default function DashboardPage() {
         });
         return section + "\n";
     };
-
+  
     body += generateSection(
         "Próximos Eventos (7 dias)",
         upcoming,
         (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
     );
-
+  
     body += generateSection(
         "Resumo de Ontem",
         yesterday,
         (event: CalendarEvent) => `- ${event.title} (${event.details})`
     );
-
+  
     body += generateSection(
         "Ações de Acompanhamento",
         followUps,
         (formacao: Formacao) => `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}`
     );
-
+  
     body += "Atenciosamente,\nPortal de Gestão de Formadores";
-    return encodeURIComponent(body);
+    return body;
   };
   
   const emailHref = useMemo(() => {
-    const subject = encodeURIComponent("Resumo de Eventos e Acompanhamento");
+    const subject = "Resumo de Eventos e Acompanhamento";
     const body = generateEmailBody(upcomingEvents, yesterdayEvents, followUpActions);
     const recipients = [
         "alessandra@editoralt.com.br",
@@ -341,8 +341,14 @@ export default function DashboardPage() {
         "irene@editoralt.com.br",
         "kellem@editoralt.com.br"
     ];
-    const to = recipients.join(',');
-    return `mailto:${to}?subject=${subject}&body=${body}`;
+    
+    const params = new URLSearchParams({
+        to: recipients.join(','),
+        su: subject,
+        body: body,
+    });
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
   }, [upcomingEvents, yesterdayEvents, followUpActions]);
 
 
@@ -412,7 +418,7 @@ export default function DashboardPage() {
                             <AlertTitle>Eventos e Acompanhamento</AlertTitle>
                         </div>
                         <Button variant="outline" size="sm" asChild className="border-amber-400/50 bg-amber-50/50 hover:bg-amber-100/80 -mt-1">
-                            <a href={emailHref}>
+                            <a href={emailHref} target="_blank" rel="noopener noreferrer">
                                 <Mail className="mr-2 h-4 w-4"/>
                                 Enviar Resumo
                             </a>
@@ -742,3 +748,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
