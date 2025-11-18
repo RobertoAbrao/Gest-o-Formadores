@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
@@ -297,6 +297,44 @@ export default function DashboardPage() {
     }
   }
 
+  const generateEmailBody = (upcoming: CalendarEvent[], yesterday: CalendarEvent[], followUps: Formacao[]): string => {
+    let body = "Olá Alessandra,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
+
+    if (upcoming.length > 0) {
+        body += "--- PRÓXIMOS EVENTOS (7 dias) ---\n";
+        upcoming.forEach(event => {
+            const dateStr = format(event.date, 'dd/MM/yyyy');
+            body += `- ${dateStr}: ${event.title} (${event.details})\n`;
+        });
+        body += "\n";
+    }
+
+    if (yesterday.length > 0) {
+        body += "--- RESUMO DE ONTEM ---\n";
+        yesterday.forEach(event => {
+            body += `- ${event.title} (${event.details})\n`;
+        });
+        body += "\n";
+    }
+    
+    if (followUps.length > 0) {
+        body += "--- AÇÕES DE ACOMPANHAMENTO ---\n";
+        followUps.forEach(formacao => {
+            body += `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}\n`;
+        });
+        body += "\n";
+    }
+
+    body += "Atenciosamente,\nPortal de Gestão de Formadores";
+    return encodeURIComponent(body);
+  };
+  
+  const emailHref = useMemo(() => {
+    const subject = encodeURIComponent("Resumo de Eventos e Acompanhamento");
+    const body = generateEmailBody(upcomingEvents, yesterdayEvents, followUpActions);
+    return `mailto:alessandra@editoralt.com.br?subject=${subject}&body=${body}`;
+  }, [upcomingEvents, yesterdayEvents, followUpActions]);
+
 
   const modifiers = {
     formacao: eventDaysByType['formacao'] || [],
@@ -359,7 +397,17 @@ export default function DashboardPage() {
             {(yesterdayEvents.length > 0 || upcomingEvents.length > 0) && (
                 <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
                     <BellRing className="h-4 w-4" />
-                    <AlertTitle>Eventos e Acompanhamento</AlertTitle>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <AlertTitle>Eventos e Acompanhamento</AlertTitle>
+                        </div>
+                        <Button variant="outline" size="sm" asChild className="border-amber-400/50 bg-amber-50/50 hover:bg-amber-100/80 -mt-1">
+                            <a href={emailHref}>
+                                <Mail className="mr-2 h-4 w-4"/>
+                                Enviar Resumo
+                            </a>
+                        </Button>
+                    </div>
                     <AlertDescription>
                         {/* Eventos da Semana */}
                         {upcomingEvents.length > 0 && (
@@ -684,6 +732,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
 
