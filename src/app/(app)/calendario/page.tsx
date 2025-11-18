@@ -155,42 +155,74 @@ export default function CalendarioPage() {
   };
 
   const cronogramaData = useMemo<CronogramaItem[]>(() => {
-    const eventsByTooltip: Record<string, Date[]> = {};
+    const eventsByTooltip: Record<string, { dates: Date[], startDate: Date }> = {};
 
+    // Agrupa as datas por evento (tooltip)
     Object.entries(events).forEach(([dateString, event]) => {
       if (event.tooltip) {
         if (!eventsByTooltip[event.tooltip]) {
-          eventsByTooltip[event.tooltip] = [];
+          eventsByTooltip[event.tooltip] = { dates: [], startDate: new Date(dateString + 'T12:00:00') };
         }
-        eventsByTooltip[event.tooltip].push(new Date(dateString + 'T12:00:00'));
+        const date = new Date(dateString + 'T12:00:00');
+        eventsByTooltip[event.tooltip].dates.push(date);
+        // Atualiza a data de início se a data atual for anterior
+        if (date < eventsByTooltip[event.tooltip].startDate) {
+          eventsByTooltip[event.tooltip].startDate = date;
+        }
       }
     });
+    
+    // Filtra apenas os eventos que são relevantes para o cronograma
+    const relevantEventNames = ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'];
+    const filteredEvents = Object.entries(eventsByTooltip).filter(([tooltip]) => relevantEventNames.includes(tooltip));
 
-    const eventDates: Record<string, string> = {};
-    Object.entries(eventsByTooltip).forEach(([tooltip, dates]) => {
-      if (dates.length === 0) return;
-      
+
+    // Ordena os eventos pela data de início
+    const sortedEvents = filteredEvents.sort(([, a], [, b]) => {
+      return a.startDate.getTime() - b.startDate.getTime();
+    });
+    
+    // Formata os eventos ordenados para exibição
+    const data: CronogramaItem[] = sortedEvents.map(([tooltip, { dates }]) => {
       const sortedDates = dates.sort((a, b) => a.getTime() - b.getTime());
       const startDate = sortedDates[0];
       const endDate = sortedDates[sortedDates.length - 1];
-      
+      let dataSugerida: string;
+
       if (startDate.getTime() === endDate.getTime()) {
-        eventDates[tooltip] = format(startDate, 'dd/MM/yyyy');
+        dataSugerida = format(startDate, 'dd/MM/yyyy');
       } else {
-        eventDates[tooltip] = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
+        dataSugerida = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
+      }
+      
+      return {
+        evento: tooltip,
+        dataSugerida: dataSugerida,
+      };
+    });
+
+    // Garante que todos os eventos relevantes estejam na lista, mesmo que sem data
+    relevantEventNames.forEach(eventName => {
+      if (!data.some(item => item.evento === eventName)) {
+        data.push({ evento: eventName, dataSugerida: 'A definir' });
       }
     });
 
-    const data: CronogramaItem[] = [];
-    ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'].forEach(eventName => {
-      data.push({
-        evento: eventName,
-        dataSugerida: eventDates[eventName] || 'A definir',
-      });
+    // Re-ordena para garantir que os itens "A definir" fiquem no final, mantendo a ordem original entre eles
+    return data.sort((a, b) => {
+        const aIsDefined = a.dataSugerida !== 'A definir';
+        const bIsDefined = b.dataSugerida !== 'A definir';
+        if (aIsDefined && !bIsDefined) return -1;
+        if (!aIsDefined && bIsDefined) return 1;
+        if (!aIsDefined && !bIsDefined) {
+            return relevantEventNames.indexOf(a.evento) - relevantEventNames.indexOf(b.evento);
+        }
+        // Se ambos têm data, a ordenação inicial já foi feita.
+        return 0;
     });
 
-    return data;
   }, [events]);
+
 
   const DayContent = (props: { date: Date }) => {
       const dateString = props.date.toISOString().split('T')[0];
