@@ -332,7 +332,8 @@ export default function DashboardPage() {
   const emailHref = useMemo(() => {
     const subject = encodeURIComponent("Resumo de Eventos e Acompanhamento");
     const body = generateEmailBody(upcomingEvents, yesterdayEvents, followUpActions);
-    return `mailto:alessandra@editoralt.com.br?subject=${subject}&body=${body}`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=alessandra@editoralt.com.br&su=${subject}&body=${body}`;
+    return gmailUrl;
   }, [upcomingEvents, yesterdayEvents, followUpActions]);
 
 
@@ -402,7 +403,7 @@ export default function DashboardPage() {
                             <AlertTitle>Eventos e Acompanhamento</AlertTitle>
                         </div>
                         <Button variant="outline" size="sm" asChild className="border-amber-400/50 bg-amber-50/50 hover:bg-amber-100/80 -mt-1">
-                            <a href={emailHref}>
+                            <a href={emailHref} target="_blank" rel="noopener noreferrer">
                                 <Mail className="mr-2 h-4 w-4"/>
                                 Enviar Resumo
                             </a>
@@ -732,6 +733,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
 
