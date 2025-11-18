@@ -81,7 +81,8 @@ export default function FichaDevolutivaPage() {
   const [error, setError] = useState<string | null>(null);
 
   const initializeDefaultState = (formacaoData: Formacao, formadoresData: Formador[]) => {
-      setIntroducao(`Prezadas Diretoria de Formação e Equipe Pedagógica,\nInformamos a agenda${modalidade === 'online' ? ' e os links de acesso' : ''} para a formação "${formacaoData.titulo}", conforme o cronograma abaixo.`);
+      const textoModalidade = modalidade === 'online' ? ' e os links de acesso' : '';
+      setIntroducao(`Prezadas Diretoria de Formação e Equipe Pedagógica,\nInformamos a agenda${textoModalidade} para a formação "${formacaoData.titulo}", conforme o cronograma abaixo.`);
       setEndereco('Endereço (Anos Iniciais): Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA\nEndereço (Anos Finais): Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA');
 
       const initialAgendas: AgendasState = {};
