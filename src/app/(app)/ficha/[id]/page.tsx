@@ -37,6 +37,27 @@ const DIAS_DA_SEMANA = [
     'Domingo',
 ];
 
+// Componente para renderizar texto com links
+const LinkifiedText = ({ text }: { text: string }) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return (
+        <>
+            {parts.map((part, i) =>
+                urlRegex.test(part) ? (
+                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {part}
+                    </a>
+                ) : (
+                    <span key={i}>{part}</span>
+                )
+            )}
+        </>
+    );
+};
+
+
 export default function FichaDevolutivaPage() {
   const params = useParams();
   const formacaoId = params.id as string;
@@ -275,6 +296,12 @@ export default function FichaDevolutivaPage() {
           .no-print { display: none !important; }
           .print-only { visibility: visible !important; display: inline !important; }
           .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
+          .editable-textarea {
+             border: 1px dashed #ccc;
+             padding: 8px;
+             width: 100%;
+             white-space: pre-wrap; /* Preserve line breaks */
+          }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
           .print-table { border-collapse: collapse; width: 100%; }
         }
@@ -318,8 +345,9 @@ export default function FichaDevolutivaPage() {
                          <textarea
                            value={introducao}
                            onChange={(e) => setIntroducao(e.target.value)}
-                           className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px]"
+                           className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px] no-print"
                          />
+                         <div className="hidden print-only editable-textarea">{introducao}</div>
                     </section>
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
@@ -349,8 +377,9 @@ export default function FichaDevolutivaPage() {
                               <textarea
                                 value={endereco}
                                 onChange={(e) => setEndereco(e.target.value)}
-                                className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px]"
+                                className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px] no-print"
                               />
+                               <div className="hidden print-only editable-textarea">{endereco}</div>
                         </section>
                     )}
 
@@ -408,9 +437,26 @@ export default function FichaDevolutivaPage() {
                                         <TableBody>
                                             {linksOnline.map((link, index) => (
                                                 <TableRow key={index}>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => handleLinkChange(index, 'anoArea', e.currentTarget.textContent || '')}>{link.anoArea}</TableCell>
+                                                    <TableCell>
+                                                      <input
+                                                          value={link.anoArea}
+                                                          onChange={(e) => handleLinkChange(index, 'anoArea', e.target.value)}
+                                                          className="w-full text-sm p-1 border-b border-dashed no-print"
+                                                      />
+                                                      <span className="hidden print-only">{link.anoArea}</span>
+                                                    </TableCell>
                                                     <TableCell>{link.formadorNome}</TableCell>
-                                                    <TableCell className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => handleLinkChange(index, 'linkUrl', e.currentTarget.textContent || '')}>{link.linkUrl}</TableCell>
+                                                    <TableCell>
+                                                        <textarea
+                                                            value={link.linkUrl}
+                                                            onChange={(e) => handleLinkChange(index, 'linkUrl', e.target.value)}
+                                                            className="w-full text-sm p-1 border-b border-dashed no-print min-h-[60px]"
+                                                            style={{ whiteSpace: 'pre-wrap' }}
+                                                        />
+                                                        <div className="hidden print-only whitespace-pre-wrap">
+                                                            <LinkifiedText text={link.linkUrl} />
+                                                        </div>
+                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
