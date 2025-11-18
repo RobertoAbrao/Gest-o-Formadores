@@ -295,7 +295,7 @@ export default function FichaDevolutivaPage() {
           .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; }
           .no-print { display: none !important; }
           .print-only { visibility: visible !important; display: inline !important; }
-          .editable-field { border-bottom: 1px dashed #ccc; padding: 2px; }
+          .editable-field { padding: 2px; }
           .editable-textarea {
              padding: 8px;
              width: 100%;
