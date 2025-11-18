@@ -298,32 +298,34 @@ export default function DashboardPage() {
   }
 
   const generateEmailBody = (upcoming: CalendarEvent[], yesterday: CalendarEvent[], followUps: Formacao[]): string => {
-    let body = "Olá Alessandra,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
+    let body = "Olá equipe,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
 
-    if (upcoming.length > 0) {
-        body += "--- PRÓXIMOS EVENTOS (7 dias) ---\n";
-        upcoming.forEach(event => {
-            const dateStr = format(event.date, 'dd/MM/yyyy');
-            body += `- ${dateStr}: ${event.title} (${event.details})\n`;
+    const generateSection = (title: string, data: any[], formatter: (item: any) => string) => {
+        if (data.length === 0) return "";
+        let section = `--- ${title.toUpperCase()} ---\n`;
+        data.forEach(item => {
+            section += `${formatter(item)}\n`;
         });
-        body += "\n";
-    }
+        return section + "\n";
+    };
 
-    if (yesterday.length > 0) {
-        body += "--- RESUMO DE ONTEM ---\n";
-        yesterday.forEach(event => {
-            body += `- ${event.title} (${event.details})\n`;
-        });
-        body += "\n";
-    }
-    
-    if (followUps.length > 0) {
-        body += "--- AÇÕES DE ACOMPANHAMENTO ---\n";
-        followUps.forEach(formacao => {
-            body += `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}\n`;
-        });
-        body += "\n";
-    }
+    body += generateSection(
+        "Próximos Eventos (7 dias)",
+        upcoming,
+        (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
+    );
+
+    body += generateSection(
+        "Resumo de Ontem",
+        yesterday,
+        (event: CalendarEvent) => `- ${event.title} (${event.details})`
+    );
+
+    body += generateSection(
+        "Ações de Acompanhamento",
+        followUps,
+        (formacao: Formacao) => `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}`
+    );
 
     body += "Atenciosamente,\nPortal de Gestão de Formadores";
     return encodeURIComponent(body);
@@ -332,8 +334,15 @@ export default function DashboardPage() {
   const emailHref = useMemo(() => {
     const subject = encodeURIComponent("Resumo de Eventos e Acompanhamento");
     const body = generateEmailBody(upcomingEvents, yesterdayEvents, followUpActions);
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=alessandra@editoralt.com.br&su=${subject}&body=${body}`;
-    return gmailUrl;
+    const recipients = [
+        "alessandra@editoralt.com.br",
+        "amaranta@editoralt.com.br",
+        "assessoria@editoralt.com.br",
+        "irene@editoralt.com.br",
+        "kellem@editoralt.com.br"
+    ];
+    const to = recipients.join(',');
+    return `mailto:${to}?subject=${subject}&body=${body}`;
   }, [upcomingEvents, yesterdayEvents, followUpActions]);
 
 
@@ -403,7 +412,7 @@ export default function DashboardPage() {
                             <AlertTitle>Eventos e Acompanhamento</AlertTitle>
                         </div>
                         <Button variant="outline" size="sm" asChild className="border-amber-400/50 bg-amber-50/50 hover:bg-amber-100/80 -mt-1">
-                            <a href={emailHref} target="_blank" rel="noopener noreferrer">
+                            <a href={emailHref}>
                                 <Mail className="mr-2 h-4 w-4"/>
                                 Enviar Resumo
                             </a>
@@ -733,15 +742,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
