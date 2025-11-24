@@ -37,6 +37,8 @@ import { Progress } from '../ui/progress';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import Link from 'next/link';
+import { RelatorioFormacaoPrint } from './relatorio-formacao-print';
+import { RelatorioFormacaoCompletoPrint } from './relatorio-formacao-completo-print';
 
 
 interface DetalhesFormacaoProps {
@@ -126,6 +128,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [printContent, setPrintContent] = useState<'summary' | 'full'>('summary');
   
   const getFileIcon = (fileName: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase();
@@ -457,6 +460,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     setSelectedDespesa(despesa);
     setIsDespesaDialogOpen(true);
   }
+
+  const handlePrint = (type: 'summary' | 'full') => {
+    setPrintContent(type);
+    setTimeout(() => {
+        window.print();
+    }, 100);
+  };
   
   const AvaliacaoSummaryComponent = ({ summary, avaliacoes, formadorName }: { summary: AvaliacaoSummary | null, avaliacoes: Avaliacao[], formadorName?: string}) => {
     if (!summary) return null;
@@ -607,7 +617,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             </CardContent>
         </Card>
         <Separator />
-         <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-lg">Respostas Individuais</h4>
+          <Button variant="outline" size="sm" onClick={() => handlePrint('full')}>
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir Relatório Completo
+          </Button>
+        </div>
          <Accordion type="multiple" className="w-full space-y-2">
             {avaliacoes.map(avaliacao => (
                 <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md">
@@ -693,6 +709,31 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   return (
     <ScrollArea className="max-h-[80vh]">
       <div className='p-1'>
+        {/* Hidden printable area */}
+        <div className="hidden print-only">
+          {printContent === 'summary' && (
+            <RelatorioFormacaoPrint
+              formacao={formacao}
+              formadores={formadores}
+              anexos={anexos}
+              despesas={despesas}
+              avaliacoes={avaliacoes}
+              summary={avaliacaoSummaryGeral}
+            />
+          )}
+          {printContent === 'full' && (
+            <RelatorioFormacaoCompletoPrint
+              formacao={formacao}
+              formadores={formadores}
+              anexos={anexos}
+              despesas={despesas}
+              avaliacoes={avaliacoes}
+              summary={avaliacaoSummaryGeral}
+            />
+          )}
+        </div>
+        
+        {/* Visible content */}
         <Tabs defaultValue="info" className="p-4">
             <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="info">Informações Gerais</TabsTrigger>
@@ -709,11 +750,9 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
-                            <Button variant="outline" size="sm" asChild>
-                                <Link href={`/relatorio/${formacao.id}`} target="_blank">
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Imprimir Relatório
-                                </Link>
+                            <Button variant="outline" size="sm" onClick={() => handlePrint('summary')}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Imprimir Relatório
                             </Button>
                         </div>
                         <Separator />
