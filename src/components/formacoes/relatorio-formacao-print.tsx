@@ -272,20 +272,24 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Participante</TableHead>
+                                    <TableHead>Data</TableHead>
                                     <TableHead>Função</TableHead>
                                     <TableHead>Avaliação (Formador)</TableHead>
                                     <TableHead>Avaliação (Editora)</TableHead>
                                     <TableHead>Observações</TableHead>
+                                    <TableHead>Interesse</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {avaliacoes.map((avaliacao) => (
                                     <TableRow key={avaliacao.id}>
                                         <TableCell className="font-medium text-xs">{avaliacao.nomeCompleto}</TableCell>
+                                        <TableCell className="text-xs">{formatDate(avaliacao.dataCriacao, { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                                         <TableCell className="text-xs">{avaliacao.funcao}</TableCell>
                                         <TableCell className="text-center text-xs">{avaliacao.avaliacaoFormador || 'N/A'}</TableCell>
                                         <TableCell className="text-center text-xs">{avaliacao.avaliacaoEditora}</TableCell>
                                         <TableCell className="text-xs text-gray-600">{avaliacao.observacoes || '-'}</TableCell>
+                                        <TableCell className="text-xs text-gray-600">{avaliacao.interesseFormacao || '-'}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

@@ -113,6 +113,25 @@ type AvaliacaoSummary = {
 }
 
 
+const StarRating = ({ rating }: { rating: number | string | undefined }) => {
+    const numericRating = Number(rating);
+    if (isNaN(numericRating) || numericRating < 1) return <span className="text-muted-foreground text-sm">N/A</span>;
+    return (
+        <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                    key={star}
+                    className={`h-5 w-5 ${
+                        star <= numericRating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                    }`}
+                />
+            ))}
+        </div>
+    );
+};
+
 export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -1076,30 +1095,55 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                   <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
                                     <div className="mt-6">
                                         <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
-                                        <div className="border rounded-lg overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Participante</TableHead>
-                                                        <TableHead>Função</TableHead>
-                                                        <TableHead>Avaliação (Formador)</TableHead>
-                                                        <TableHead>Avaliação (Editora)</TableHead>
-                                                        <TableHead>Observações</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {avaliacoes.map((avaliacao) => (
-                                                        <TableRow key={avaliacao.id}>
-                                                            <TableCell className="font-medium">{avaliacao.nomeCompleto}</TableCell>
-                                                            <TableCell>{avaliacao.funcao}</TableCell>
-                                                            <TableCell className="text-center">{avaliacao.avaliacaoFormador || 'N/A'}</TableCell>
-                                                            <TableCell className="text-center">{avaliacao.avaliacaoEditora}</TableCell>
-                                                            <TableCell className="text-xs text-muted-foreground">{avaliacao.observacoes || '-'}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                        {avaliacoes.length > 0 ? (
+                                            <Accordion type="multiple" className="w-full space-y-2">
+                                                {avaliacoes.map((avaliacao) => (
+                                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md bg-muted/20">
+                                                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                            <div className="flex-1 text-left font-semibold">{avaliacao.nomeCompleto}</div>
+                                                            <div className="text-sm text-muted-foreground">{formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="px-4 pb-4">
+                                                            <div className="space-y-4">
+                                                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                    <div><span className="font-medium">Função:</span> <Badge variant="outline">{avaliacao.funcao}</Badge></div>
+                                                                    <div><span className="font-medium">Assuntos:</span> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></div>
+                                                                    <div><span className="font-medium">Organização:</span> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></div>
+                                                                    <div><span className="font-medium">Relevância:</span> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></div>
+                                                                    <div><span className="font-medium">Material Atende:</span> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></div>
+                                                                </div>
+                                                                <Separator />
+                                                                <div className="space-y-2 text-sm">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="font-medium">Avaliação do Formador:</span>
+                                                                        <StarRating rating={avaliacao.avaliacaoFormador} />
+                                                                    </div>
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="font-medium">Avaliação da Editora:</span>
+                                                                        <StarRating rating={avaliacao.avaliacaoEditora} />
+                                                                    </div>
+                                                                </div>
+                                                                <Separator />
+                                                                {avaliacao.interesseFormacao && (
+                                                                     <div className="text-sm">
+                                                                        <p className="font-medium mb-1">Interesse:</p>
+                                                                        <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.interesseFormacao}"</p>
+                                                                    </div>
+                                                                )}
+                                                                {avaliacao.observacoes && (
+                                                                    <div className="text-sm">
+                                                                        <p className="font-medium mb-1">Observações:</p>
+                                                                        <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.observacoes}"</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                ))}
+                                            </Accordion>
+                                        ) : (
+                                            <p className="text-center text-sm text-muted-foreground py-4">Nenhuma resposta individual para exibir.</p>
+                                        )}
                                     </div>
                               </TabsContent>
                                {formadoresComAvaliacao.map(formador => (
