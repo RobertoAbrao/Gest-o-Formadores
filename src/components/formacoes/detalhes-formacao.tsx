@@ -629,6 +629,59 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     );
   };
 
+  const IndividualResponseList = ({ responses }: { responses: Avaliacao[] }) => {
+    if (responses.length === 0) {
+        return <p className="text-center text-sm text-muted-foreground py-4">Nenhuma resposta individual para este formador.</p>;
+    }
+    return (
+        <Accordion type="multiple" className="w-full space-y-2">
+            {responses.map((avaliacao) => (
+                <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md bg-muted/20">
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <div className="flex-1 text-left font-semibold">{avaliacao.nomeCompleto}</div>
+                        <div className="text-sm text-muted-foreground">{formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div><span className="font-medium">Função:</span> <Badge variant="outline">{avaliacao.funcao}</Badge></div>
+                                <div><span className="font-medium">Assuntos:</span> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></div>
+                                <div><span className="font-medium">Organização:</span> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></div>
+                                <div><span className="font-medium">Relevância:</span> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></div>
+                                <div><span className="font-medium">Material Atende:</span> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></div>
+                            </div>
+                            <Separator />
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">Avaliação do Formador:</span>
+                                    <StarRating rating={avaliacao.avaliacaoFormador} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium">Avaliação da Editora:</span>
+                                    <StarRating rating={avaliacao.avaliacaoEditora} />
+                                </div>
+                            </div>
+                            <Separator />
+                            {avaliacao.interesseFormacao && (
+                                 <div className="text-sm">
+                                    <p className="font-medium mb-1">Interesse:</p>
+                                    <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.interesseFormacao}"</p>
+                                </div>
+                            )}
+                            {avaliacao.observacoes && (
+                                <div className="text-sm">
+                                    <p className="font-medium mb-1">Observações:</p>
+                                    <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.observacoes}"</p>
+                                </div>
+                            )}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
+    );
+};
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8 min-h-[400px]">
@@ -1093,58 +1146,6 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                               </TabsList>
                               <TabsContent value="geral" className="pt-4">
                                   <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
-                                    <div className="mt-6">
-                                        <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
-                                        {avaliacoes.length > 0 ? (
-                                            <Accordion type="multiple" className="w-full space-y-2">
-                                                {avaliacoes.map((avaliacao) => (
-                                                    <AccordionItem value={avaliacao.id} key={avaliacao.id} className="border rounded-md bg-muted/20">
-                                                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                                            <div className="flex-1 text-left font-semibold">{avaliacao.nomeCompleto}</div>
-                                                            <div className="text-sm text-muted-foreground">{formatDate(avaliacao.dataCriacao, { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
-                                                        </AccordionTrigger>
-                                                        <AccordionContent className="px-4 pb-4">
-                                                            <div className="space-y-4">
-                                                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                                                    <div><span className="font-medium">Função:</span> <Badge variant="outline">{avaliacao.funcao}</Badge></div>
-                                                                    <div><span className="font-medium">Assuntos:</span> <Badge variant="outline">{avaliacao.avaliacaoAssuntos}</Badge></div>
-                                                                    <div><span className="font-medium">Organização:</span> <Badge variant="outline">{avaliacao.avaliacaoOrganizacao}</Badge></div>
-                                                                    <div><span className="font-medium">Relevância:</span> <Badge variant="outline">{avaliacao.avaliacaoRelevancia}</Badge></div>
-                                                                    <div><span className="font-medium">Material Atende:</span> <Badge variant="outline">{avaliacao.materialAtendeExpectativa}</Badge></div>
-                                                                </div>
-                                                                <Separator />
-                                                                <div className="space-y-2 text-sm">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="font-medium">Avaliação do Formador:</span>
-                                                                        <StarRating rating={avaliacao.avaliacaoFormador} />
-                                                                    </div>
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="font-medium">Avaliação da Editora:</span>
-                                                                        <StarRating rating={avaliacao.avaliacaoEditora} />
-                                                                    </div>
-                                                                </div>
-                                                                <Separator />
-                                                                {avaliacao.interesseFormacao && (
-                                                                     <div className="text-sm">
-                                                                        <p className="font-medium mb-1">Interesse:</p>
-                                                                        <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.interesseFormacao}"</p>
-                                                                    </div>
-                                                                )}
-                                                                {avaliacao.observacoes && (
-                                                                    <div className="text-sm">
-                                                                        <p className="font-medium mb-1">Observações:</p>
-                                                                        <p className="text-muted-foreground italic pl-4 border-l-2">"{avaliacao.observacoes}"</p>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                ))}
-                                            </Accordion>
-                                        ) : (
-                                            <p className="text-center text-sm text-muted-foreground py-4">Nenhuma resposta individual para exibir.</p>
-                                        )}
-                                    </div>
                               </TabsContent>
                                {formadoresComAvaliacao.map(formador => (
                                   <TabsContent key={formador.id} value={formador.id} className="pt-4">
@@ -1160,6 +1161,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                           avaliacoes={avaliacoesPorFormador[formador.id]}
                                           formadorName={formador.nomeCompleto.split(' ')[0]}
                                       />
+                                      <div className="mt-6">
+                                        <h4 className="font-semibold text-lg mb-4">Respostas Individuais ({avaliacoesPorFormador[formador.id].length})</h4>
+                                        <IndividualResponseList responses={avaliacoesPorFormador[formador.id]} />
+                                      </div>
                                   </TabsContent>
                               ))}
                           </Tabs>
