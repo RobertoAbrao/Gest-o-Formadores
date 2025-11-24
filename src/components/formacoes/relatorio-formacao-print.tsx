@@ -265,6 +265,32 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
                             </CardContent>
                         </Card>
                     )}
+
+                    <div className="mt-8 break-before-page">
+                        <h3 className="text-xl font-semibold mb-3 pb-2 border-b">Respostas Individuais Detalhadas</h3>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Participante</TableHead>
+                                    <TableHead>Função</TableHead>
+                                    <TableHead>Avaliação (Formador)</TableHead>
+                                    <TableHead>Avaliação (Editora)</TableHead>
+                                    <TableHead>Observações</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {avaliacoes.map((avaliacao) => (
+                                    <TableRow key={avaliacao.id}>
+                                        <TableCell className="font-medium text-xs">{avaliacao.nomeCompleto}</TableCell>
+                                        <TableCell className="text-xs">{avaliacao.funcao}</TableCell>
+                                        <TableCell className="text-center text-xs">{avaliacao.avaliacaoFormador || 'N/A'}</TableCell>
+                                        <TableCell className="text-center text-xs">{avaliacao.avaliacaoEditora}</TableCell>
+                                        <TableCell className="text-xs text-gray-600">{avaliacao.observacoes || '-'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
            ) : (
                 <p className="text-sm text-gray-500 italic">Nenhuma avaliação recebida para esta formação.</p>

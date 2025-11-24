@@ -645,12 +645,6 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                       <div className="space-y-4">
                           <div className="flex items-center justify-between">
                               <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
-                              <Button variant="outline" size="sm" asChild>
-                                <Link href={`/relatorio/${formacaoId}`} target="_blank">
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Imprimir Relatório
-                                </Link>
-                              </Button>
                           </div>
                           <Separator />
                           <div className="grid gap-4 md:grid-cols-2">
@@ -1042,15 +1036,23 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                    <div className="space-y-6 pt-4">
                        <div className='flex justify-between items-center'>
                           <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
-                          <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={handleExportAvaliacoes}
-                              disabled={avaliacoes.length === 0}
-                          >
-                              <Download className="mr-2 h-4 w-4" />
-                              Exportar para CSV
-                          </Button>
+                          <div className='flex items-center gap-2'>
+                              <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={handleExportAvaliacoes}
+                                  disabled={avaliacoes.length === 0}
+                              >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Exportar Participantes
+                              </Button>
+                               <Button variant="outline" size="sm" asChild>
+                                <Link href={`/relatorio/${formacaoId}`} target="_blank">
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Imprimir Relatório Completo
+                                </Link>
+                              </Button>
+                          </div>
                        </div>
                        <Separator />
                         {avaliacoes.length === 0 ? (
@@ -1072,10 +1074,37 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                               </TabsList>
                               <TabsContent value="geral" className="pt-4">
                                   <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
+                                    <div className="mt-6">
+                                        <h4 className="font-semibold text-lg mb-4">Respostas Individuais</h4>
+                                        <div className="border rounded-lg overflow-hidden">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Participante</TableHead>
+                                                        <TableHead>Função</TableHead>
+                                                        <TableHead>Avaliação (Formador)</TableHead>
+                                                        <TableHead>Avaliação (Editora)</TableHead>
+                                                        <TableHead>Observações</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {avaliacoes.map((avaliacao) => (
+                                                        <TableRow key={avaliacao.id}>
+                                                            <TableCell className="font-medium">{avaliacao.nomeCompleto}</TableCell>
+                                                            <TableCell>{avaliacao.funcao}</TableCell>
+                                                            <TableCell className="text-center">{avaliacao.avaliacaoFormador || 'N/A'}</TableCell>
+                                                            <TableCell className="text-center">{avaliacao.avaliacaoEditora}</TableCell>
+                                                            <TableCell className="text-xs text-muted-foreground">{avaliacao.observacoes || '-'}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
                               </TabsContent>
                                {formadoresComAvaliacao.map(formador => (
                                   <TabsContent key={formador.id} value={formador.id} className="pt-4">
-                                       <div className="flex justify-end mb-4">
+                                      <div className="flex justify-end mb-4">
                                           <Button variant="outline" size="sm" asChild>
                                               <Link href={`/relatorio/${formacaoId}/${formador.id}`} target="_blank">
                                                   <Printer className="mr-2 h-4 w-4" /> Gerar Relatório Individual
