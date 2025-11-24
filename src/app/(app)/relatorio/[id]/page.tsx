@@ -336,7 +336,7 @@ export default function DetalhesFormacaoPage() {
                         <p className="text-muted-foreground mt-2 text-sm">Pré-visualização do Relatório</p>
                     </div>
                     <div className='flex items-center gap-2'>
-                        <Button variant="outline" onClick={handleGenerateMindMap} disabled={loadingMapaMental} className="hidden">
+                        <Button variant="outline" onClick={handleGenerateMindMap} disabled={loadingMapaMental}>
                              <Sparkles className="mr-2 h-4 w-4" />
                              Gerar Mapa Mental
                         </Button>
