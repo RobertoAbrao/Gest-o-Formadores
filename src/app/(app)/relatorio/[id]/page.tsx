@@ -266,6 +266,17 @@ export default function DetalhesFormacaoPage() {
     }
   };
 
+  useEffect(() => {
+    const originalTitle = document.title;
+    if (formacao) {
+        document.title = `Relatório - ${formacao.titulo}`;
+    }
+    // Cleanup function to restore original title
+    return () => {
+        document.title = originalTitle;
+    };
+  }, [formacao]);
+
 
   if (loading) {
     return (

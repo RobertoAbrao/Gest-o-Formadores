@@ -158,6 +158,17 @@ export default function RelatorioIndividualPage() {
     return summary;
   }, [avaliacoes]);
 
+  useEffect(() => {
+    const originalTitle = document.title;
+    if (formacao && formador) {
+        document.title = `Relatório - ${formacao.titulo} - ${formador.nomeCompleto}`;
+    }
+    // Cleanup function to restore original title
+    return () => {
+        document.title = originalTitle;
+    };
+  }, [formacao, formador]);
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
