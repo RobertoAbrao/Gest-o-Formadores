@@ -707,11 +707,24 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorHospedagem || 0), 0) || 0;
 
   return (
-    <ScrollArea className="max-h-[80vh]">
-      <div className='p-1'>
-        {/* Hidden printable area */}
-        <div className="hidden print-only">
-          {printContent === 'summary' && (
+    <>
+      <style>
+        {`
+          @media print {
+            .printable-area-summary, .printable-area-full {
+              display: none;
+            }
+            body.printing-summary .printable-area-summary {
+              display: block;
+            }
+            body.printing-full .printable-area-full {
+              display: block;
+            }
+          }
+        `}
+      </style>
+      <div className="hidden">
+        <div className="printable-area-summary">
             <RelatorioFormacaoPrint
               formacao={formacao}
               formadores={formadores}
@@ -720,8 +733,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
               avaliacoes={avaliacoes}
               summary={avaliacaoSummaryGeral}
             />
-          )}
-          {printContent === 'full' && (
+        </div>
+        <div className="printable-area-full">
             <RelatorioFormacaoCompletoPrint
               formacao={formacao}
               formadores={formadores}
@@ -730,490 +743,491 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
               avaliacoes={avaliacoes}
               summary={avaliacaoSummaryGeral}
             />
-          )}
         </div>
-        
-        {/* Visible content */}
-        <Tabs defaultValue="info" className="p-4">
-            <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="info">Informações Gerais</TabsTrigger>
-                <TabsTrigger value="logistica">Logística</TabsTrigger>
-                <TabsTrigger value="despesas">
-                    Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="avaliacoes">
-                    Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length}</Badge>
-                </TabsTrigger>
-            </TabsList>
-            <TabsContent value="info">
-                <div className="space-y-6 pt-4">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
-                            <Button variant="outline" size="sm" onClick={() => handlePrint('summary')}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                Imprimir Relatório
-                            </Button>
-                        </div>
-                        <Separator />
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {formadores.length > 0 && (
-                                <div className="flex items-start gap-3">
-                                    <User className="h-5 w-5 text-muted-foreground mt-1" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Formador(es)</p>
-                                        {formadores.map(f => <p key={f.id} className="font-medium">{f.nomeCompleto}</p>)}
-                                    </div>
-                                </div>
-                            )}
-                            {formacao.participantes && formacao.participantes > 0 && (
-                                <div className="flex items-start gap-3">
-                                    <Users className="h-5 w-5 text-muted-foreground mt-1" />
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Nº de Participantes</p>
-                                        <p className="font-medium">{formacao.participantes}</p>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="flex items-center gap-3">
-                                <MapPin className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Município</p>
-                                    <p className="font-medium">{formacao.municipio}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Status</p>
-                                    {isArchived ? (
-                                        <Badge variant="secondary">Arquivado</Badge>
-                                    ) : (
-                                        <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
-                                            <SelectTrigger className="w-[180px]">
-                                                <SelectValue placeholder="Alterar status" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {statusOptions.map(option => (
-                                                    <SelectItem key={option} value={option}>
-                                                        {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Calendar className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Data Início</p>
-                                    <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Calendar className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Data Fim</p>
-                                    <p className="font-medium">{formatDate(formacao.dataFim)}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {materiais.length > 0 && (
-                        <div className='space-y-4'>
-                            <h4 className="font-semibold text-lg">Materiais de Apoio</h4>
-                            <Separator />
-                            <ul className="list-disc space-y-2 pl-5">
-                                {materiais.map(material => (
-                                    <li key={material.id}>
-                                        <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                            {material.titulo}
-                                        </a>
-                                        <span className='text-xs text-muted-foreground ml-2'>({material.tipoMaterial})</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-lg">Linha do Tempo de Anexos</h4>
-                            {!isArchived && (
-                                <>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileUpload}
-                                        className="hidden"
-                                        disabled={uploading}
-                                    />
-                                    <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                                        {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
-                                        Enviar Arquivo
-                                    </Button>
-                                </>
-                            )}
-                        </div>
-                        <Separator />
-                        {anexos.length === 0 ? (
-                            <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                                <div>
-                                    <Paperclip className="h-6 w-6 mx-auto mb-2"/>
-                                    Nenhum anexo encontrado.
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="relative pl-6">
-                                <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
-                                {anexos.map((anexo, index) => {
-                                    const isImage = anexo.url.startsWith('data:image');
-                                    return (
-                                        <div key={index} className="relative mb-8">
-                                            <div className="absolute -left-[34px] top-1.5 h-4 w-4 rounded-full bg-primary border-4 border-background"></div>
-                                            <div className="pl-4">
-                                                <p className="text-xs text-muted-foreground">
-                                                    {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                </p>
-                                                <div className="flex flex-col items-start p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
-                                                    <div className="flex items-center justify-between w-full">
-                                                        <div className="flex items-center flex-1 truncate">
-                                                            {!isImage && getFileIcon(anexo.nome)}
-                                                            <a 
-                                                                href={anexo.url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                download={anexo.nome}
-                                                                className="truncate text-sm font-medium hover:underline"
-                                                            >
-                                                                {anexo.nome}
-                                                            </a>
-                                                        </div>
-                                                        {!isArchived && (
-                                                            <Button 
-                                                                size="icon" 
-                                                                variant="ghost" 
-                                                                className="h-7 w-7 opacity-50 group-hover:opacity-100"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    e.preventDefault();
-                                                                    handleDeleteAnexo(anexo);
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                    {isImage && (
-                                                        <a 
-                                                            href={anexo.url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            download={anexo.nome}
-                                                            className="mt-2 w-full"
-                                                        >
-                                                        <img src={anexo.url} alt={anexo.nome} className="w-full rounded-md object-contain" />
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                    <div className="space-y-4 pt-4 border-t">
-                        <h4 className="font-semibold text-lg">Ações</h4>
-                        <div className="flex flex-wrap items-center gap-4">
-                            {isArchived ? (
-                                <Button variant="outline" onClick={handleUnarchive}>
-                                    <RotateCcw className="mr-2 h-4 w-4" />
-                                    Desarquivar Formação
-                                </Button>
-                            ) : (
-                                <>
-                                    {formacao.status === 'concluido' && (
-                                        <Button variant="outline" onClick={handleArchive}>
-                                            <Archive className="mr-2 h-4 w-4" />
-                                            Arquivar Formação
-                                        </Button>
-                                    )}
-                                    <div className="flex items-center space-x-2">
-                                        <Switch 
-                                            id="avaliacoes-switch" 
-                                            checked={formacao.avaliacoesAbertas}
-                                            onCheckedChange={handleToggleAvaliacoes}
-                                        />
-                                        <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
-                                            {formacao.avaliacoesAbertas 
-                                                ? <><ToggleRight className="text-green-600"/> Avaliações Abertas</> 
-                                                : <><ToggleLeft/> Avaliações Fechadas</>}
-                                        </Label>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </TabsContent>
-            <TabsContent value="logistica">
-                 <div className="space-y-6 pt-4">
-                    <div className="flex flex-wrap justify-between items-start gap-4">
-                         <h4 className="font-semibold text-lg truncate">Passagens e Hospedagem</h4>
-                         <div className="text-right flex-shrink-0">
-                            <p className="text-sm text-muted-foreground">Custo Total de Hospedagem</p>
-                             <p className="text-xl font-bold text-primary">{formatCurrency(totalHospedagem)}</p>
-                         </div>
-                    </div>
-                    <Separator />
-                     {(!formacao.logistica || formacao.logistica.length === 0) ? (
-                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <div>
-                                <Hotel className="h-6 w-6 mx-auto mb-2"/>
-                                Nenhuma informação de logística registrada.
-                            </div>
-                        </div>
-                     ) : (
-                        <>
-                            <div className="hidden md:block border rounded-lg overflow-hidden">
-                               <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Formador</TableHead>
-                                            <TableHead>Partida</TableHead>
-                                            <TableHead>Ida/Volta</TableHead>
-                                            <TableHead>Hotel</TableHead>
-                                            <TableHead>Check-in/Check-out</TableHead>
-                                            <TableHead className="text-right">Valor Hosp.</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {formacao.logistica.map((item, index) => (
-                                            <TableRow key={index}>
-                                                <TableCell className="font-medium">{item.formadorNome}</TableCell>
-                                                <TableCell>{item.localPartida || 'N/A'}</TableCell>
-                                                <TableCell>
-                                                    <div className='flex items-center gap-1'>
-                                                        <PlaneTakeoff className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataIda)}
-                                                    </div>
-                                                    <div className='flex items-center gap-1'>
-                                                        <PlaneLanding className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataVolta)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{item.hotel || 'N/A'}</TableCell>
-                                                <TableCell>
-                                                     <div className='flex items-center gap-1'>
-                                                        <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkin)}
-                                                    </div>
-                                                    <div className='flex items-center gap-1'>
-                                                        <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium">
-                                                    {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="md:hidden space-y-4">
-                                {formacao.logistica.map((item, index) => (
-                                    <Card key={index} className="bg-muted/40">
-                                        <CardHeader className="pb-4">
-                                            <CardTitle className="text-base flex items-center justify-between">
-                                                <span>{item.formadorNome}</span>
-                                                <span className="font-bold text-primary">{item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}</span>
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3 text-sm">
-                                            <div className="flex justify-between border-t pt-3">
-                                                <span className="text-muted-foreground flex items-center gap-2"><MapPin className="h-4 w-4" /> Partida</span>
-                                                <span>{item.localPartida || 'N/A'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-muted-foreground flex items-center gap-2"><Hotel className="h-4 w-4" /> Hotel</span>
-                                                <span>{item.hotel || 'N/A'}</span>
-                                            </div>
-                                             <div className="flex justify-between">
-                                                <span className="text-muted-foreground flex items-center gap-2"><PlaneTakeoff className="h-4 w-4" /> Ida</span>
-                                                <span>{formatDate(item.dataIda)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-muted-foreground flex items-center gap-2"><PlaneLanding className="h-4 w-4" /> Volta</span>
-                                                <span>{formatDate(item.dataVolta)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-in</span>
-                                                <span>{formatDate(item.checkin)}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-out</span>
-                                                <span>{formatDate(item.checkout)}</span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </>
-                     )}
-                 </div>
-            </TabsContent>
-            <TabsContent value="despesas">
-                 <div className="space-y-6 pt-4">
-                    <div className="flex justify-between items-center">
-                         <h4 className="font-semibold text-lg">Relatório de Despesas</h4>
-                         <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Total Geral</p>
-                             <p className="text-xl font-bold text-primary">{formatCurrency(totalDespesas)}</p>
-                         </div>
-                    </div>
-                    <Separator />
-                     {despesas.length === 0 ? (
-                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <div>
-                                <DollarSign className="h-6 w-6 mx-auto mb-2"/>
-                                Nenhuma despesa encontrada para esta formação.
-                            </div>
-                        </div>
-                     ) : (
-                        <Accordion type="multiple" className="w-full space-y-4">
-                            {Object.entries(despesasAgrupadas).map(([formadorId, data]) => (
-                                <AccordionItem value={formadorId} key={formadorId} className="border rounded-md px-4">
-                                    <AccordionTrigger className="hover:no-underline">
-                                        <div className="flex items-center gap-3">
-                                            <User className="h-5 w-5 text-primary"/>
-                                            <span className='text-lg font-semibold'>{data.formadorNome}</span>
-                                        </div>
-                                        <span className="text-lg font-semibold text-primary">{formatCurrency(data.total)}</span>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
-                                            {despesaTypes.map(type => {
-                                                const despesasDoTipo = data.despesasPorTipo[type] || [];
-                                                if (despesasDoTipo.length === 0) return null;
-                                                const Icon = typeIcons[type];
-                                                const total = despesasDoTipo.reduce((sum, item) => sum + item.valor, 0);
-
-                                                return (
-                                                    <AccordionItem value={type} key={type}>
-                                                        <AccordionTrigger>
-                                                            <div className="flex items-center gap-3">
-                                                                <Icon className="h-5 w-5 text-primary"/>
-                                                                <span className='font-semibold'>{type}</span>
-                                                                <Badge variant="outline">{despesasDoTipo.length} {despesasDoTipo.length === 1 ? 'registro' : 'registros'}</Badge>
-                                                            </div>
-                                                            <span className="font-semibold text-primary">{formatCurrency(total)}</span>
-                                                        </AccordionTrigger>
-                                                        <AccordionContent>
-                                                            <div className="border rounded-lg overflow-hidden">
-                                                                <Table>
-                                                                    <TableHeader>
-                                                                        <TableRow>
-                                                                            <TableHead>Data</TableHead>
-                                                                            <TableHead>Descrição</TableHead>
-                                                                            <TableHead className="text-right">Valor</TableHead>
-                                                                        </TableRow>
-                                                                    </TableHeader>
-                                                                    <TableBody>
-                                                                        {despesasDoTipo.map(despesa => (
-                                                                            <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
-                                                                                <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
-                                                                                <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
-                                                                                <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                                                                            </TableRow>
-                                                                        ))}
-                                                                    </TableBody>
-                                                                </Table>
-                                                            </div>
-                                                        </AccordionContent>
-                                                    </AccordionItem>
-                                                )
-                                            })}
-                                        </Accordion>
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                     )}
-                 </div>
-            </TabsContent>
-            <TabsContent value="avaliacoes">
-                 <div className="space-y-6 pt-4">
-                     <div className='flex justify-between items-center'>
-                        <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleExportAvaliacoes}
-                            disabled={avaliacoes.length === 0}
-                        >
-                            <Download className="mr-2 h-4 w-4" />
-                            Exportar para CSV
-                        </Button>
-                     </div>
-                     <Separator />
-                      {avaliacoes.length === 0 ? (
-                        <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                            <div>
-                                <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
-                                Nenhuma avaliação recebida para esta formação.
-                            </div>
-                        </div>
-                     ) : (
-                        <Tabs defaultValue="geral">
-                            <TabsList>
-                                <TabsTrigger value="geral">Visão Geral</TabsTrigger>
-                                {formadoresComAvaliacao.map(formador => (
-                                  <TabsTrigger key={formador.id} value={formador.id}>
-                                    {formador.nomeCompleto.split(' ')[0]}
-                                  </TabsTrigger>
-                                ))}
-                            </TabsList>
-                            <TabsContent value="geral" className="pt-4">
-                                <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
-                            </TabsContent>
-                             {formadoresComAvaliacao.map(formador => (
-                                <TabsContent key={formador.id} value={formador.id} className="pt-4">
-                                     <div className="flex justify-end mb-4">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/relatorio/${formacaoId}/${formador.id}`} target="_blank">
-                                                <Printer className="mr-2 h-4 w-4" /> Gerar Relatório Individual
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                    <AvaliacaoSummaryComponent 
-                                        summary={calculateAvaliacaoSummary(avaliacoesPorFormador[formador.id])} 
-                                        avaliacoes={avaliacoesPorFormador[formador.id]}
-                                        formadorName={formador.nomeCompleto.split(' ')[0]}
-                                    />
-                                </TabsContent>
-                            ))}
-                        </Tabs>
-                     )}
-                 </div>
-            </TabsContent>
-        </Tabs>
-        <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
-            setIsDespesaDialogOpen(open);
-            if (!open) {
-                setSelectedDespesa(null);
-            }
-        }}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                    <DialogTitle>Detalhes da Despesa</DialogTitle>
-                    <DialogDescription>
-                        Visualize as informações completas da despesa.
-                    </DialogDescription>
-                </DialogHeader>
-                {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
-            </DialogContent>
-        </Dialog>
       </div>
-    </ScrollArea>
+      <ScrollArea className="max-h-[80vh]">
+        <div className='p-1'>
+          <Tabs defaultValue="info" className="p-4">
+              <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="info">Informações Gerais</TabsTrigger>
+                  <TabsTrigger value="logistica">Logística</TabsTrigger>
+                  <TabsTrigger value="despesas">
+                      Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="avaliacoes">
+                      Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length}</Badge>
+                  </TabsTrigger>
+              </TabsList>
+              <TabsContent value="info">
+                  <div className="space-y-6 pt-4">
+                      <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
+                              <Button variant="outline" size="sm" onClick={() => handlePrint('summary')}>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Imprimir Relatório
+                              </Button>
+                          </div>
+                          <Separator />
+                          <div className="grid gap-4 md:grid-cols-2">
+                              {formadores.length > 0 && (
+                                  <div className="flex items-start gap-3">
+                                      <User className="h-5 w-5 text-muted-foreground mt-1" />
+                                      <div>
+                                          <p className="text-sm text-muted-foreground">Formador(es)</p>
+                                          {formadores.map(f => <p key={f.id} className="font-medium">{f.nomeCompleto}</p>)}
+                                      </div>
+                                  </div>
+                              )}
+                              {formacao.participantes && formacao.participantes > 0 && (
+                                  <div className="flex items-start gap-3">
+                                      <Users className="h-5 w-5 text-muted-foreground mt-1" />
+                                      <div>
+                                          <p className="text-sm text-muted-foreground">Nº de Participantes</p>
+                                          <p className="font-medium">{formacao.participantes}</p>
+                                      </div>
+                                  </div>
+                              )}
+                              <div className="flex items-center gap-3">
+                                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Município</p>
+                                      <p className="font-medium">{formacao.municipio}</p>
+                                  </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                  <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Status</p>
+                                      {isArchived ? (
+                                          <Badge variant="secondary">Arquivado</Badge>
+                                      ) : (
+                                          <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
+                                              <SelectTrigger className="w-[180px]">
+                                                  <SelectValue placeholder="Alterar status" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                  {statusOptions.map(option => (
+                                                      <SelectItem key={option} value={option}>
+                                                          {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
+                                                      </SelectItem>
+                                                  ))}
+                                              </SelectContent>
+                                          </Select>
+                                      )}
+                                  </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Data Início</p>
+                                      <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
+                                  </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Data Fim</p>
+                                      <p className="font-medium">{formatDate(formacao.dataFim)}</p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      
+                      {materiais.length > 0 && (
+                          <div className='space-y-4'>
+                              <h4 className="font-semibold text-lg">Materiais de Apoio</h4>
+                              <Separator />
+                              <ul className="list-disc space-y-2 pl-5">
+                                  {materiais.map(material => (
+                                      <li key={material.id}>
+                                          <a href={material.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                              {material.titulo}
+                                          </a>
+                                          <span className='text-xs text-muted-foreground ml-2'>({material.tipoMaterial})</span>
+                                      </li>
+                                  ))}
+                              </ul>
+                          </div>
+                      )}
+
+                      <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                              <h4 className="font-semibold text-lg">Linha do Tempo de Anexos</h4>
+                              {!isArchived && (
+                                  <>
+                                      <input
+                                          type="file"
+                                          ref={fileInputRef}
+                                          onChange={handleFileUpload}
+                                          className="hidden"
+                                          disabled={uploading}
+                                      />
+                                      <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                                          {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UploadCloud className="h-4 w-4 mr-2"/>}
+                                          Enviar Arquivo
+                                      </Button>
+                                  </>
+                              )}
+                          </div>
+                          <Separator />
+                          {anexos.length === 0 ? (
+                              <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                                  <div>
+                                      <Paperclip className="h-6 w-6 mx-auto mb-2"/>
+                                      Nenhum anexo encontrado.
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="relative pl-6">
+                                  <div className="absolute left-6 top-0 bottom-0 w-px bg-border"></div>
+                                  {anexos.map((anexo, index) => {
+                                      const isImage = anexo.url.startsWith('data:image');
+                                      return (
+                                          <div key={index} className="relative mb-8">
+                                              <div className="absolute -left-[34px] top-1.5 h-4 w-4 rounded-full bg-primary border-4 border-background"></div>
+                                              <div className="pl-4">
+                                                  <p className="text-xs text-muted-foreground">
+                                                      {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                  </p>
+                                                  <div className="flex flex-col items-start p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
+                                                      <div className="flex items-center justify-between w-full">
+                                                          <div className="flex items-center flex-1 truncate">
+                                                              {!isImage && getFileIcon(anexo.nome)}
+                                                              <a 
+                                                                  href={anexo.url}
+                                                                  target="_blank"
+                                                                  rel="noopener noreferrer"
+                                                                  download={anexo.nome}
+                                                                  className="truncate text-sm font-medium hover:underline"
+                                                              >
+                                                                  {anexo.nome}
+                                                              </a>
+                                                          </div>
+                                                          {!isArchived && (
+                                                              <Button 
+                                                                  size="icon" 
+                                                                  variant="ghost" 
+                                                                  className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                                                  onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      e.preventDefault();
+                                                                      handleDeleteAnexo(anexo);
+                                                                  }}
+                                                              >
+                                                                  <Trash2 className="h-4 w-4 text-destructive"/>
+                                                              </Button>
+                                                          )}
+                                                      </div>
+                                                      {isImage && (
+                                                          <a 
+                                                              href={anexo.url}
+                                                              target="_blank"
+                                                              rel="noopener noreferrer"
+                                                              download={anexo.nome}
+                                                              className="mt-2 w-full"
+                                                          >
+                                                          <img src={anexo.url} alt={anexo.nome} className="w-full rounded-md object-contain" />
+                                                          </a>
+                                                      )}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          )}
+                      </div>
+                      <div className="space-y-4 pt-4 border-t">
+                          <h4 className="font-semibold text-lg">Ações</h4>
+                          <div className="flex flex-wrap items-center gap-4">
+                              {isArchived ? (
+                                  <Button variant="outline" onClick={handleUnarchive}>
+                                      <RotateCcw className="mr-2 h-4 w-4" />
+                                      Desarquivar Formação
+                                  </Button>
+                              ) : (
+                                  <>
+                                      {formacao.status === 'concluido' && (
+                                          <Button variant="outline" onClick={handleArchive}>
+                                              <Archive className="mr-2 h-4 w-4" />
+                                              Arquivar Formação
+                                          </Button>
+                                      )}
+                                      <div className="flex items-center space-x-2">
+                                          <Switch 
+                                              id="avaliacoes-switch" 
+                                              checked={formacao.avaliacoesAbertas}
+                                              onCheckedChange={handleToggleAvaliacoes}
+                                          />
+                                          <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
+                                              {formacao.avaliacoesAbertas 
+                                                  ? <><ToggleRight className="text-green-600"/> Avaliações Abertas</> 
+                                                  : <><ToggleLeft/> Avaliações Fechadas</>}
+                                          </Label>
+                                      </div>
+                                  </>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+              </TabsContent>
+              <TabsContent value="logistica">
+                   <div className="space-y-6 pt-4">
+                      <div className="flex flex-wrap justify-between items-start gap-4">
+                           <h4 className="font-semibold text-lg truncate">Passagens e Hospedagem</h4>
+                           <div className="text-right flex-shrink-0">
+                              <p className="text-sm text-muted-foreground">Custo Total de Hospedagem</p>
+                               <p className="text-xl font-bold text-primary">{formatCurrency(totalHospedagem)}</p>
+                           </div>
+                      </div>
+                      <Separator />
+                       {(!formacao.logistica || formacao.logistica.length === 0) ? (
+                          <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                              <div>
+                                  <Hotel className="h-6 w-6 mx-auto mb-2"/>
+                                  Nenhuma informação de logística registrada.
+                              </div>
+                          </div>
+                       ) : (
+                          <>
+                              <div className="hidden md:block border rounded-lg overflow-hidden">
+                                 <Table>
+                                      <TableHeader>
+                                          <TableRow>
+                                              <TableHead>Formador</TableHead>
+                                              <TableHead>Partida</TableHead>
+                                              <TableHead>Ida/Volta</TableHead>
+                                              <TableHead>Hotel</TableHead>
+                                              <TableHead>Check-in/Check-out</TableHead>
+                                              <TableHead className="text-right">Valor Hosp.</TableHead>
+                                          </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                          {formacao.logistica.map((item, index) => (
+                                              <TableRow key={index}>
+                                                  <TableCell className="font-medium">{item.formadorNome}</TableCell>
+                                                  <TableCell>{item.localPartida || 'N/A'}</TableCell>
+                                                  <TableCell>
+                                                      <div className='flex items-center gap-1'>
+                                                          <PlaneTakeoff className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataIda)}
+                                                      </div>
+                                                      <div className='flex items-center gap-1'>
+                                                          <PlaneLanding className='h-4 w-4 text-muted-foreground' /> {formatDate(item.dataVolta)}
+                                                      </div>
+                                                  </TableCell>
+                                                  <TableCell>{item.hotel || 'N/A'}</TableCell>
+                                                  <TableCell>
+                                                       <div className='flex items-center gap-1'>
+                                                          <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkin)}
+                                                      </div>
+                                                      <div className='flex items-center gap-1'>
+                                                          <CalendarCheck2 className='h-4 w-4 text-muted-foreground' /> {formatDate(item.checkout)}
+                                                      </div>
+                                                  </TableCell>
+                                                  <TableCell className="text-right font-medium">
+                                                      {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
+                                                  </TableCell>
+                                              </TableRow>
+                                          ))}
+                                      </TableBody>
+                                  </Table>
+                              </div>
+                              <div className="md:hidden space-y-4">
+                                  {formacao.logistica.map((item, index) => (
+                                      <Card key={index} className="bg-muted/40">
+                                          <CardHeader className="pb-4">
+                                              <CardTitle className="text-base flex items-center justify-between">
+                                                  <span>{item.formadorNome}</span>
+                                                  <span className="font-bold text-primary">{item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}</span>
+                                              </CardTitle>
+                                          </CardHeader>
+                                          <CardContent className="space-y-3 text-sm">
+                                              <div className="flex justify-between border-t pt-3">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><MapPin className="h-4 w-4" /> Partida</span>
+                                                  <span>{item.localPartida || 'N/A'}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><Hotel className="h-4 w-4" /> Hotel</span>
+                                                  <span>{item.hotel || 'N/A'}</span>
+                                              </div>
+                                               <div className="flex justify-between">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><PlaneTakeoff className="h-4 w-4" /> Ida</span>
+                                                  <span>{formatDate(item.dataIda)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><PlaneLanding className="h-4 w-4" /> Volta</span>
+                                                  <span>{formatDate(item.dataVolta)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-in</span>
+                                                  <span>{formatDate(item.checkin)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                  <span className="text-muted-foreground flex items-center gap-2"><CalendarCheck2 className="h-4 w-4" /> Check-out</span>
+                                                  <span>{formatDate(item.checkout)}</span>
+                                              </div>
+                                          </CardContent>
+                                      </Card>
+                                  ))}
+                              </div>
+                          </>
+                       )}
+                   </div>
+              </TabsContent>
+              <TabsContent value="despesas">
+                   <div className="space-y-6 pt-4">
+                      <div className="flex justify-between items-center">
+                           <h4 className="font-semibold text-lg">Relatório de Despesas</h4>
+                           <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Total Geral</p>
+                               <p className="text-xl font-bold text-primary">{formatCurrency(totalDespesas)}</p>
+                           </div>
+                      </div>
+                      <Separator />
+                       {despesas.length === 0 ? (
+                          <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                              <div>
+                                  <DollarSign className="h-6 w-6 mx-auto mb-2"/>
+                                  Nenhuma despesa encontrada para esta formação.
+                              </div>
+                          </div>
+                       ) : (
+                          <Accordion type="multiple" className="w-full space-y-4">
+                              {Object.entries(despesasAgrupadas).map(([formadorId, data]) => (
+                                  <AccordionItem value={formadorId} key={formadorId} className="border rounded-md px-4">
+                                      <AccordionTrigger className="hover:no-underline">
+                                          <div className="flex items-center gap-3">
+                                              <User className="h-5 w-5 text-primary"/>
+                                              <span className='text-lg font-semibold'>{data.formadorNome}</span>
+                                          </div>
+                                          <span className="text-lg font-semibold text-primary">{formatCurrency(data.total)}</span>
+                                      </AccordionTrigger>
+                                      <AccordionContent>
+                                          <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
+                                              {despesaTypes.map(type => {
+                                                  const despesasDoTipo = data.despesasPorTipo[type] || [];
+                                                  if (despesasDoTipo.length === 0) return null;
+                                                  const Icon = typeIcons[type];
+                                                  const total = despesasDoTipo.reduce((sum, item) => sum + item.valor, 0);
+
+                                                  return (
+                                                      <AccordionItem value={type} key={type}>
+                                                          <AccordionTrigger>
+                                                              <div className="flex items-center gap-3">
+                                                                  <Icon className="h-5 w-5 text-primary"/>
+                                                                  <span className='font-semibold'>{type}</span>
+                                                                  <Badge variant="outline">{despesasDoTipo.length} {despesasDoTipo.length === 1 ? 'registro' : 'registros'}</Badge>
+                                                              </div>
+                                                              <span className="font-semibold text-primary">{formatCurrency(total)}</span>
+                                                          </AccordionTrigger>
+                                                          <AccordionContent>
+                                                              <div className="border rounded-lg overflow-hidden">
+                                                                  <Table>
+                                                                      <TableHeader>
+                                                                          <TableRow>
+                                                                              <TableHead>Data</TableHead>
+                                                                              <TableHead>Descrição</TableHead>
+                                                                              <TableHead className="text-right">Valor</TableHead>
+                                                                          </TableRow>
+                                                                      </TableHeader>
+                                                                      <TableBody>
+                                                                          {despesasDoTipo.map(despesa => (
+                                                                              <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
+                                                                                  <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                                  <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
+                                                                                  <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                                                              </TableRow>
+                                                                          ))}
+                                                                      </TableBody>
+                                                                  </Table>
+                                                              </div>
+                                                          </AccordionContent>
+                                                      </AccordionItem>
+                                                  )
+                                              })}
+                                          </Accordion>
+                                      </AccordionContent>
+                                  </AccordionItem>
+                              ))}
+                          </Accordion>
+                       )}
+                   </div>
+              </TabsContent>
+              <TabsContent value="avaliacoes">
+                   <div className="space-y-6 pt-4">
+                       <div className='flex justify-between items-center'>
+                          <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                          <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={handleExportAvaliacoes}
+                              disabled={avaliacoes.length === 0}
+                          >
+                              <Download className="mr-2 h-4 w-4" />
+                              Exportar para CSV
+                          </Button>
+                       </div>
+                       <Separator />
+                        {avaliacoes.length === 0 ? (
+                          <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                              <div>
+                                  <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
+                                  Nenhuma avaliação recebida para esta formação.
+                              </div>
+                          </div>
+                       ) : (
+                          <Tabs defaultValue="geral">
+                              <TabsList>
+                                  <TabsTrigger value="geral">Visão Geral</TabsTrigger>
+                                  {formadoresComAvaliacao.map(formador => (
+                                    <TabsTrigger key={formador.id} value={formador.id}>
+                                      {formador.nomeCompleto.split(' ')[0]}
+                                    </TabsTrigger>
+                                  ))}
+                              </TabsList>
+                              <TabsContent value="geral" className="pt-4">
+                                  <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
+                              </TabsContent>
+                               {formadoresComAvaliacao.map(formador => (
+                                  <TabsContent key={formador.id} value={formador.id} className="pt-4">
+                                       <div className="flex justify-end mb-4">
+                                          <Button variant="outline" size="sm" asChild>
+                                              <Link href={`/relatorio/${formacaoId}/${formador.id}`} target="_blank">
+                                                  <Printer className="mr-2 h-4 w-4" /> Gerar Relatório Individual
+                                              </Link>
+                                          </Button>
+                                      </div>
+                                      <AvaliacaoSummaryComponent 
+                                          summary={calculateAvaliacaoSummary(avaliacoesPorFormador[formador.id])} 
+                                          avaliacoes={avaliacoesPorFormador[formador.id]}
+                                          formadorName={formador.nomeCompleto.split(' ')[0]}
+                                      />
+                                  </TabsContent>
+                              ))}
+                          </Tabs>
+                       )}
+                   </div>
+              </TabsContent>
+          </Tabs>
+          <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
+              setIsDespesaDialogOpen(open);
+              if (!open) {
+                  setSelectedDespesa(null);
+              }
+          }}>
+              <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                      <DialogTitle>Detalhes da Despesa</DialogTitle>
+                      <DialogDescription>
+                          Visualize as informações completas da despesa.
+                      </DialogDescription>
+                  </DialogHeader>
+                  {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
+              </DialogContent>
+          </Dialog>
+        </div>
+      </ScrollArea>
+    </>
   );
 }
