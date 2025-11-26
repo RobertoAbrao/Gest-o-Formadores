@@ -1,4 +1,3 @@
-
 'use client';
 
 import { QRCodeCanvas } from 'qrcode.react';
@@ -18,62 +17,78 @@ export function GeradorQRCode({ url, title }: GeradorQRCodeProps) {
   const downloadQRCode = () => {
     if (!qrCodeRef.current) return;
 
-    const canvas = qrCodeRef.current.querySelector('canvas');
-    if (!canvas) return;
+    const qrCanvas = qrCodeRef.current.querySelector('canvas');
+    if (!qrCanvas) return;
 
-    // Create a new canvas to add a white background and title
+    // Create a new canvas to compose the final image
     const finalCanvas = document.createElement('canvas');
     const padding = 40;
     const titleHeight = 60;
-    finalCanvas.width = canvas.width + padding * 2;
-    finalCanvas.height = canvas.height + padding * 2 + titleHeight;
+    const headerHeight = 80; // Space for the top logo and text
+    
+    finalCanvas.width = qrCanvas.width + padding * 2;
+    finalCanvas.height = qrCanvas.height + padding * 2 + titleHeight + headerHeight;
     const ctx = finalCanvas.getContext('2d');
 
     if (!ctx) return;
 
-    // White background
+    // 1. White background
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-    // Draw QR Code
-    ctx.drawImage(canvas, padding, padding);
+    // 2. Draw Header (Logo and "Editora LT" text)
+    const logoImg = new Image();
+    logoImg.src = "/Imagem_do_WhatsApp_de_2025-08-14_à_s__17.07.16_9af64c95-removebg-preview.png"; // Path to your logo
+    logoImg.onload = () => {
+      const logoWidth = 50;
+      const logoHeight = 50;
+      const text = "Editora LT";
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillStyle = '#e02424'; // primary color
+      const textWidth = ctx.measureText(text).width;
+      const totalHeaderWidth = logoWidth + 10 + textWidth;
+      const startX = (finalCanvas.width - totalHeaderWidth) / 2;
 
-    // Draw Title
-    ctx.fillStyle = 'black';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, finalCanvas.width / 2, canvas.height + padding + 35);
-    
-    // Trigger download
-    const pngUrl = finalCanvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
-    let downloadLink = document.createElement('a');
-    downloadLink.href = pngUrl;
-    const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    downloadLink.download = `qrcode-${sanitizedTitle}.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+      ctx.drawImage(logoImg, startX, (headerHeight - logoHeight) / 2 + 10, logoWidth, logoHeight);
+      ctx.fillText(text, startX + logoWidth + 10, headerHeight / 2 + 20);
+
+      // 3. Draw QR Code
+      ctx.drawImage(qrCanvas, padding, headerHeight);
+
+      // 4. Draw Title
+      ctx.fillStyle = 'black';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(title, finalCanvas.width / 2, qrCanvas.height + headerHeight + padding - 10);
+
+      // 5. Trigger download
+      const pngUrl = finalCanvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+      let downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      downloadLink.download = `qrcode-${sanitizedTitle}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
   };
 
   return (
     <div className="flex flex-col items-center gap-6 p-4">
-      <div ref={qrCodeRef} className="p-4 bg-white rounded-lg border">
-        <QRCodeCanvas
+      <div className="p-4 bg-white rounded-lg border relative" ref={qrCodeRef}>
+         <QRCodeCanvas
           value={url}
           size={256}
           bgColor={"#ffffff"}
           fgColor={"#000000"}
-          level={"H"} // High error correction level, good for including a logo
+          level={"H"}
           includeMargin={true}
-          imageSettings={{
-            src: "/logo-lt-bg-white.png",
-            x: undefined,
-            y: undefined,
-            height: 48,
-            width: 48,
-            excavate: true,
-          }}
         />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white p-1 rounded-md">
+                <AppLogo iconClassName='h-10 w-10' textClassName='hidden'/>
+            </div>
+        </div>
       </div>
        <p className="text-center font-semibold">{title}</p>
       <Button onClick={downloadQRCode} className="w-full">
