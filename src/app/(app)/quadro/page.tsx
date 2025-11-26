@@ -29,6 +29,7 @@ import {
   Archive,
   CheckCircle,
   FileSignature,
+  QrCode,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -74,6 +75,7 @@ import type { Formacao, FormadorStatus } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
+import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
 
 type Columns = {
   [key in FormadorStatus]: {
@@ -104,6 +106,7 @@ export default function QuadroPage() {
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isQRCodeDialogOpen, setIsQRCodeDialogOpen] = useState(false);
   const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(
     null
   );
@@ -182,6 +185,11 @@ export default function QuadroPage() {
   const openDetailDialog = (formacao: Formacao) => {
     setSelectedFormacao(formacao);
     setIsDetailDialogOpen(true);
+  }
+
+  const openQRCodeDialog = (formacao: Formacao) => {
+    setSelectedFormacao(formacao);
+    setIsQRCodeDialogOpen(true);
   }
 
   const handleDeleteConfirm = async () => {
@@ -300,6 +308,26 @@ export default function QuadroPage() {
                 )}
             </DialogContent>
         </Dialog>
+        
+        <Dialog open={isQRCodeDialogOpen} onOpenChange={(open) => {
+          setIsQRCodeDialogOpen(open);
+          if (!open) setSelectedFormacao(null);
+        }}>
+          <DialogContent>
+             <DialogHeader>
+              <DialogTitle>QR Code para Avaliação</DialogTitle>
+              <DialogDescription>
+                Use este QR Code para que os participantes acessem o formulário de avaliação.
+              </DialogDescription>
+            </DialogHeader>
+            {selectedFormacao && (
+              <GeradorQRCode
+                url={`${window.location.origin}/avaliacao/${selectedFormacao.id}`}
+                title={selectedFormacao.titulo}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
           {Object.entries(columns).filter(([columnId]) => columnId !== 'arquivado').map(([columnId, column]) => (
@@ -350,11 +378,16 @@ export default function QuadroPage() {
                                       Gerar Ficha
                                   </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem asChild>
                                   <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
                                   <ClipboardCheck className="mr-2 h-4 w-4" />
                                   Formulário de Avaliação
                                   </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openQRCodeDialog(item); }}>
+                                <QrCode className="mr-2 h-4 w-4" />
+                                Gerar QR Code
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {item.status === 'pos-formacao' && (
