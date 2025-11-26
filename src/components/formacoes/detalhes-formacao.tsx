@@ -14,12 +14,13 @@ import {
   Timestamp,
   addDoc,
   deleteDoc,
+  setDoc,
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -37,6 +38,7 @@ import { Progress } from '../ui/progress';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import Link from 'next/link';
+import { Checkbox } from '../ui/checkbox';
 
 
 interface DetalhesFormacaoProps {
@@ -47,6 +49,45 @@ interface DetalhesFormacaoProps {
 
 // Estendendo o tipo Anexo para incluir um ID opcional, para diferenciar os novos dos antigos
 type DisplayAnexo = Anexo & { id?: string };
+
+const checklistItems = [
+    { id: 'antes_marcarData', label: 'Marcar data da formação (quantos dias são necessários)', phase: 'antes' },
+    { id: 'antes_levantarParticipantes', label: 'Levantar o quantitativo de participantes', phase: 'antes' },
+    { id: 'antes_solicitarBrindes', label: 'Solicitar brindes para a logística', phase: 'antes' },
+    { id: 'antes_selecionarBanners', label: 'Selecionar os banners para o evento', phase: 'antes' },
+    { id: 'antes_levantarFormadores', label: 'Levantar o número de formadores necessários', phase: 'antes' },
+    { id: 'antes_reuniaoFormadores', label: 'Fazer reunião com formadores para passar a apresentação e orientações do marketing', phase: 'antes' },
+    { id: 'antes_definirAssessor', label: 'Definir um assessor para acompanhar o evento', phase: 'antes' },
+    { id: 'antes_contatoFormadores', label: 'Entrar em contato com os formadores', phase: 'antes' },
+    { id: 'antes_elaborarProgramacao', label: 'Elaborar a programação e a ficha de curso para o município', phase: 'antes' },
+    { id: 'antes_pedirPassagens', label: 'Pedir passagens', phase: 'antes' },
+    { id: 'antes_pedirHospedagens', label: 'Pedir hospedagens', phase: 'antes' },
+    { id: 'antes_confirmarPagamentoDiarias', label: 'Confirmar se o pagamento das diárias foi efetuado', phase: 'antes' },
+    { id: 'antes_verificarCoffee', label: 'Verificar quem ficará responsável pelo coffee', phase: 'antes' },
+    { id: 'antes_verificarLocal', label: 'Verificar o local de curso', phase: 'antes' },
+    { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
+    { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
+    { id: 'antes_atualizarApresentacaoQR', label: 'Atualizar a apresentação com o QRCode do município', phase: 'antes' },
+    { id: 'antes_atualizarApresentacaoPresenca', label: 'Atualizar a apresentação com o QRCode da presença e avaliação', phase: 'antes' },
+    { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
+    
+    { id: 'dia_testarSistema', label: 'Testar sistema de luz e som com a equipe técnica', phase: 'dia' },
+    { id: 'dia_disponibilizarWifi', label: 'Disponibilizar acessos ao wi-fi', phase: 'dia' },
+    { id: 'dia_repassarDetalhes', label: 'Repassar últimos detalhes com equipe de recepção do município', phase: 'dia' },
+    { id: 'dia_registrarPresenca', label: 'Registrar presença do participante por meio do QRCode e entregar o brinde', phase: 'dia' },
+    { id: 'dia_disponibilizarAgua', label: 'Disponibilizar água e copo aos formadores', phase: 'dia' },
+    { id: 'dia_desenvolverMarketing', label: 'Desenvolver ações de marketing', phase: 'dia' },
+    { id: 'dia_gerenciarDemandas', label: 'Acompanhar e gerenciar qualquer demanda que possa surgir', phase: 'dia' },
+    { id: 'dia_organizarHorarios', label: 'Organizar e passar os horários de início, pausa do café e finalização do evento', phase: 'dia' },
+
+    { id: 'apos_leituraAvaliacoes', label: 'Leitura das avaliações do encontro', phase: 'apos' },
+    { id: 'apos_solicitarRelatorio', label: 'Solicitar relatório de curso aos formadores', phase: 'apos' },
+    { id: 'apos_enviarInstrucoesNF', label: 'Enviar instruções para a nota fiscal dos formadores', phase: 'apos' },
+    { id: 'apos_emailAgradecimento', label: 'Enviar e-mail de agradecimento para palestrantes, formadores e autoridades', phase: 'apos' },
+    { id: 'apos_enviarFormularioMunicipio', label: 'Enviar formulário para o município avaliar a formação', phase: 'apos' },
+    { id: 'apos_divulgarMidias', label: 'Divulgar o evento nas mídias', phase: 'apos' },
+    { id: 'apos_arquivarMateriais', label: 'Arquivar fotos, vídeos e relatórios', phase: 'apos' },
+];
 
 
 const fileToDataURL = (file: File): Promise<string> => {
@@ -439,6 +480,21 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     }
   }
 
+  const handleChecklistChange = async (itemId: string, checked: boolean) => {
+    if (!formacao) return;
+    try {
+        const formacaoRef = doc(db, 'formacoes', formacao.id);
+        await updateDoc(formacaoRef, {
+            [`checklist.${itemId}`]: checked,
+        });
+        // Optimistic update
+        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: checked } } : null);
+    } catch (error) {
+        console.error("Erro ao atualizar o checklist:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar o item do checklist." });
+    }
+  };
+
   const handleExportAvaliacoes = () => {
     if (!formacao || avaliacoes.length === 0) {
         toast({ variant: 'destructive', title: 'Nenhum dado para exportar', description: 'Não há avaliações para esta formação.' });
@@ -697,13 +753,55 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
   const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorHospedagem || 0), 0) || 0;
 
+  const ChecklistPhase = ({ title, phase }: { title: string, phase: 'antes' | 'dia' | 'apos' }) => {
+    const items = checklistItems.filter(item => item.phase === phase);
+    const completedItems = items.filter(item => formacao.checklist?.[item.id]).length;
+    const progress = items.length > 0 ? (completedItems / items.length) * 100 : 0;
+  
+    return (
+      <AccordionItem value={phase}>
+        <AccordionTrigger>
+            <div className='flex flex-col items-start gap-2'>
+                <span className='font-semibold text-base'>{title}</span>
+                <div className='flex items-center gap-2'>
+                    <Progress value={progress} className="w-32 h-2" />
+                    <span className='text-xs text-muted-foreground'>{completedItems} de {items.length}</span>
+                </div>
+            </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-3 pl-2">
+            {items.map(item => (
+              <div key={item.id} className="flex items-center space-x-3">
+                <Checkbox
+                  id={item.id}
+                  checked={formacao.checklist?.[item.id] || false}
+                  onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
+                  disabled={isArchived}
+                />
+                <label
+                  htmlFor={item.id}
+                  className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {item.label}
+                </label>
+              </div>
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    );
+  };
+
+
   return (
     <>
       <ScrollArea className="max-h-[80vh]">
         <div className='p-1'>
           <Tabs defaultValue="info" className="p-4">
-              <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="info">Informações Gerais</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="info">Geral</TabsTrigger>
+                  <TabsTrigger value="checklist">Checklist</TabsTrigger>
                   <TabsTrigger value="logistica">Logística</TabsTrigger>
                   <TabsTrigger value="despesas">
                       Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
@@ -921,6 +1019,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                           </div>
                       </div>
                   </div>
+              </TabsContent>
+              <TabsContent value="checklist">
+                <div className="space-y-6 pt-4">
+                  <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-lg flex items-center gap-2"><ListChecks /> Checklist da Formação</h4>
+                  </div>
+                  <Separator />
+                   <Accordion type="multiple" defaultValue={['antes']} className="w-full">
+                     <ChecklistPhase title="Antes do Evento" phase="antes" />
+                     <ChecklistPhase title="No Dia do Evento" phase="dia" />
+                     <ChecklistPhase title="Após o Evento" phase="apos" />
+                  </Accordion>
+                </div>
               </TabsContent>
               <TabsContent value="logistica">
                    <div className="space-y-6 pt-4">

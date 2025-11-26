@@ -100,6 +100,7 @@ export interface Formacao {
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;
   logistica?: LogisticaViagem[];
+  checklist?: Record<string, boolean>;
 }
 
 export interface Despesa {
