@@ -826,11 +826,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                    <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7"
+                    className={cn("h-7 w-7", hasObservation ? "text-primary" : "text-muted-foreground")}
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
                   >
-                    <MessageSquare className={cn("h-4 w-4", hasObservation ? "text-primary" : "text-muted-foreground")} />
+                    <MessageSquare className="h-4 w-4" />
                   </Button>
                 </div>
               );
