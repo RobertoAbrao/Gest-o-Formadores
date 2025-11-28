@@ -5,6 +5,10 @@ export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word' 
 export type FormadorStatus = 'preparacao' | 'em-formacao' | 'pos-formacao' | 'concluido' | 'arquivado';
 export type TipoDespesa = 'Alimentação' | 'Transporte' | 'Hospedagem' | 'Material Didático' | 'Outros';
 
+export interface ChecklistItem {
+  checked: boolean;
+  observation?: string;
+}
 
 export interface Formador {
   id: string;
@@ -100,7 +104,7 @@ export interface Formacao {
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;
   logistica?: LogisticaViagem[];
-  checklist?: Record<string, boolean>;
+  checklist?: Record<string, ChecklistItem>;
 }
 
 export interface Despesa {

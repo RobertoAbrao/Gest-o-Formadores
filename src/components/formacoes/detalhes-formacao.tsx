@@ -18,9 +18,9 @@ import {
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -39,6 +39,8 @@ import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
+import { Textarea } from '../ui/textarea';
+import { cn } from '@/lib/utils';
 
 
 interface DetalhesFormacaoProps {
@@ -184,6 +186,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [anexos, setAnexos] = useState<DisplayAnexo[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
+  
+  const [isObservationModalOpen, setIsObservationModalOpen] = useState(false);
+  const [editingObservation, setEditingObservation] = useState<{ itemId: string; currentObservation: string } | null>(null);
+  const [observationText, setObservationText] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
@@ -484,16 +491,44 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     if (!formacao) return;
     try {
         const formacaoRef = doc(db, 'formacoes', formacao.id);
+        const currentItem = formacao.checklist?.[itemId] || { checked: false, observation: '' };
         await updateDoc(formacaoRef, {
-            [`checklist.${itemId}`]: checked,
+            [`checklist.${itemId}`]: { ...currentItem, checked },
         });
-        // Optimistic update
-        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: checked } } : null);
+        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, checked } } } : null);
     } catch (error) {
         console.error("Erro ao atualizar o checklist:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar o item do checklist." });
     }
   };
+  
+  const handleOpenObservationModal = (itemId: string) => {
+    const currentObservation = formacao?.checklist?.[itemId]?.observation || '';
+    setEditingObservation({ itemId, currentObservation });
+    setObservationText(currentObservation);
+    setIsObservationModalOpen(true);
+  };
+
+  const handleSaveObservation = async () => {
+    if (!formacao || !editingObservation) return;
+    const { itemId } = editingObservation;
+    const currentItem = formacao.checklist?.[itemId] || { checked: false, observation: '' };
+
+    try {
+        const formacaoRef = doc(db, 'formacoes', formacao.id);
+        await updateDoc(formacaoRef, {
+            [`checklist.${itemId}`]: { ...currentItem, observation: observationText },
+        });
+        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, observation: observationText } } } : null);
+        toast({ title: "Sucesso", description: "Observação salva." });
+        setIsObservationModalOpen(false);
+        setEditingObservation(null);
+    } catch (error) {
+        console.error("Erro ao salvar observação:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar a observação." });
+    }
+  };
+
 
   const handleExportAvaliacoes = () => {
     if (!formacao || avaliacoes.length === 0) {
@@ -751,11 +786,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   }
   
   const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
-  const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorHospedagem || 0), 0) || 0;
+  const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorDiaria || 0), 0) || 0;
 
   const ChecklistPhase = ({ title, phase }: { title: string, phase: 'antes' | 'dia' | 'apos' }) => {
     const items = checklistItems.filter(item => item.phase === phase);
-    const completedItems = items.filter(item => formacao.checklist?.[item.id]).length;
+    const completedItems = items.filter(item => formacao.checklist?.[item.id]?.checked).length;
     const progress = items.length > 0 ? (completedItems / items.length) * 100 : 0;
   
     return (
@@ -771,22 +806,35 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         </AccordionTrigger>
         <AccordionContent>
           <div className="space-y-3 pl-2">
-            {items.map(item => (
-              <div key={item.id} className="flex items-center space-x-3">
-                <Checkbox
-                  id={item.id}
-                  checked={formacao.checklist?.[item.id] || false}
-                  onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
-                  disabled={isArchived}
-                />
-                <label
-                  htmlFor={item.id}
-                  className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {item.label}
-                </label>
-              </div>
-            ))}
+            {items.map(item => {
+              const checklistItem = formacao.checklist?.[item.id];
+              const hasObservation = !!checklistItem?.observation;
+              return (
+                <div key={item.id} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={item.id}
+                    checked={checklistItem?.checked || false}
+                    onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
+                    disabled={isArchived}
+                  />
+                  <label
+                    htmlFor={item.id}
+                    className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-grow"
+                  >
+                    {item.label}
+                  </label>
+                   <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => handleOpenObservationModal(item.id)}
+                    disabled={isArchived}
+                  >
+                    <MessageSquare className={cn("h-4 w-4", hasObservation ? "text-primary" : "text-muted-foreground")} />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -1061,7 +1109,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                               <TableHead>Ida/Volta</TableHead>
                                               <TableHead>Hotel</TableHead>
                                               <TableHead>Check-in/Check-out</TableHead>
-                                              <TableHead className="text-right">Valor Hosp.</TableHead>
+                                              <TableHead className="text-right">Valor Diária</TableHead>
                                           </TableRow>
                                       </TableHeader>
                                       <TableBody>
@@ -1087,7 +1135,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                       </div>
                                                   </TableCell>
                                                   <TableCell className="text-right font-medium">
-                                                      {item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}
+                                                      {item.valorDiaria ? formatCurrency(item.valorDiaria) : 'N/A'}
                                                   </TableCell>
                                               </TableRow>
                                           ))}
@@ -1100,7 +1148,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                           <CardHeader className="pb-4">
                                               <CardTitle className="text-base flex items-center justify-between">
                                                   <span>{item.formadorNome}</span>
-                                                  <span className="font-bold text-primary">{item.valorHospedagem ? formatCurrency(item.valorHospedagem) : 'N/A'}</span>
+                                                  <span className="font-bold text-primary">{item.valorDiaria ? formatCurrency(item.valorDiaria) : 'N/A'}</span>
                                               </CardTitle>
                                           </CardHeader>
                                           <CardContent className="space-y-3 text-sm">
@@ -1297,6 +1345,26 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                       </DialogDescription>
                   </DialogHeader>
                   {selectedDespesa && <DetalhesDespesa despesa={selectedDespesa} />}
+              </DialogContent>
+          </Dialog>
+           <Dialog open={isObservationModalOpen} onOpenChange={setIsObservationModalOpen}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Adicionar Observação</DialogTitle>
+                      <DialogDescription>
+                          Adicione uma nota para o item do checklist.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <Textarea
+                      value={observationText}
+                      onChange={(e) => setObservationText(e.target.value)}
+                      placeholder="Digite sua observação aqui..."
+                      rows={5}
+                  />
+                  <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsObservationModalOpen(false)}>Cancelar</Button>
+                      <Button onClick={handleSaveObservation}>Salvar Observação</Button>
+                  </div>
               </DialogContent>
           </Dialog>
         </div>
