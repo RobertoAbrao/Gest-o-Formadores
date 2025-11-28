@@ -20,7 +20,7 @@ import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -826,11 +826,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                    <Button
                     size="icon"
                     variant="ghost"
-                    className={cn("h-7 w-7", hasObservation ? "text-primary" : "text-muted-foreground")}
+                    className="h-7 w-7 text-muted-foreground"
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    {hasObservation ? <MessageSquareText className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
                   </Button>
                 </div>
               );
