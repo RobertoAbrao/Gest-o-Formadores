@@ -170,8 +170,8 @@ export interface AvaliacaoSecretaria {
     aplicabilidade: '1' | '2' | '3' | '4' | '5';
     percepcaoEngajamento: 'Muito alta' | 'Alta' | 'Média' | 'Baixa';
     principaisBeneficios?: string;
-    organizacaoGeral: 'Excelente' | 'Bom' | 'Regular' | 'Ruim';
-    avaliacaoCoffeeBreak: 'Excelente' | 'Bom' | 'Regular' | 'Ruim';
+    organizacaoGeral: 'Excelente' | 'Bom' | 'Regular' | 'Ruim' | 'Não se aplica.';
+    avaliacaoCoffeeBreak: 'Excelente' | 'Bom' | 'Regular' | 'Ruim' | 'Não se aplica.';
     comentariosFinais?: string;
     dataCriacao: Timestamp;
 }

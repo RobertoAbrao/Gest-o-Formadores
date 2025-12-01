@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import type { Formacao } from '@/lib/types';
+import type { Formacao, AvaliacaoSecretaria } from '@/lib/types';
 
 const ufs = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
@@ -28,6 +28,7 @@ const avaliacaoOpcoes = z.enum(['Excelente', 'Bom', 'Regular', 'Ruim', 'Péssimo
 const tempoOpcoes = z.enum(['Insuficiente (Faltou tempo)', 'Adequado (Tempo ideal)', 'Excessivo (Sobrou tempo)']);
 const simNaoParcialOpcoes = z.enum(['Sim, totalmente', 'Parcialmente', 'Não']);
 const engajamentoOpcoes = z.enum(['Muito alta', 'Alta', 'Média', 'Baixa']);
+const organizacaoOpcoes = z.enum(['Excelente', 'Bom', 'Regular', 'Ruim', 'Não se aplica.']);
 
 const avaliacaoSecretariaSchema = z.object({
     nomeCompleto: z.string().min(3, 'O nome completo é obrigatório.'),
@@ -43,8 +44,8 @@ const avaliacaoSecretariaSchema = z.object({
     aplicabilidade: z.enum(['1', '2', '3', '4', '5']),
     percepcaoEngajamento: engajamentoOpcoes,
     principaisBeneficios: z.string().optional(),
-    organizacaoGeral: z.enum(['Excelente', 'Bom', 'Regular', 'Ruim']),
-    avaliacaoCoffeeBreak: z.enum(['Excelente', 'Bom', 'Regular', 'Ruim']),
+    organizacaoGeral: organizacaoOpcoes,
+    avaliacaoCoffeeBreak: organizacaoOpcoes,
     comentariosFinais: z.string().optional(),
 }).refine(data => data.email === data.confirmarEmail, {
     message: "Os emails não correspondem.",
@@ -287,8 +288,8 @@ export default function AvaliacaoSecretariaPage() {
                             <div className="space-y-6 p-4 border rounded-lg">
                                 <h3 className='font-semibold text-lg'>IV. Organização e Logística</h3>
                                 <Separator />
-                                <RadioGroupField name="organizacaoGeral" label="9) Como você avalia a organização geral do evento (comunicação, recepção, suporte)?" options={['Excelente', 'Bom', 'Regular', 'Ruim']} />
-                                <RadioGroupField name="avaliacaoCoffeeBreak" label="10) Avaliação do Coffee Break (organização, variedade e qualidade):" options={['Excelente', 'Bom', 'Regular', 'Ruim']} />
+                                <RadioGroupField name="organizacaoGeral" label="9) Como você avalia a organização geral do evento (comunicação, recepção, suporte)?" options={organizacaoOpcoes.options} />
+                                <RadioGroupField name="avaliacaoCoffeeBreak" label="10) Avaliação do Coffee Break (organização, variedade e qualidade):" options={organizacaoOpcoes.options} />
                             </div>
 
                             <div className="space-y-6 p-4 border rounded-lg">
