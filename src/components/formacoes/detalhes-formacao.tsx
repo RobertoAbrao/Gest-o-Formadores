@@ -893,7 +893,6 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
           <div className="space-y-3 pl-2">
             {items.map(item => {
               const checklistItem = formacao.checklist?.[item.id];
-              const hasObservation = !!checklistItem?.observation;
               return (
                 <div key={item.id} className="flex items-center space-x-3">
                   <Checkbox
@@ -911,14 +910,11 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                    <Button
                     size="icon"
                     variant="ghost"
-                    className={cn(
-                        "h-7 w-7 text-muted-foreground",
-                        hasObservation && "text-primary"
-                    )}
+                    className="h-7 w-7 text-muted-foreground"
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
                   >
-                    {hasObservation ? <MessageSquareText className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                    {checklistItem?.observation ? <MessageSquareText className="h-4 w-4 text-primary" /> : <MessageSquare className="h-4 w-4" />}
                   </Button>
                 </div>
               );
@@ -1374,7 +1370,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                        </div>
                        <Separator />
                         <Tabs defaultValue="geral" className='pt-2'>
-                              <TabsList className="flex h-auto flex-wrap justify-start">
+                              <TabsList className="h-auto flex flex-wrap justify-start">
                                   <TabsTrigger value="geral">Geral (Participantes)</TabsTrigger>
                                   <TabsTrigger value="secretaria">Secretaria</TabsTrigger>
                                   {formadoresComAvaliacao.map(formador => (
