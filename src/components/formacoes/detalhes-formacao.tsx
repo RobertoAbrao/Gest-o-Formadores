@@ -1374,7 +1374,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                        </div>
                        <Separator />
                         <Tabs defaultValue="geral" className='pt-2'>
-                              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${2 + formadoresComAvaliacao.length}, minmax(0, 1fr))` }}>
+                              <TabsList className="flex h-auto flex-wrap justify-start">
                                   <TabsTrigger value="geral">Geral (Participantes)</TabsTrigger>
                                   <TabsTrigger value="secretaria">Secretaria</TabsTrigger>
                                   {formadoresComAvaliacao.map(formador => (
