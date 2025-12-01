@@ -104,7 +104,7 @@ export interface Formacao {
   anexos?: Anexo[];
   avaliacoesAbertas?: boolean;
   logistica?: LogisticaViagem[];
-  checklist?: Record<string, ChecklistItem>;
+  checklist?: Record<string, ChecklistItem | boolean>;
 }
 
 export interface Despesa {
@@ -158,6 +158,8 @@ export interface AvaliacaoSecretaria {
     id: string;
     formacaoId: string;
     formacaoTitulo?: string;
+    nomeCompleto: string;
+    email: string;
     cidade: string;
     uf: string;
     dominioConteudo: 'Excelente' | 'Bom' | 'Regular' | 'Ruim' | 'Péssimo';

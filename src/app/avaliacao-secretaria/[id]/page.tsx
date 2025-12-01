@@ -30,6 +30,9 @@ const simNaoParcialOpcoes = z.enum(['Sim, totalmente', 'Parcialmente', 'Não']);
 const engajamentoOpcoes = z.enum(['Muito alta', 'Alta', 'Média', 'Baixa']);
 
 const avaliacaoSecretariaSchema = z.object({
+    nomeCompleto: z.string().min(3, 'O nome completo é obrigatório.'),
+    email: z.string().email('Por favor, insira um email válido.'),
+    confirmarEmail: z.string().email('A confirmação de e-mail é obrigatória.'),
     cidade: z.string().min(1, 'A cidade é obrigatória.'),
     uf: z.string().min(2, 'O estado é obrigatório.'),
     dominioConteudo: avaliacaoOpcoes,
@@ -43,6 +46,9 @@ const avaliacaoSecretariaSchema = z.object({
     organizacaoGeral: z.enum(['Excelente', 'Bom', 'Regular', 'Ruim']),
     avaliacaoCoffeeBreak: z.enum(['Excelente', 'Bom', 'Regular', 'Ruim']),
     comentariosFinais: z.string().optional(),
+}).refine(data => data.email === data.confirmarEmail, {
+    message: "Os emails não correspondem.",
+    path: ["confirmarEmail"],
 });
 
 type AvaliacaoSecretariaFormValues = z.infer<typeof avaliacaoSecretariaSchema>;
@@ -61,6 +67,9 @@ export default function AvaliacaoSecretariaPage() {
     resolver: zodResolver(avaliacaoSecretariaSchema),
     shouldFocusError: false,
     defaultValues: {
+        nomeCompleto: '',
+        email: '',
+        confirmarEmail: '',
         sugestoesMaterial: '',
         principaisBeneficios: '',
         comentariosFinais: '',
@@ -119,8 +128,9 @@ export default function AvaliacaoSecretariaPage() {
 
   const onSubmit = async (data: AvaliacaoSecretariaFormValues) => {
     try {
+      const { confirmarEmail, ...dataToSave } = data;
       await addDoc(collection(db, 'avaliacoesSecretaria'), {
-        ...data,
+        ...dataToSave,
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
         dataCriacao: Timestamp.now(),
@@ -232,6 +242,15 @@ export default function AvaliacaoSecretariaPage() {
                                 <h3 className='font-semibold text-lg'>I. Informações Gerais</h3>
                                 <Separator />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <FormField control={form.control} name="nomeCompleto" render={({ field }) => (
+                                        <FormItem><FormLabel>Nome Completo do Responsável</FormLabel><FormControl><Input placeholder="Seu nome" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="email" render={({ field }) => (
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="seu.email@exemplo.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                     <FormField control={form.control} name="confirmarEmail" render={({ field }) => (
+                                        <FormItem><FormLabel>Confirmar Email</FormLabel><FormControl><Input type="email" placeholder="Confirme seu e-mail" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
                                      <FormField control={form.control} name="cidade" render={({ field }) => (
                                         <FormItem><FormLabel>Cidade</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>
                                     )} />
