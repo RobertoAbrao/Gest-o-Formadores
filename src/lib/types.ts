@@ -154,6 +154,27 @@ export interface Avaliacao {
     dataCriacao: Timestamp;
 }
 
+export interface AvaliacaoSecretaria {
+    id: string;
+    formacaoId: string;
+    formacaoTitulo?: string;
+    cidade: string;
+    uf: string;
+    dominioConteudo: 'Excelente' | 'Bom' | 'Regular' | 'Ruim' | 'Péssimo';
+    tempoDedicado: 'Insuficiente (Faltou tempo)' | 'Adequado (Tempo ideal)' | 'Excessivo (Sobrou tempo)';
+    formatoApresentacao: 'Sim, totalmente' | 'Parcialmente' | 'Não';
+    sugestoesMaterial?: string;
+    duvidasEsclarecidas: 'Sim' | 'Não' | 'Parcialmente';
+    aplicabilidade: '1' | '2' | '3' | '4' | '5';
+    percepcaoEngajamento: 'Muito alta' | 'Alta' | 'Média' | 'Baixa';
+    principaisBeneficios?: string;
+    organizacaoGeral: 'Excelente' | 'Bom' | 'Regular' | 'Ruim';
+    avaliacaoCoffeeBreak: 'Excelente' | 'Bom' | 'Regular' | 'Ruim';
+    comentariosFinais?: string;
+    dataCriacao: Timestamp;
+}
+
+
 interface EtapaStatus {
   data: Timestamp | null;
   ok?: boolean;

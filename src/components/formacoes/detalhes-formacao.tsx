@@ -15,12 +15,13 @@ import {
   addDoc,
   deleteDoc,
   setDoc,
+  limit,
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
-import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, LogisticaViagem, ChecklistItem } from '@/lib/types';
+import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, AvaliacaoSecretaria, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -183,6 +184,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const [materiais, setMateriais] = useState<Material[]>([]);
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+  const [avaliacaoSecretaria, setAvaliacaoSecretaria] = useState<AvaliacaoSecretaria | null>(null);
   const [anexos, setAnexos] = useState<DisplayAnexo[]>([]);
   const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
   const [isDespesaDialogOpen, setIsDespesaDialogOpen] = useState(false);
@@ -276,6 +278,14 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         const avaliacoesSnap = await getDocs(qAvaliacoes);
         const avaliacoesData = avaliacoesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Avaliacao));
         setAvaliacoes(avaliacoesData);
+
+        const qAvaliacaoSecretaria = query(collection(db, 'avaliacoesSecretaria'), where('formacaoId', '==', formacaoId), limit(1));
+        const avaliacaoSecretariaSnap = await getDocs(qAvaliacaoSecretaria);
+        if (!avaliacaoSecretariaSnap.empty) {
+            setAvaliacaoSecretaria({ id: avaliacaoSecretariaSnap.docs[0].id, ...avaliacaoSecretariaSnap.docs[0].data() } as AvaliacaoSecretaria);
+        } else {
+            setAvaliacaoSecretaria(null);
+        }
 
 
     } catch (error) {
@@ -485,6 +495,12 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         console.error("Erro ao alterar status da avaliação:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status da avaliação." });
     }
+  }
+
+  const handleCopyLink = (path: string) => {
+    const url = `${window.location.origin}/${path}/${formacaoId}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: 'Link copiado!', description: 'O link foi copiado para a área de transferência.' });
   }
 
   const handleChecklistChange = async (itemId: string, checked: boolean) => {
@@ -719,6 +735,75 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       </div>
     );
   };
+  
+  const AvaliacaoSecretariaComponent = ({ avaliacao }: { avaliacao: AvaliacaoSecretaria | null }) => {
+    if (!avaliacao) {
+       return (
+            <div className="space-y-6 pt-4">
+                <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-lg">Avaliação da Secretaria</h4>
+                    <Button variant="outline" size="sm" onClick={() => handleCopyLink('avaliacao-secretaria')}>
+                      <Copy className="mr-2 h-4 w-4" /> Copiar Link do Formulário
+                    </Button>
+                </div>
+                <Separator />
+                <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                    <div>
+                        <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
+                        Nenhuma avaliação da secretaria foi recebida para esta formação ainda.
+                    </div>
+                </div>
+            </div>
+       )
+    }
+    
+    const fields = [
+        { label: "Domínio do conteúdo e clareza", value: avaliacao.dominioConteudo },
+        { label: "Tempo dedicado", value: avaliacao.tempoDedicado },
+        { label: "Formato da apresentação", value: avaliacao.formatoApresentacao },
+        { label: "Dúvidas esclarecidas", value: avaliacao.duvidasEsclarecidas },
+        { label: "Aplicabilidade na prática", value: `${avaliacao.aplicabilidade}/5` },
+        { label: "Percepção de engajamento", value: avaliacao.percepcaoEngajamento },
+        { label: "Organização geral", value: avaliacao.organizacaoGeral },
+        { label: "Avaliação do Coffee Break", value: avaliacao.avaliacaoCoffeeBreak },
+    ];
+
+    const openFields = [
+        { label: "Sugestões para o material", value: avaliacao.sugestoesMaterial },
+        { label: "Principais benefícios", value: avaliacao.principaisBeneficios },
+        { label: "Comentários finais", value: avaliacao.comentariosFinais },
+    ].filter(f => f.value);
+
+    return (
+      <div className="space-y-6 pt-4">
+          <h4 className="font-semibold text-lg">Avaliação da Secretaria</h4>
+          <Separator />
+          <Card>
+              <CardContent className="pt-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                       {fields.map(field => (
+                           <div key={field.label} className="flex justify-between items-center border-b pb-2">
+                               <span className="font-medium text-muted-foreground">{field.label}</span>
+                               <Badge variant="secondary">{field.value}</Badge>
+                           </div>
+                       ))}
+                   </div>
+                   {openFields.length > 0 && (
+                        <div className="mt-6 space-y-4">
+                            <Separator />
+                             {openFields.map(field => (
+                                <div key={field.label} className="text-sm">
+                                    <p className="font-medium mb-1">{field.label}:</p>
+                                    <p className="text-muted-foreground italic pl-4 border-l-2">"{field.value}"</p>
+                                </div>
+                            ))}
+                        </div>
+                   )}
+              </CardContent>
+          </Card>
+      </div>
+    );
+  };
 
   const IndividualResponseList = ({ responses }: { responses: Avaliacao[] }) => {
     if (responses.length === 0) {
@@ -826,7 +911,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                    <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 text-muted-foreground"
+                    className={cn(
+                        "h-7 w-7",
+                        hasObservation ? "text-primary" : "text-muted-foreground"
+                    )}
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
                   >
@@ -855,7 +943,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                       Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
                   </TabsTrigger>
                   <TabsTrigger value="avaliacoes">
-                      Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length}</Badge>
+                      Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length + (avaliacaoSecretaria ? 1 : 0)}</Badge>
                   </TabsTrigger>
               </TabsList>
               <TabsContent value="info">
@@ -1266,7 +1354,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
               <TabsContent value="avaliacoes">
                    <div className="space-y-6 pt-4">
                        <div className='flex justify-between items-center'>
-                          <h4 className="font-semibold text-lg">Resultados da Avaliação</h4>
+                          <h4 className="font-semibold text-lg">Resultados das Avaliações</h4>
                           <div className='flex items-center gap-2'>
                               <Button 
                                   variant="outline" 
@@ -1286,17 +1374,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                           </div>
                        </div>
                        <Separator />
-                        {avaliacoes.length === 0 ? (
-                          <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
-                              <div>
-                                  <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
-                                  Nenhuma avaliação recebida para esta formação.
-                              </div>
-                          </div>
-                       ) : (
-                          <Tabs defaultValue="geral">
-                              <TabsList>
-                                  <TabsTrigger value="geral">Visão Geral</TabsTrigger>
+                        <Tabs defaultValue="geral" className='pt-2'>
+                              <TabsList className="grid w-full grid-cols-4">
+                                  <TabsTrigger value="geral">Geral (Participantes)</TabsTrigger>
+                                  <TabsTrigger value="secretaria">Secretaria</TabsTrigger>
                                   {formadoresComAvaliacao.map(formador => (
                                     <TabsTrigger key={formador.id} value={formador.id}>
                                       {formador.nomeCompleto.split(' ')[0]}
@@ -1304,7 +1385,16 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                   ))}
                               </TabsList>
                               <TabsContent value="geral" className="pt-4">
-                                  <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
+                                  {avaliacoes.length === 0 ? (
+                                      <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
+                                        Nenhuma avaliação de participante recebida.
+                                      </div>
+                                  ) : (
+                                     <AvaliacaoSummaryComponent summary={avaliacaoSummaryGeral} avaliacoes={avaliacoes} />
+                                  )}
+                              </TabsContent>
+                              <TabsContent value="secretaria" className="pt-4">
+                                  <AvaliacaoSecretariaComponent avaliacao={avaliacaoSecretaria} />
                               </TabsContent>
                                {formadoresComAvaliacao.map(formador => (
                                   <TabsContent key={formador.id} value={formador.id} className="pt-4">
@@ -1327,7 +1417,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                   </TabsContent>
                               ))}
                           </Tabs>
-                       )}
+                       
                    </div>
               </TabsContent>
           </Tabs>

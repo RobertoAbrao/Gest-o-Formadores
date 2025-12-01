@@ -51,10 +51,17 @@ service cloud.firestore {
         allow read, write: if isUserAdmin(request.auth.uid);
     }
     
-    // Evaluations collection: anyone can create, only admins can read
+    // Evaluations collection (participants): anyone can create, only admins can read
     match /avaliacoes/{avaliacaoId} {
         allow read: if isUserAdmin(request.auth.uid);
-        allow create: if true; // Public access to submit form
+        allow create: if true;
+        allow write: if isUserAdmin(request.auth.uid);
+    }
+    
+    // Secretary Evaluations collection: anyone can create, only admins can read
+    match /avaliacoesSecretaria/{avaliacaoId} {
+        allow read: if isUserAdmin(request.auth.uid);
+        allow create: if true;
         allow write: if isUserAdmin(request.auth.uid);
     }
 
