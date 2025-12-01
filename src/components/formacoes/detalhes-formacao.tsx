@@ -929,6 +929,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     );
   };
 
+  const gridColsClass = `grid-cols-${2 + formadoresComAvaliacao.length}`;
 
   return (
     <>
@@ -1375,7 +1376,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                        </div>
                        <Separator />
                         <Tabs defaultValue="geral" className='pt-2'>
-                              <TabsList className="grid w-full grid-cols-4">
+                              <TabsList className={cn("grid w-full", `grid-cols-${2 + formadoresComAvaliacao.length}`)}>
                                   <TabsTrigger value="geral">Geral (Participantes)</TabsTrigger>
                                   <TabsTrigger value="secretaria">Secretaria</TabsTrigger>
                                   {formadoresComAvaliacao.map(formador => (
@@ -1462,3 +1463,4 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </>
   );
 }
+
