@@ -229,10 +229,10 @@ export default function AvaliacaoSecretariaPage() {
                 <CardHeader>
                     <CardTitle className='flex items-center gap-3'>
                         <ClipboardCheck className='h-7 w-7 text-primary' />
-                        Pesquisa de Satisfação – Formação {formacao.modalidade === 'Online' ? 'On-line' : 'Presencial'}
+                        Pesquisa de Satisfação – Formação
                     </CardTitle>
                     <CardDescription>
-                        Sua opinião é fundamental para aprimorarmos nossos eventos. Formação: <span className='font-semibold text-foreground'>{formacao.titulo}</span>
+                        Sua opinião é fundamental para aprimorarmos nossos eventos e construirmos juntos uma educação de excelência. Formação: <span className='font-semibold text-foreground'>{formacao.titulo}</span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
