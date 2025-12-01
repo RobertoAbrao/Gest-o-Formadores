@@ -507,11 +507,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     if (!formacao) return;
     try {
         const formacaoRef = doc(db, 'formacoes', formacao.id);
+        // Preserve existing observation if it exists
         const currentItem = formacao.checklist?.[itemId] || { checked: false, observation: '' };
-        await updateDoc(formacaoRef, {
-            [`checklist.${itemId}`]: { ...currentItem, checked },
-        });
-        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, checked } } } : null);
+        if (typeof currentItem === 'boolean') { // Handle migration from old boolean format
+             await updateDoc(formacaoRef, {
+                [`checklist.${itemId}`]: { checked, observation: '' },
+            });
+            setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { checked, observation: '' } } } : null);
+        } else {
+            await updateDoc(formacaoRef, {
+                [`checklist.${itemId}.checked`]: checked,
+            });
+            setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, checked } } } : null);
+        }
     } catch (error) {
         console.error("Erro ao atualizar o checklist:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar o item do checklist." });
@@ -519,7 +527,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   };
   
   const handleOpenObservationModal = (itemId: string) => {
-    const currentObservation = formacao?.checklist?.[itemId]?.observation || '';
+    const checklistValue = formacao?.checklist?.[itemId];
+    const currentObservation = (typeof checklistValue === 'object' ? checklistValue.observation : '') || '';
     setEditingObservation({ itemId, currentObservation });
     setObservationText(currentObservation);
     setIsObservationModalOpen(true);
@@ -528,14 +537,24 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const handleSaveObservation = async () => {
     if (!formacao || !editingObservation) return;
     const { itemId } = editingObservation;
-    const currentItem = formacao.checklist?.[itemId] || { checked: false, observation: '' };
-
+    
     try {
         const formacaoRef = doc(db, 'formacoes', formacao.id);
+        const currentItem = formacao.checklist?.[itemId];
+        const isChecked = typeof currentItem === 'object' ? currentItem.checked : !!currentItem;
+
         await updateDoc(formacaoRef, {
-            [`checklist.${itemId}`]: { ...currentItem, observation: observationText },
+            [`checklist.${itemId}`]: { checked: isChecked, observation: observationText },
         });
-        setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, observation: observationText } } } : null);
+
+        // Optimistically update local state
+        setFormacao(prev => {
+            if (!prev) return null;
+            const newChecklist = { ...prev.checklist };
+            newChecklist[itemId] = { checked: isChecked, observation: observationText };
+            return { ...prev, checklist: newChecklist };
+        });
+        
         toast({ title: "Sucesso", description: "Observação salva." });
         setIsObservationModalOpen(false);
         setEditingObservation(null);
@@ -875,7 +894,13 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
   const ChecklistPhase = ({ title, phase }: { title: string, phase: 'antes' | 'dia' | 'apos' }) => {
     const items = checklistItems.filter(item => item.phase === phase);
-    const completedItems = items.filter(item => formacao.checklist?.[item.id]?.checked).length;
+    const completedItems = items.filter(item => {
+        const checklistValue = formacao.checklist?.[item.id];
+        if (typeof checklistValue === 'object' && checklistValue !== null) {
+            return checklistValue.checked;
+        }
+        return !!checklistValue; // Legacy boolean support
+    }).length;
     const progress = items.length > 0 ? (completedItems / items.length) * 100 : 0;
   
     return (
@@ -892,12 +917,15 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         <AccordionContent>
           <div className="space-y-3 pl-2">
             {items.map(item => {
-              const checklistItem = formacao.checklist?.[item.id];
+              const checklistValue = formacao.checklist?.[item.id];
+              const isChecked = typeof checklistValue === 'object' ? checklistValue.checked : !!checklistValue;
+              const observation = typeof checklistValue === 'object' ? checklistValue.observation : '';
+              
               return (
                 <div key={item.id} className="flex items-center space-x-3">
                   <Checkbox
                     id={item.id}
-                    checked={checklistItem?.checked || false}
+                    checked={isChecked}
                     onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
                     disabled={isArchived}
                   />
@@ -914,7 +942,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
                   >
-                    {checklistItem?.observation ? <MessageSquareText className="h-4 w-4 text-primary" /> : <MessageSquare className="h-4 w-4" />}
+                    {observation ? <MessageSquareText className="h-4 w-4 text-primary" /> : <MessageSquare className="h-4 w-4" />}
                   </Button>
                 </div>
               );
@@ -930,7 +958,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       <ScrollArea className="max-h-[80vh]">
         <div className='p-1'>
           <Tabs defaultValue="info" className="p-4">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="h-auto flex flex-wrap justify-start">
                   <TabsTrigger value="info">Geral</TabsTrigger>
                   <TabsTrigger value="checklist">Checklist</TabsTrigger>
                   <TabsTrigger value="logistica">Logística</TabsTrigger>
