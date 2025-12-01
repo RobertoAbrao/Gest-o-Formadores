@@ -5,7 +5,7 @@ import type { ProjetoImplatancao, Anexo } from '@/lib/types';
 import { Timestamp } from 'firebase/firestore';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star, Shield } from 'lucide-react';
+import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star, Shield, DownloadCloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -182,14 +182,28 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
     const sortedMilestones = scheduledMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
     
     if (sortedMilestones.length > 0) {
-        sortedMilestones.push({
-            icon: CheckCircle,
-            title: 'Projeto Concluído',
-            description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-            anexos: [],
-            isComplete: true,
-            sortDate: new Date(8640000000000000) // Data máxima para garantir que seja o último
-        });
+        let finalItem;
+        if (projeto.dossieUrl) {
+            finalItem = {
+                icon: DownloadCloud,
+                title: 'Dossiê Completo',
+                description: { formadores: '', detalhes: '' },
+                anexos: [],
+                isComplete: true,
+                dossieUrl: projeto.dossieUrl, // Adiciona a URL aqui
+                sortDate: new Date(8640000000000000)
+            };
+        } else {
+            finalItem = {
+                icon: CheckCircle,
+                title: 'Projeto Concluído',
+                description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
+                anexos: [],
+                isComplete: true,
+                sortDate: new Date(8640000000000000)
+            };
+        }
+        sortedMilestones.push(finalItem as any);
     }
 
   return (
@@ -228,14 +242,37 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
              <h3 className="text-xl font-semibold mb-6 pb-2 border-b">Marcos e Atividades</h3>
              <div className='space-y-4'>
                 {sortedMilestones.length > 0 ? (
-                    sortedMilestones.map((milestone, index) => (
-                        <MilestoneCard 
-                            key={index}
-                            {...milestone}
-                            isFirst={index === 0}
-                            isLast={index === sortedMilestones.length - 1}
-                        />
-                    ))
+                    sortedMilestones.map((milestone, index) => {
+                        if ((milestone as any).dossieUrl) {
+                            return (
+                                <div key={index} className="flex justify-center relative">
+                                    <div className="flex w-full items-start">
+                                        <div className="w-1/2 pr-8 text-right">
+                                             <h4 className="font-bold text-lg mt-3">{milestone.title}</h4>
+                                        </div>
+                                        <div className="flex items-center justify-center w-12 h-12 rounded-full z-10 shrink-0 bg-primary text-primary-foreground">
+                                            <DownloadCloud className="w-6 h-6" />
+                                        </div>
+                                        <div className="w-1/2 pl-8">
+                                            <div className='mt-3'>
+                                                <a href={(milestone as any).dossieUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">
+                                                    Clique aqui para baixar o dossiê completo
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return (
+                             <MilestoneCard 
+                                key={index}
+                                {...milestone}
+                                isFirst={index === 0}
+                                isLast={index === sortedMilestones.length - 1}
+                            />
+                        )
+                    })
                 ) : (
                     <p className="text-sm text-center text-gray-500 py-8">Nenhum marco com data definida para exibir na linha do tempo.</p>
                 )}

@@ -36,7 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
@@ -102,6 +102,7 @@ const formSchema = z.object({
   versao: z.string().optional(),
   material: z.string().optional(),
   brasaoId: z.string().optional(),
+  dossieUrl: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
   dataMigracao: z.date().nullable(),
   anexo: z.any().optional(), // Campo legado
   dataImplantacao: z.date().nullable(),
@@ -257,6 +258,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       versao: projeto?.versao || '',
       material: projeto?.material || '',
       brasaoId: projeto?.brasaoId || '',
+      dossieUrl: projeto?.dossieUrl || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       anexo: projeto?.anexo || null,
       dataImplantacao: toDate(projeto?.dataImplantacao),
@@ -700,6 +702,18 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                     <FormLabel>Material</FormLabel>
                     <FormControl>
                         <Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}/>
+            <FormField control={form.control} name="dossieUrl" render={({ field }) => (
+                <FormItem className="sm:col-span-2">
+                    <FormLabel>Link do Dossiê Final (Google Drive)</FormLabel>
+                    <FormControl>
+                        <div className="flex items-center gap-2">
+                            <DownloadCloud className="h-5 w-5 text-muted-foreground" />
+                            <Input placeholder="https://drive.google.com/..." {...field} value={field.value ?? ''} />
+                        </div>
                     </FormControl>
                     <FormMessage />
                 </FormItem>
