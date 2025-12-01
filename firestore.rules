@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -58,9 +59,9 @@ service cloud.firestore {
         allow write: if isUserAdmin(request.auth.uid);
     }
     
-    // Secretary Evaluations collection: anyone can create, only admins can read
+    // Secretary Evaluations collection: anyone can create, anyone can read
     match /avaliacoesSecretaria/{avaliacaoId} {
-        allow read: if isUserAdmin(request.auth.uid);
+        allow read: if true;
         allow create: if true;
         allow write: if isUserAdmin(request.auth.uid);
     }

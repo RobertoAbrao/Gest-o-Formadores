@@ -94,13 +94,6 @@ export default function AvaliacaoSecretariaPage() {
         const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
         setFormacao(formacaoData);
         
-        // Verifica se já existe uma avaliação para esta formação
-        const q = query(collection(db, 'avaliacoesSecretaria'), where('formacaoId', '==', formacaoId), limit(1));
-        const existingEvalSnap = await getDocs(q);
-        if (!existingEvalSnap.empty) {
-            setError('Uma avaliação para esta formação já foi enviada.');
-        }
-
         form.reset({
             ...form.getValues(),
             cidade: formacaoData.municipio,
