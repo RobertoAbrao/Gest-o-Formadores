@@ -912,8 +912,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                     size="icon"
                     variant="ghost"
                     className={cn(
-                        "h-7 w-7",
-                        hasObservation ? "text-primary" : "text-muted-foreground"
+                        "h-7 w-7 text-muted-foreground",
+                        hasObservation && "text-primary"
                     )}
                     onClick={() => handleOpenObservationModal(item.id)}
                     disabled={isArchived}
@@ -928,8 +928,6 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
       </AccordionItem>
     );
   };
-
-  const gridColsClass = `grid-cols-${2 + formadoresComAvaliacao.length}`;
 
   return (
     <>
@@ -1376,7 +1374,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                        </div>
                        <Separator />
                         <Tabs defaultValue="geral" className='pt-2'>
-                              <TabsList className={cn("grid w-full", `grid-cols-${2 + formadoresComAvaliacao.length}`)}>
+                              <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${2 + formadoresComAvaliacao.length}, minmax(0, 1fr))` }}>
                                   <TabsTrigger value="geral">Geral (Participantes)</TabsTrigger>
                                   <TabsTrigger value="secretaria">Secretaria</TabsTrigger>
                                   {formadoresComAvaliacao.map(formador => (
@@ -1463,4 +1461,3 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     </>
   );
 }
-
