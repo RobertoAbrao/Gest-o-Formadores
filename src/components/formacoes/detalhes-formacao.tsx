@@ -34,7 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { DetalhesDespesa } from '../despesas/detalhes-despesa';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
@@ -508,16 +508,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     try {
         const formacaoRef = doc(db, 'formacoes', formacao.id);
         const currentItem = formacao.checklist?.[itemId];
-        const currentObservation = typeof currentItem === 'object' ? currentItem.observation : '';
+        
+        // Prepare new value, preserving observation if it exists
+        const currentObservation = (typeof currentItem === 'object' && currentItem !== null) ? currentItem.observation : '';
+        const newValue = { checked, observation: currentObservation || '' };
 
         await updateDoc(formacaoRef, {
-            [`checklist.${itemId}`]: { checked, observation: currentObservation },
+            [`checklist.${itemId}`]: newValue,
         });
 
         // Optimistic update
         setFormacao(prev => {
             if (!prev) return null;
-            const newChecklist = { ...prev.checklist, [itemId]: { checked, observation: currentObservation } };
+            const newChecklist = { ...(prev.checklist || {}), [itemId]: newValue };
             return { ...prev, checklist: newChecklist };
         });
     } catch (error) {
