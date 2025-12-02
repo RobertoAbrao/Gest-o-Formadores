@@ -756,85 +756,79 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   };
   
   const AvaliacaoSecretariaComponent = ({ avaliacoes }: { avaliacoes: AvaliacaoSecretaria[] }) => {
-    if (avaliacoes.length === 0) {
-       return (
-            <div className="space-y-6 pt-4">
-                <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-lg">Avaliação da Secretaria</h4>
-                    <Button variant="outline" size="sm" onClick={() => handleCopyLink('avaliacao-secretaria')}>
-                      <Copy className="mr-2 h-4 w-4" /> Copiar Link do Formulário
-                    </Button>
-                </div>
-                <Separator />
+    return (
+        <div className="space-y-6 pt-4">
+            <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-lg">Avaliação da Secretaria</h4>
+                <Button variant="outline" size="sm" onClick={() => handleCopyLink('avaliacao-secretaria')}>
+                  <Copy className="mr-2 h-4 w-4" /> Copiar Link do Formulário
+                </Button>
+            </div>
+            <Separator />
+            {avaliacoes.length === 0 ? (
                 <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
                     <div>
                         <ClipboardCheck className="h-6 w-6 mx-auto mb-2"/>
                         Nenhuma avaliação da secretaria foi recebida para esta formação ainda.
                     </div>
                 </div>
-            </div>
-       )
-    }
-    
-    return (
-      <div className="space-y-6 pt-4">
-          <h4 className="font-semibold text-lg">Avaliações da Secretaria</h4>
-          <Separator />
-          {avaliacoes.map((avaliacao) => {
-            const fields = [
-                { label: "Domínio do conteúdo e clareza", value: avaliacao.dominioConteudo },
-                { label: "Tempo dedicado", value: avaliacao.tempoDedicado },
-                { label: "Formato da apresentação", value: avaliacao.formatoApresentacao },
-                { label: "Dúvidas esclarecidas", value: avaliacao.duvidasEsclarecidas },
-                { label: "Aplicabilidade na prática", value: `${avaliacao.aplicabilidade}/5` },
-                { label: "Percepção de engajamento", value: avaliacao.percepcaoEngajamento },
-                { label: "Organização geral", value: avaliacao.organizacaoGeral },
-                { label: "Avaliação do Coffee Break", value: avaliacao.avaliacaoCoffeeBreak },
-            ];
-
-            const openFields = [
-                { label: "Sugestões para o material", value: avaliacao.sugestoesMaterial },
-                { label: "Principais benefícios", value: avaliacao.principaisBeneficios },
-                { label: "Comentários finais", value: avaliacao.comentariosFinais },
-            ].filter(f => f.value);
-
-            return (
-                <Card key={avaliacao.id}>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            {avaliacao.nomeCompleto}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2 text-xs">
-                            <Mail className="h-3 w-3" />
-                            {avaliacao.email}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                            {fields.map(field => (
-                                <div key={field.label} className="flex justify-between items-center border-b pb-2">
-                                    <span className="font-medium text-muted-foreground">{field.label}</span>
-                                    <Badge variant="secondary">{field.value}</Badge>
+            ) : (
+                avaliacoes.map((avaliacao) => {
+                    const fields = [
+                        { label: "Domínio do conteúdo e clareza", value: avaliacao.dominioConteudo },
+                        { label: "Tempo dedicado", value: avaliacao.tempoDedicado },
+                        { label: "Formato da apresentação", value: avaliacao.formatoApresentacao },
+                        { label: "Dúvidas esclarecidas", value: avaliacao.duvidasEsclarecidas },
+                        { label: "Aplicabilidade na prática", value: `${avaliacao.aplicabilidade}/5` },
+                        { label: "Percepção de engajamento", value: avaliacao.percepcaoEngajamento },
+                        { label: "Organização geral", value: avaliacao.organizacaoGeral },
+                        { label: "Avaliação do Coffee Break", value: avaliacao.avaliacaoCoffeeBreak },
+                    ];
+        
+                    const openFields = [
+                        { label: "Sugestões para o material", value: avaliacao.sugestoesMaterial },
+                        { label: "Principais benefícios", value: avaliacao.principaisBeneficios },
+                        { label: "Comentários finais", value: avaliacao.comentariosFinais },
+                    ].filter(f => f.value);
+        
+                    return (
+                        <Card key={avaliacao.id}>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    {avaliacao.nomeCompleto}
+                                </CardTitle>
+                                <CardDescription className="flex items-center gap-2 text-xs">
+                                    <Mail className="h-3 w-3" />
+                                    {avaliacao.email}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                    {fields.map(field => (
+                                        <div key={field.label} className="flex justify-between items-center border-b pb-2">
+                                            <span className="font-medium text-muted-foreground">{field.label}</span>
+                                            <Badge variant="secondary">{field.value}</Badge>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                        {openFields.length > 0 && (
-                            <div className="mt-6 space-y-4">
-                                <Separator />
-                                {openFields.map(field => (
-                                    <div key={field.label} className="text-sm">
-                                        <p className="font-medium mb-1">{field.label}:</p>
-                                        <p className="text-muted-foreground italic pl-4 border-l-2">"{field.value}"</p>
+                                {openFields.length > 0 && (
+                                    <div className="mt-6 space-y-4">
+                                        <Separator />
+                                        {openFields.map(field => (
+                                            <div key={field.label} className="text-sm">
+                                                <p className="font-medium mb-1">{field.label}:</p>
+                                                <p className="text-muted-foreground italic pl-4 border-l-2">"{field.value}"</p>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )
-          })}
-      </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )
+                })
+            )}
+        </div>
     );
   };
 
@@ -933,7 +927,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             {items.map(item => {
                 const checklistValue = formacao.checklist?.[item.id];
                 const isChecked = typeof checklistValue === 'object' && checklistValue !== null ? checklistValue.checked : !!checklistValue;
-                const observation = typeof checklistValue === 'object' && checklistValue !== null ? checklistValue.observation : '';
+                const observation = (typeof checklistValue === 'object' && checklistValue !== null) && 'observation' in checklistValue ? checklistValue.observation : '';
               
               return (
                 <div key={item.id} className="flex items-center space-x-3">
