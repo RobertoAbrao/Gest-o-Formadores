@@ -21,7 +21,7 @@ import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, AvaliacaoSecretaria, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy, Mail } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -255,7 +255,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         }
         
         if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
+             const formadoresMap = new Map(formadoresData.map(f => [f.id, f.nomeCompleto]));
 
             const qDespesas = query(collection(db, 'despesas'), where('formacaoId', '==', formacaoId));
             const despesasSnap = await getDocs(qDespesas);
@@ -507,19 +507,19 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     if (!formacao) return;
     try {
         const formacaoRef = doc(db, 'formacoes', formacao.id);
-        // Preserve existing observation if it exists
-        const currentItem = formacao.checklist?.[itemId] || { checked: false, observation: '' };
-        if (typeof currentItem === 'boolean') { // Handle migration from old boolean format
-             await updateDoc(formacaoRef, {
-                [`checklist.${itemId}`]: { checked, observation: '' },
-            });
-            setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { checked, observation: '' } } } : null);
-        } else {
-            await updateDoc(formacaoRef, {
-                [`checklist.${itemId}.checked`]: checked,
-            });
-            setFormacao(prev => prev ? { ...prev, checklist: { ...prev.checklist, [itemId]: { ...currentItem, checked } } } : null);
-        }
+        const currentItem = formacao.checklist?.[itemId];
+        const currentObservation = typeof currentItem === 'object' ? currentItem.observation : '';
+
+        await updateDoc(formacaoRef, {
+            [`checklist.${itemId}`]: { checked, observation: currentObservation },
+        });
+
+        // Optimistic update
+        setFormacao(prev => {
+            if (!prev) return null;
+            const newChecklist = { ...prev.checklist, [itemId]: { checked, observation: currentObservation } };
+            return { ...prev, checklist: newChecklist };
+        });
     } catch (error) {
         console.error("Erro ao atualizar o checklist:", error);
         toast({ variant: "destructive", title: "Erro", description: "Não foi possível salvar o item do checklist." });
@@ -798,7 +798,17 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
           <h4 className="font-semibold text-lg">Avaliação da Secretaria</h4>
           <Separator />
           <Card>
-              <CardContent className="pt-6">
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {avaliacao.nomeCompleto}
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2 text-xs">
+                        <Mail className="h-3 w-3" />
+                        {avaliacao.email}
+                    </CardDescription>
+                </CardHeader>
+              <CardContent className="pt-0">
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                        {fields.map(field => (
                            <div key={field.label} className="flex justify-between items-center border-b pb-2">
@@ -917,9 +927,9 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         <AccordionContent>
           <div className="space-y-3 pl-2">
             {items.map(item => {
-              const checklistValue = formacao.checklist?.[item.id];
-              const isChecked = typeof checklistValue === 'object' ? checklistValue.checked : !!checklistValue;
-              const observation = typeof checklistValue === 'object' ? checklistValue.observation : '';
+                const checklistValue = formacao.checklist?.[item.id];
+                const isChecked = typeof checklistValue === 'object' && checklistValue !== null ? checklistValue.checked : !!checklistValue;
+                const observation = typeof checklistValue === 'object' && checklistValue !== null ? checklistValue.observation : '';
               
               return (
                 <div key={item.id} className="flex items-center space-x-3">
