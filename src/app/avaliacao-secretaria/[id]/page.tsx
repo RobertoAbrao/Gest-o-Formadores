@@ -272,7 +272,7 @@ export default function AvaliacaoSecretariaPage() {
                                 <h3 className='font-semibold text-lg'>III. Impacto e Aplicabilidade</h3>
                                 <Separator />
                                 <StarRatingField name="aplicabilidade" label='6) Na sua visão, quão aplicável é este material na prática das escolas da sua rede? (1="Pouco aplicável", 5="Totalmente aplicável")' />
-                                <RadioGroupField name="percepcaoEngajamento" label="7) Qual foi a percepção de engajamento/motivação dos professores após a apresentação?" options={engajamentoOpcoes.options} />
+                                <RadioGroupField name="percepcaoEngajamento" label="7) Qual foi a percepção de engajamento/motivação dos professores após a formação?" options={engajamentoOpcoes.options} />
                                  <FormField control={form.control} name="principaisBeneficios" render={({ field }) => (
                                     <FormItem><FormLabel>8) Do ponto de vista da Secretaria de Educação, quais foram os principais benefícios desta formação?</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
                                 )}/>
