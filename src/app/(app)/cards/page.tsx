@@ -71,7 +71,7 @@ const CardDivulgacao = ({
                 <div key={index} className="flex items-start gap-2">
                   <p className="font-semibold text-sm w-16">{item.hora}</p>
                   <div className="flex-1">
-                    <h4 className="font-bold text-sm">{item.titulo}</h4>
+                    <h4 className="font-bold text-sm break-words">{item.titulo}</h4>
                     <a href="#" className="text-yellow-400 hover:text-yellow-300 transition-colors text-xs underline">
                       {item.sala}
                     </a>
