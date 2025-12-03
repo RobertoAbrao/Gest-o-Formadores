@@ -69,13 +69,21 @@ const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefO
           {data.locations.map(location => (
             <div key={location.id} className="bg-green-700/80 p-4 rounded-xl">
               <div className="flex items-start gap-2 mb-3">
-                <Image
-                    src="/MapPin.svg"
-                    alt="Map Pin Icon"
-                    width={24}
-                    height={24}
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="h-6 w-6 text-white shrink-0 mt-1"
-                />
+                >
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                </svg>
                 <div>
                   <h3 className="font-bold text-lg">{location.name}</h3>
                   <p className="text-xs text-green-100">{location.address}</p>
