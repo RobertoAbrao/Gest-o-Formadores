@@ -1,15 +1,17 @@
 
 'use client';
 
-import { Calendar, Clock, MapPin, PlusCircle, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, PlusCircle, Trash2, Download } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // Tipos para a nova estrutura
 interface Activity {
@@ -38,9 +40,9 @@ interface CardData {
 }
 
 
-const CardDivulgacao = ({ data }: { data: CardData }) => {
+const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefObject<HTMLDivElement> }) => {
   return (
-    <div className="w-[380px] bg-gray-800 rounded-2xl overflow-hidden shadow-2xl font-sans relative">
+    <div className="w-[380px] bg-gray-800 rounded-2xl overflow-hidden shadow-2xl font-sans relative" ref={cardRef}>
       <Image
         src={data.backgroundImage || "/vista-da-sala-de-aula-da-escola.jpg"}
         alt="Imagem de fundo do evento"
@@ -142,6 +144,29 @@ export default function CardsPage() {
             }
         ]
     });
+    
+    const cardRef = useRef<HTMLDivElement>(null);
+    const [loadingPdf, setLoadingPdf] = useState(false);
+
+    const handleSaveAsPdf = () => {
+        if (!cardRef.current) return;
+        setLoadingPdf(true);
+
+        html2canvas(cardRef.current, { 
+          useCORS: true,
+          scale: 2 // Aumenta a resolução da imagem
+        }).then((canvas) => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save('card-divulgacao.pdf');
+            setLoadingPdf(false);
+        });
+    };
 
   const handleDataChange = (field: keyof CardData, value: string) => {
     setCardData(prev => ({ ...prev, [field]: value }));
@@ -200,11 +225,17 @@ export default function CardsPage() {
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Cards de Divulgação</h1>
-          <p className="text-muted-foreground">
-            Crie cards de divulgação dinâmicos para suas formações.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight font-headline">Cards de Divulgação</h1>
+            <p className="text-muted-foreground">
+              Crie cards de divulgação dinâmicos para suas formações.
+            </p>
+          </div>
+           <Button onClick={handleSaveAsPdf} disabled={loadingPdf}>
+              {loadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Salvar como PDF
+          </Button>
         </div>
       <div className="grid md:grid-cols-2 gap-8 items-start">
         <Card>
@@ -304,7 +335,7 @@ export default function CardsPage() {
           </CardContent>
         </Card>
         <div className="flex flex-col items-center justify-start pt-8">
-          <CardDivulgacao data={cardData} />
+          <CardDivulgacao data={cardData} cardRef={cardRef} />
         </div>
       </div>
     </div>
