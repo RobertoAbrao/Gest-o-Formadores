@@ -47,7 +47,7 @@ const CardDivulgacao = ({
         </div>
 
         <Image
-          src={imagemFundo || "https://picsum.photos/seed/placeholder/600/800"}
+          src={imagemFundo || "/vista-da-sala-de-aula-da-escola.JPG"}
           alt="Imagem de fundo do evento"
           width={600}
           height={800}
@@ -89,7 +89,7 @@ export default function CardsPage() {
   const [subtitulo, setSubtitulo] = useState('Coordenadores');
   const [municipio, setMunicipio] = useState('Luís Eduardo Magalhães');
   const [data, setData] = useState('18/02/2025');
-  const [imagemFundo, setImagemFundo] = useState('https://picsum.photos/seed/teacher/600/800');
+  const [imagemFundo, setImagemFundo] = useState('/vista-da-sala-de-aula-da-escola.JPG');
   const [agenda, setAgenda] = useState<AgendaItem[]>([
     { hora: '10:00h', titulo: 'COORDENADORES ANOS INICIAIS', sala: 'Sala 1 - COORDENADORES ANOS INICIAIS' },
     { hora: '14:00h', titulo: 'COORDENADORES ANOS FINAIS', sala: 'Sala 2 - COORDENADORES ANOS FINAIS' },
