@@ -63,10 +63,10 @@ const CardDivulgacao = ({
         <div className="absolute inset-0 z-20 flex flex-col justify-end text-white p-6 pt-32">
           <div className="absolute top-32 left-0 right-0 h-24 bg-gradient-to-t from-gray-900/50 to-transparent rounded-t-full"></div>
           
-          <div className="relative z-10 bg-gray-900/50 backdrop-blur-sm p-6 rounded-2xl -mx-2">
+          <div className="relative z-10 bg-gray-900/50 backdrop-blur-sm p-6 rounded-2xl">
             <h3 className="text-4xl font-bold text-center mb-6">{data}</h3>
             
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 pr-2">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               {agenda.map((item, index) => (
                 <div key={index} className="flex items-start gap-2">
                   <p className="font-semibold text-sm w-auto">{item.hora}</p>
