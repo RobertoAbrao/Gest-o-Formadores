@@ -1,14 +1,16 @@
 'use client';
 
-import { Calendar, Clock, MapPin, Image as ImageIcon } from "lucide-react";
+import { Calendar, Clock, MapPin, Image as ImageIcon, PlusCircle, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 interface AgendaItem {
+  id: number;
   hora: string;
   titulo: string;
   sala: string;
@@ -26,7 +28,7 @@ const CardDivulgacao = ({
   subtitulo: string;
   municipio: string;
   data: string;
-  agenda: AgendaItem[];
+  agenda: Omit<AgendaItem, 'id'>[];
   imagemFundo: string;
 }) => {
   return (
@@ -91,15 +93,24 @@ export default function CardsPage() {
   const [data, setData] = useState('18/02/2025');
   const [imagemFundo, setImagemFundo] = useState('/vista-da-sala-de-aula-da-escola.JPG');
   const [agenda, setAgenda] = useState<AgendaItem[]>([
-    { hora: '10:00h', titulo: 'COORDENADORES ANOS INICIAIS', sala: 'Sala 1 - COORDENADORES ANOS INICIAIS' },
-    { hora: '14:00h', titulo: 'COORDENADORES ANOS FINAIS', sala: 'Sala 2 - COORDENADORES ANOS FINAIS' },
+    { id: 1, hora: '10:00h', titulo: 'COORDENADORES ANOS INICIAIS', sala: 'Sala 1 - COORDENADORES ANOS INICIAIS' },
+    { id: 2, hora: '14:00h', titulo: 'COORDENADORES ANOS FINAIS', sala: 'Sala 2 - COORDENADORES ANOS FINAIS' },
   ]);
 
-  const handleAgendaChange = (index: number, field: keyof AgendaItem, value: string) => {
+  const handleAgendaChange = (index: number, field: keyof Omit<AgendaItem, 'id'>, value: string) => {
     const newAgenda = [...agenda];
     newAgenda[index][field] = value;
     setAgenda(newAgenda);
   }
+
+  const addAgendaItem = () => {
+    setAgenda([...agenda, { id: Date.now(), hora: '', titulo: '', sala: '' }]);
+  };
+
+  const removeAgendaItem = (id: number) => {
+    setAgenda(agenda.filter(item => item.id !== id));
+  };
+
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
@@ -142,9 +153,23 @@ export default function CardsPage() {
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold">Agenda do Evento</h3>
+               <div className="flex justify-between items-center">
+                  <h3 className="font-semibold">Agenda do Evento</h3>
+                  <Button variant="outline" size="sm" onClick={addAgendaItem}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Adicionar Item
+                  </Button>
+              </div>
               {agenda.map((item, index) => (
-                <div key={index} className="p-4 border rounded-lg space-y-3 bg-muted/50">
+                <div key={item.id} className="p-4 border rounded-lg space-y-3 bg-muted/50 relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-7 w-7 text-destructive"
+                    onClick={() => removeAgendaItem(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                   <h4 className="font-medium text-sm">Item {index + 1}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
