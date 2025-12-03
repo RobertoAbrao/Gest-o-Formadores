@@ -55,8 +55,8 @@ const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefO
       <div className="relative z-10 p-4 text-white space-y-4">
         <header className="flex justify-between items-start text-white bg-[#4f46e5]/50 p-3 rounded-xl">
             <h1 className="text-3xl font-bold uppercase tracking-wider">{data.mainTitle}</h1>
-             <img
-                src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAJDSURBVHgB7Zq9iZNAFMb/PY4JbWJjp2BlFCxCxV7BShCwsxYstBAsbC28QUJpI0SwsBEstLSwECy0sFFs/DVY2Ak2FrGxj7Xy5z83i7L3bneTyZCEH/gB9+Hde5vACfBIkSmJg3lgGhgA+gH9gG1Gg8W+Wj5cAl8D8h3wLlgDNoAFYOe+72sDcNk82IiswQ1wAewCB+Bt4B8IFUfA3T6sK+D1gQqNAd4G3gGfR8gD0BVgGjgDToA/I0xARvA6UB+8wJ55D4hXwIAD4EHgd+D1eI6L82L/vAi8DrwtQA4AV4GvgfM+aY2+A3wGvBFgP6uVB5YAK4A74I6I+gq4AbgGrsGv46wBfB20yA9TAbgT6p8VyrwD3C+bWk+GzxnPAvPgbC//hGuA5sB8bGyJ+BeY6/gD3gf2S1L0o3z8Kfl/S0Do8QBwFmgB/itwnaw3yT6uS4k2/aF8MhM/x8P4E/gLPA3sU1i3k5wF5P7EAFsEyUeAD0Y29D6u8R/t8PPgnM6GOUA2DTB/sIuY0j+7m2qY9m+AfYF5/B/gKHA44G0s9z0FvE1sL6mK2AFuBbwHLE0V40wD1gCLgI9SvyR4r/p8A3wFzG2iSwnA5+BpwHj0bY/gCf/3A8d9yWwDOgD53M02r0LPAW0fRso0p8C/wEvy4p3gJ3gI2AHeAMsA0MgA+oAJ+L1hM3jATgC7gNHv3+b6/gM8L6e7WJvG/g58A3wefA54L1BngA7AA/A9c45/gL3AduBw6AfeAn8LzO1WwB/gN+0xXgJ3AD3AEPh2I/B3wX2H++1t0+x3t1ALZ/F/i9wAswAZwEnoAKvAdy4A4wBnwM9AET4B3gY6/D9wGvgL5AATgChhA6LgX+L5F+DjwA/BfAXwJ/BfAGuBVwDfgS8C7gG8D8w14Hfgg4w/gq/E8MAB8AkwA24BvwG3gN+A34BvwPPAX8G3gTeA3YNm+73/a/wMfyX5L2Qe+HwAAAABJRU5ErkJggg=="
+             <Image
+                src="/sabe_icon.png"
                 alt="SABE Brasil Logo"
                 width={50}
                 height={50}
