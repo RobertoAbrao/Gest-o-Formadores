@@ -66,7 +66,7 @@ const CardDivulgacao = ({
           <div className="relative z-10 bg-gray-900/50 backdrop-blur-sm p-6 rounded-2xl -mx-2">
             <h3 className="text-4xl font-bold text-center mb-6">{data}</h3>
             
-            <div className="space-y-6 max-h-[200px] overflow-y-auto pr-2">
+            <div className="space-y-6 pr-2">
               {agenda.map((item, index) => (
                 <div key={index} className="flex items-start gap-4">
                   <p className="font-semibold text-lg w-20">{item.hora}</p>
