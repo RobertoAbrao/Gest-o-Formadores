@@ -1,85 +1,96 @@
 
 'use client';
 
-import { Calendar, Clock, MapPin, Image as ImageIcon, PlusCircle, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, PlusCircle, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
-interface AgendaItem {
-  id: number;
-  hora: string;
-  titulo: string;
-  sala: string;
+// Tipos para a nova estrutura
+interface Activity {
+  id: string;
+  time: string;
+  description: string;
 }
 
-const CardDivulgacao = ({
-  titulo,
-  subtitulo,
-  municipio,
-  data,
-  agenda,
-  imagemFundo,
-}: {
-  titulo: string;
-  subtitulo: string;
-  municipio: string;
-  data: string;
-  agenda: Omit<AgendaItem, 'id'>[];
-  imagemFundo: string;
-}) => {
+interface Event {
+  id: string;
+  date: string;
+  activities: Activity[];
+}
+
+interface Location {
+  id: string;
+  name: string;
+  address: string;
+  events: Event[];
+}
+
+interface CardData {
+  mainTitle: string;
+  backgroundImage: string;
+  locations: Location[];
+}
+
+
+const CardDivulgacao = ({ data }: { data: CardData }) => {
   return (
-    <div className="bg-gray-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl font-sans">
-      <div className="relative">
-        <div className="absolute top-0 left-0 right-0 p-4 bg-[#4f46e5] text-white z-10 rounded-t-2xl">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-xl font-bold uppercase tracking-wider">{titulo}</h1>
-              <h2 className="text-lg font-semibold uppercase">{subtitulo}</h2>
-              <p className="text-md uppercase">{municipio}</p>
-            </div>
-            <div className="bg-white text-green-700 p-1 rounded-md text-xs font-bold flex flex-col items-center justify-center">
+    <div className="w-[380px] bg-gray-800 rounded-2xl overflow-hidden shadow-2xl font-sans relative">
+      <Image
+        src={data.backgroundImage || "/vista-da-sala-de-aula-da-escola.jpg"}
+        alt="Imagem de fundo do evento"
+        fill
+        className="object-cover"
+        key={data.backgroundImage}
+      />
+      <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
+
+      <div className="relative z-10 p-4 text-white space-y-4">
+        <header className="flex justify-between items-start text-white bg-[#4f46e5]/50 p-3 rounded-xl">
+            <h1 className="text-3xl font-bold uppercase tracking-wider">{data.mainTitle}</h1>
+            <div className="bg-white text-green-700 p-1 rounded-md text-xs font-bold flex flex-col items-center justify-center shrink-0">
               <span className="font-extrabold text-sm">SABE</span>
               <span className="text-blue-600 font-bold -mt-1">BRASIL</span>
             </div>
-          </div>
-        </div>
+        </header>
 
-        <Image
-          src={imagemFundo || "/vista-da-sala-de-aula-da-escola.jpg"}
-          alt="Imagem de fundo do evento"
-          width={600}
-          height={800}
-          className="w-full h-auto object-cover"
-          key={imagemFundo} 
-        />
+        <div className="space-y-4">
+          {data.locations.map(location => (
+            <div key={location.id} className="bg-green-700/80 p-4 rounded-xl">
+              <div className="flex items-start gap-2 mb-3">
+                <MapPin className="h-6 w-6 text-white shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-bold text-lg">{location.name}</h3>
+                  <p className="text-xs text-green-100">{location.address}</p>
+                </div>
+              </div>
 
-        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-
-        <div className="absolute inset-0 z-20 flex flex-col justify-end text-white p-6 pt-32">
-          <div className="absolute top-32 left-0 right-0 h-24 bg-gradient-to-t from-gray-900/50 to-transparent rounded-t-full"></div>
-          
-          <div className="relative z-10 bg-gray-900/50 backdrop-blur-sm p-6 rounded-2xl">
-            <h3 className="text-4xl font-bold text-center mb-6 text-yellow-400">{data}</h3>
-            
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-              {agenda.map((item, index) => (
-                <div key={index} className="flex items-start gap-2">
-                  <p className="font-semibold text-sm shrink-0">{item.hora}</p>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-sm break-words">{item.titulo}</h4>
-                    <a href="#" className="text-yellow-400 hover:text-yellow-300 transition-colors text-xs underline">
-                      {item.sala}
-                    </a>
-                  </div>
+              {location.events.map(event => (
+                <div key={event.id} className="flex gap-4 items-start mt-2">
+                    <div className="bg-blue-900/80 text-white rounded-lg p-2 text-center shrink-0">
+                        <p className="font-bold text-md leading-tight">{event.date}</p>
+                    </div>
+                    <div className="w-full space-y-2">
+                        {event.activities.map(activity => (
+                             <div key={activity.id} className="flex gap-2 items-center text-sm w-full">
+                                <div className="bg-blue-900/80 text-white rounded-lg px-2 py-1 shrink-0">
+                                    <p>{activity.time}</p>
+                                </div>
+                                <div className="bg-white text-blue-900 rounded-lg px-3 py-1 font-semibold w-full text-center">
+                                    <p>{activity.description}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
               ))}
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
@@ -88,41 +99,113 @@ const CardDivulgacao = ({
 
 
 export default function CardsPage() {
-  const [titulo, setTitulo] = useState('Implantação');
-  const [subtitulo, setSubtitulo] = useState('Coordenadores');
-  const [municipio, setMunicipio] = useState('Luís Eduardo Magalhães');
-  const [data, setData] = useState('18/02/2025');
-  const [imagemFundo, setImagemFundo] = useState('/vista-da-sala-de-aula-da-escola.jpg');
-  const [agenda, setAgenda] = useState<AgendaItem[]>([
-    { id: 1, hora: '10:00h', titulo: 'COORDENADORES ANOS INICIAIS', sala: 'Sala 1 - COORDENADORES ANOS INICIAIS' },
-    { id: 2, hora: '14:00h', titulo: 'COORDENADORES ANOS FINAIS', sala: 'Sala 2 - COORDENADORES ANOS FINAIS' },
-  ]);
+    const [cardData, setCardData] = useState<CardData>({
+        mainTitle: 'DEVOLUTIVA SABE BRASIL',
+        backgroundImage: 'https://picsum.photos/seed/1/600/800',
+        locations: [
+            {
+                id: 'loc1',
+                name: 'EM Pedro Paulo Corte Filho',
+                address: 'Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, LEM',
+                events: [
+                    {
+                        id: 'evt1',
+                        date: '20/10',
+                        activities: [
+                            { id: 'act1', time: '07h30-11h30', description: '1º ANO' }
+                        ]
+                    },
+                    {
+                        id: 'evt2',
+                        date: '21/10',
+                        activities: [
+                            { id: 'act2', time: '07h30-11h30', description: '2º ANO' },
+                            { id: 'act3', time: '13h30-17h30', description: 'ANOS INICIA MATEMÁTICA' }
+                        ]
+                    }
+                ]
+            },
+            {
+                id: 'loc2',
+                name: 'EM Irani Leite Matutino Santos',
+                address: 'R. Sr. do Bonfim, 2755 - Lote. Mimoso Do Oeste I, LEM',
+                events: [
+                     {
+                        id: 'evt3',
+                        date: '21/10',
+                        activities: [
+                            { id: 'act4', time: '07h30-11h30', description: 'ANOS FINAIS LÍNGUA PORTUGUESA' },
+                            { id: 'act5', time: '13h30-17h30', description: 'ANOS FINAIS MATEMÁTICA' }
+                        ]
+                    }
+                ]
+            }
+        ]
+    });
 
-  const handleAgendaChange = (index: number, field: keyof Omit<AgendaItem, 'id'>, value: string) => {
-    const newAgenda = [...agenda];
-    newAgenda[index][field] = value;
-    setAgenda(newAgenda);
+  const handleDataChange = (field: keyof CardData, value: string) => {
+    setCardData(prev => ({ ...prev, [field]: value }));
+  }
+  
+  // Handlers para Localizações
+  const handleLocationChange = (locIndex: number, field: keyof Omit<Location, 'id' | 'events'>, value: string) => {
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex][field] = value;
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
+  const addLocation = () => {
+      const newLocation: Location = { id: `loc${Date.now()}`, name: '', address: '', events: [] };
+      setCardData(prev => ({ ...prev, locations: [...prev.locations, newLocation] }));
+  }
+  const removeLocation = (locIndex: number) => {
+      const newLocations = cardData.locations.filter((_, index) => index !== locIndex);
+      setCardData(prev => ({ ...prev, locations: newLocations }));
   }
 
-  const addAgendaItem = () => {
-    setAgenda([...agenda, { id: Date.now(), hora: '', titulo: '', sala: '' }]);
-  };
+  // Handlers para Eventos
+  const handleEventChange = (locIndex: number, evtIndex: number, field: keyof Omit<Event, 'id' | 'activities'>, value: string) => {
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events[evtIndex][field] = value;
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
+  const addEvent = (locIndex: number) => {
+      const newEvent: Event = { id: `evt${Date.now()}`, date: '', activities: [] };
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events.push(newEvent);
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
+  const removeEvent = (locIndex: number, evtIndex: number) => {
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events = newLocations[locIndex].events.filter((_, index) => index !== evtIndex);
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
 
-  const removeAgendaItem = (id: number) => {
-    setAgenda(agenda.filter(item => item.id !== id));
-  };
-
+  // Handlers para Atividades
+  const handleActivityChange = (locIndex: number, evtIndex: number, actIndex: number, field: keyof Omit<Activity, 'id'>, value: string) => {
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events[evtIndex].activities[actIndex][field] = value;
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
+  const addActivity = (locIndex: number, evtIndex: number) => {
+      const newActivity: Activity = { id: `act${Date.now()}`, time: '', description: '' };
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events[evtIndex].activities.push(newActivity);
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
+  const removeActivity = (locIndex: number, evtIndex: number, actIndex: number) => {
+      const newLocations = [...cardData.locations];
+      newLocations[locIndex].events[evtIndex].activities = newLocations[locIndex].events[evtIndex].activities.filter((_, index) => index !== actIndex);
+      setCardData(prev => ({ ...prev, locations: newLocations }));
+  }
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full">
-      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-headline">Cards de Divulgação</h1>
           <p className="text-muted-foreground">
-            Preencha as informações para gerar seu card de divulgação.
+            Crie cards de divulgação dinâmicos para suas formações.
           </p>
         </div>
-      </div>
       <div className="grid md:grid-cols-2 gap-8 items-start">
         <Card>
           <CardHeader>
@@ -130,76 +213,98 @@ export default function CardsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="titulo">Título Principal</Label>
-              <Input id="titulo" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+              <Label htmlFor="mainTitle">Título Principal</Label>
+              <Input id="mainTitle" value={cardData.mainTitle} onChange={(e) => handleDataChange('mainTitle', e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="subtitulo">Subtítulo</Label>
-              <Input id="subtitulo" value={subtitulo} onChange={(e) => setSubtitulo(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="municipio">Município</Label>
-              <Input id="municipio" value={municipio} onChange={(e) => setMunicipio(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="data">Data</Label>
-              <Input id="data" value={data} onChange={(e) => setData(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="imagemFundo">URL da Imagem de Fundo</Label>
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                <Input id="imagemFundo" value={imagemFundo} onChange={(e) => setImagemFundo(e.target.value)} placeholder="https://exemplo.com/imagem.jpg"/>
-              </div>
+              <Label htmlFor="backgroundImage">URL da Imagem de Fundo</Label>
+              <Input id="backgroundImage" value={cardData.backgroundImage} onChange={(e) => handleDataChange('backgroundImage', e.target.value)} />
             </div>
 
-            <div className="space-y-4 pt-4 border-t">
-               <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">Agenda do Evento</h3>
-                  <Button variant="outline" size="sm" onClick={addAgendaItem}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Adicionar Item
-                  </Button>
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-lg">Locais</h3>
+                <Button variant="outline" size="sm" onClick={addLocation}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Local
+                </Button>
               </div>
-              {agenda.map((item, index) => (
-                <div key={item.id} className="p-4 border rounded-lg space-y-3 bg-muted/50 relative">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2 h-7 w-7 text-destructive"
-                    onClick={() => removeAgendaItem(item.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                  <h4 className="font-medium text-sm">Item {index + 1}</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+              {cardData.locations.map((location, locIndex) => (
+                <Card key={location.id} className="bg-muted/50 p-4">
+                   <div className="flex justify-end mb-2">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeLocation(locIndex)}>
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                   </div>
+                  <div className="space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor={`hora-${index}`}>Hora</Label>
-                      <Input id={`hora-${index}`} value={item.hora} onChange={(e) => handleAgendaChange(index, 'hora', e.target.value)} />
+                      <Label htmlFor={`loc-name-${locIndex}`}>Nome do Local</Label>
+                      <Input id={`loc-name-${locIndex}`} value={location.name} onChange={e => handleLocationChange(locIndex, 'name', e.target.value)} />
                     </div>
                      <div className="space-y-2">
-                      <Label htmlFor={`titulo-agenda-${index}`}>Título da Atividade</Label>
-                      <Input id={`titulo-agenda-${index}`} value={item.titulo} onChange={(e) => handleAgendaChange(index, 'titulo', e.target.value)} />
+                      <Label htmlFor={`loc-addr-${locIndex}`}>Endereço</Label>
+                      <Input id={`loc-addr-${locIndex}`} value={location.address} onChange={e => handleLocationChange(locIndex, 'address', e.target.value)} />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`sala-${index}`}>Descrição/Sala</Label>
-                    <Textarea id={`sala-${index}`} value={item.sala} onChange={(e) => handleAgendaChange(index, 'sala', e.target.value)} />
+
+                  <div className="space-y-4 mt-4 pt-4 border-t">
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-medium">Eventos do Local</h4>
+                         <Button variant="outline" size="sm" onClick={() => addEvent(locIndex)}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Evento
+                        </Button>
+                      </div>
+
+                      {location.events.map((event, evtIndex) => (
+                        <Card key={event.id} className="p-3 bg-background">
+                            <div className="flex justify-end mb-2">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEvent(locIndex, evtIndex)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                           <div className="space-y-2">
+                                <Label htmlFor={`evt-date-${locIndex}-${evtIndex}`}>Data</Label>
+                                <Input id={`evt-date-${locIndex}-${evtIndex}`} value={event.date} onChange={e => handleEventChange(locIndex, evtIndex, 'date', e.target.value)} />
+                            </div>
+
+                           <div className="space-y-3 mt-3 pt-3 border-t">
+                                <div className="flex justify-between items-center">
+                                    <h5 className="font-medium text-sm">Atividades do Dia</h5>
+                                    <Button variant="outline" size="xs" onClick={() => addActivity(locIndex, evtIndex)}>
+                                        <PlusCircle className="mr-1 h-3 w-3" /> Adicionar
+                                    </Button>
+                                </div>
+
+                                {event.activities.map((activity, actIndex) => (
+                                    <div key={activity.id} className="p-2 border rounded-md bg-muted/30 space-y-2 relative">
+                                         <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive" onClick={() => removeActivity(locIndex, evtIndex, actIndex)}>
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                             <div>
+                                                <Label htmlFor={`act-time-${locIndex}-${evtIndex}-${actIndex}`}>Horário</Label>
+                                                <Input id={`act-time-${locIndex}-${evtIndex}-${actIndex}`} value={activity.time} onChange={e => handleActivityChange(locIndex, evtIndex, actIndex, 'time', e.target.value)} />
+                                             </div>
+                                              <div>
+                                                <Label htmlFor={`act-desc-${locIndex}-${evtIndex}-${actIndex}`}>Descrição</Label>
+                                                <Input id={`act-desc-${locIndex}-${evtIndex}-${actIndex}`} value={activity.description} onChange={e => handleActivityChange(locIndex, evtIndex, actIndex, 'description', e.target.value)} />
+                                             </div>
+                                        </div>
+                                    </div>
+                                ))}
+                           </div>
+                        </Card>
+                      ))}
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           </CardContent>
         </Card>
         <div className="flex flex-col items-center justify-start pt-8">
-          <CardDivulgacao 
-            titulo={titulo}
-            subtitulo={subtitulo}
-            municipio={municipio}
-            data={data}
-            agenda={agenda}
-            imagemFundo={imagemFundo}
-          />
+          <CardDivulgacao data={cardData} />
         </div>
       </div>
     </div>
