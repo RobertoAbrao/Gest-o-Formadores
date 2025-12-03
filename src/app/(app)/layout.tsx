@@ -20,6 +20,7 @@ import {
   Sheet as SheetIcon,
   CalendarDays,
   GanttChartSquare,
+  GalleryHorizontal,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -75,6 +76,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/quadro', label: 'Acompanhamento', icon: KanbanSquare },
           { href: '/projetos', label: 'Projetos', icon: ClipboardList },
           { href: '/planilha', label: 'Planilha Projetos', icon: SheetIcon },
+          { href: '/cards', label: 'Cards de Divulgação', icon: GalleryHorizontal },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
           { href: '/calendario', label: 'Calendário', icon: CalendarDays },
