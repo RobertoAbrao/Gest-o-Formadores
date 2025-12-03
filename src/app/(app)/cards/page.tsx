@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Calendar, Clock, MapPin, PlusCircle, Trash2, Download } from "lucide-react";
+import { Calendar, Clock, MapPin, PlusCircle, Trash2, Download, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
