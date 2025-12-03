@@ -64,7 +64,7 @@ const CardDivulgacao = ({
           <div className="absolute top-32 left-0 right-0 h-24 bg-gradient-to-t from-gray-900/50 to-transparent rounded-t-full"></div>
           
           <div className="relative z-10 bg-gray-900/50 backdrop-blur-sm p-6 rounded-2xl">
-            <h3 className="text-4xl font-bold text-center mb-6">{data}</h3>
+            <h3 className="text-4xl font-bold text-center mb-6 text-yellow-400">{data}</h3>
             
             <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               {agenda.map((item, index) => (
