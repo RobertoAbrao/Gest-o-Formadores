@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Calendar, Clock, MapPin, PlusCircle, Trash2, Download, Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { PlusCircle, Trash2 } from "lucide-react";
 
 // Tipos para a nova estrutura
 interface Activity {
@@ -55,17 +56,26 @@ const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefO
       <div className="relative z-10 p-4 text-white space-y-4">
         <header className="flex justify-between items-start text-white bg-[#4f46e5]/50 p-3 rounded-xl">
             <h1 className="text-3xl font-bold uppercase tracking-wider">{data.mainTitle}</h1>
-            <div className="bg-white text-green-700 p-1 rounded-md text-xs font-bold flex flex-col items-center justify-center shrink-0">
-              <span className="font-extrabold text-sm">SABE</span>
-              <span className="text-blue-600 font-bold -mt-1">BRASIL</span>
-            </div>
+             <Image
+                src="/sabe_icon.png"
+                alt="SABE Brasil Logo"
+                width={50}
+                height={50}
+                className="shrink-0"
+              />
         </header>
 
         <div className="space-y-4">
           {data.locations.map(location => (
             <div key={location.id} className="bg-green-700/80 p-4 rounded-xl">
               <div className="flex items-start gap-2 mb-3">
-                <MapPin className="h-6 w-6 text-white shrink-0 mt-1" />
+                <Image
+                    src="/MapPin.svg"
+                    alt="Map Pin Icon"
+                    width={24}
+                    height={24}
+                    className="h-6 w-6 text-white shrink-0 mt-1"
+                />
                 <div>
                   <h3 className="font-bold text-lg">{location.name}</h3>
                   <p className="text-xs text-green-100">{location.address}</p>
@@ -84,7 +94,7 @@ const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefO
                                     <p>{activity.time}</p>
                                 </div>
                                 <div className="bg-white text-blue-900 rounded-lg px-3 py-1 font-semibold w-full text-center">
-                                    <p>{activity.description}</p>
+                                    <p className="break-words">{activity.description}</p>
                                 </div>
                             </div>
                         ))}
