@@ -262,6 +262,7 @@ export type AgendaRow = {
     dia: string;
     horario: string;
     area: string;
+    participantes?: number;
 };
 
 export type AgendasState = {

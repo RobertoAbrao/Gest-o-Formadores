@@ -14,7 +14,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, FichaDevolutiva, AgendasState, AgendaRow, LinkOnline } from '@/lib/types';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -87,7 +87,7 @@ export default function FichaDevolutivaPage() {
 
       const initialAgendas: AgendasState = {};
       formadoresData.forEach(f => {
-          initialAgendas[f.id] = [{ dia: '', horario: '', area: '' }];
+          initialAgendas[f.id] = [{ dia: '', horario: '', area: '', participantes: 0 }];
       });
       setAgendas(initialAgendas);
 
@@ -181,7 +181,7 @@ export default function FichaDevolutivaPage() {
   const handleAddRow = (formadorId: string) => {
     setAgendas(prev => ({
         ...prev,
-        [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '' }]
+        [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '', participantes: 0 }]
     }));
   };
   
@@ -190,7 +190,14 @@ export default function FichaDevolutivaPage() {
           const newAgendas = { ...prev };
           const formadorAgenda = [...(newAgendas[formadorId] || [])];
           if (formadorAgenda[rowIndex]) {
-              formadorAgenda[rowIndex] = { ...formadorAgenda[rowIndex], [field]: value };
+              const updatedRow = { ...formadorAgenda[rowIndex] };
+              if (field === 'participantes') {
+                  const numValue = parseInt(value, 10);
+                  (updatedRow[field] as any) = isNaN(numValue) ? 0 : numValue;
+              } else {
+                  (updatedRow[field] as any) = value;
+              }
+              formadorAgenda[rowIndex] = updatedRow;
           }
           newAgendas[formadorId] = formadorAgenda;
           return newAgendas;
@@ -391,9 +398,10 @@ export default function FichaDevolutivaPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className='w-[20%]'>Dia</TableHead>
-                                            <TableHead className='w-[20%]'>Horário</TableHead>
+                                            <TableHead className='w-[15%]'>Horário</TableHead>
                                             <TableHead>Ano/Área</TableHead>
                                             <TableHead className='w-[25%]'>Formador(a)</TableHead>
+                                            <TableHead className='w-[15%] text-right'>Participantes</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -405,12 +413,13 @@ export default function FichaDevolutivaPage() {
                                                         <TableCell>{entry.horario}</TableCell>
                                                         <TableCell>{entry.area}</TableCell>
                                                         <TableCell>{entry.formadorNome}</TableCell>
+                                                        <TableCell className="text-right">{entry.participantes || 0}</TableCell>
                                                     </TableRow>
                                                 ))
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="text-center h-24">Nenhuma atividade agendada. Preencha as agendas individuais.</TableCell>
+                                                <TableCell colSpan={5} className="text-center h-24">Nenhuma atividade agendada. Preencha as agendas individuais.</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -503,9 +512,10 @@ export default function FichaDevolutivaPage() {
                                             <Table className="print-table">
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className='w-[30%]'>Dia da Semana</TableHead>
-                                                        <TableHead className='w-[25%]'>Horário</TableHead>
+                                                        <TableHead className='w-[25%]'>Dia da Semana</TableHead>
+                                                        <TableHead className='w-[20%]'>Horário</TableHead>
                                                         <TableHead>Ano/Área</TableHead>
+                                                        <TableHead className='w-[20%]'>Participantes</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -539,6 +549,12 @@ export default function FichaDevolutivaPage() {
                                                                 suppressContentEditableWarning
                                                                 onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '')}
                                                             >{agendaRow.area}</TableCell>
+                                                            <TableCell 
+                                                                className="editable-field"
+                                                                contentEditable
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.currentTarget.textContent || '0')}
+                                                            >{agendaRow.participantes || ''}</TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
