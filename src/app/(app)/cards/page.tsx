@@ -53,14 +53,14 @@ const CardDivulgacao = ({ data, cardRef }: { data: CardData, cardRef: React.RefO
       <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
 
       <div className="relative z-10 p-4 text-white space-y-4">
-        <header className="flex justify-between items-start text-white bg-[#4f46e5]/50 p-3 rounded-xl">
-            <h1 className="text-3xl font-bold uppercase tracking-wider">{data.mainTitle}</h1>
+        <header className="grid grid-cols-2 items-start text-white bg-[#4f46e5]/50 p-3 rounded-xl">
+            <h1 className="text-3xl font-bold uppercase tracking-wider col-span-1">{data.mainTitle}</h1>
              <Image
                 src="/sabe_icon.png"
                 alt="SABE Brasil Logo"
                 width={50}
                 height={50}
-                className="shrink-0"
+                className="shrink-0 justify-self-end"
               />
         </header>
 
