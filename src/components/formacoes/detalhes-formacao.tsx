@@ -21,7 +21,7 @@ import * as XLSX from 'xlsx';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, AvaliacaoSecretaria, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, FileText, FileType, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy, Mail } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType, Sparkles, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy, Mail } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
@@ -83,13 +83,17 @@ const checklistItems = [
     { id: 'dia_gerenciarDemandas', label: 'Acompanhar e gerenciar qualquer demanda que possa surgir', phase: 'dia' },
     { id: 'dia_organizarHorarios', label: 'Organizar e passar os horários de início, pausa do café e finalização do evento', phase: 'dia' },
 
-    { id: 'apos_leituraAvaliacoes', label: 'Leitura das avaliações do encontro', phase: 'apos' },
+    { id: 'apos_leituraAvaliacoes', label: 'Ler as avaliações do encontro', phase: 'apos' },
     { id: 'apos_solicitarRelatorio', label: 'Solicitar relatório de curso aos formadores', phase: 'apos' },
     { id: 'apos_enviarInstrucoesNF', label: 'Enviar instruções para a nota fiscal dos formadores', phase: 'apos' },
     { id: 'apos_emailAgradecimento', label: 'Enviar e-mail de agradecimento para palestrantes, formadores e autoridades', phase: 'apos' },
     { id: 'apos_enviarFormularioMunicipio', label: 'Enviar formulário para o município avaliar a formação', phase: 'apos' },
     { id: 'apos_divulgarMidias', label: 'Divulgar o evento nas mídias', phase: 'apos' },
     { id: 'apos_arquivarMateriais', label: 'Arquivar fotos, vídeos e relatórios', phase: 'apos' },
+    { id: 'apos_enviarAvaliacaoIndividual', label: 'Enviar avaliação individual', phase: 'apos' },
+    { id: 'apos_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'apos' },
+    { id: 'apos_solicitarImagens', label: 'Solicitar imagens', phase: 'apos' },
+    { id: 'apos_conferirEngajamento', label: 'Conferir o engajamento', phase: 'apos' },
 ];
 
 
