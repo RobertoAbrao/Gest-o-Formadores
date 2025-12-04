@@ -1,3 +1,4 @@
+
 'use client';
 
 import { QRCodeCanvas } from 'qrcode.react';
@@ -44,7 +45,7 @@ export function GeradorQRCode({ url, title }: GeradorQRCodeProps) {
       const logoHeight = 50;
       const text = "Editora LT";
       ctx.font = 'bold 24px sans-serif';
-      ctx.fillStyle = '#e02424'; // primary color
+      ctx.fillStyle = '#3F51B5'; // primary color
       const textWidth = ctx.measureText(text).width;
       const totalHeaderWidth = logoWidth + 10 + textWidth;
       const startX = (finalCanvas.width - totalHeaderWidth) / 2;
@@ -71,11 +72,15 @@ export function GeradorQRCode({ url, title }: GeradorQRCodeProps) {
       downloadLink.click();
       document.body.removeChild(downloadLink);
     }
+    
+    logoImg.onerror = (e) => {
+        console.error("Failed to load logo for QR download", e);
+    }
   };
 
   return (
     <div className="flex flex-col items-center gap-6 p-4">
-      <div className="p-4 bg-white rounded-lg border relative" ref={qrCodeRef}>
+      <div className="p-4 bg-white rounded-lg border" ref={qrCodeRef}>
          <QRCodeCanvas
           value={url}
           size={256}
@@ -83,12 +88,13 @@ export function GeradorQRCode({ url, title }: GeradorQRCodeProps) {
           fgColor={"#000000"}
           level={"H"}
           includeMargin={true}
+          imageSettings={{
+            src: "/Imagem_do_WhatsApp_de_2025-08-14_à_s__17.07.16_9af64c95-removebg-preview.png",
+            height: 50,
+            width: 50,
+            excavate: true,
+          }}
         />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-white p-1 rounded-md">
-                <AppLogo iconClassName='h-10 w-10' textClassName='hidden'/>
-            </div>
-        </div>
       </div>
        <p className="text-center font-semibold">{title}</p>
       <Button onClick={downloadQRCode} className="w-full">
