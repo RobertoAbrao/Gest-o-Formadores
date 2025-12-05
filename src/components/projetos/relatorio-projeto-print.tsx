@@ -90,7 +90,7 @@ const MilestoneCard = ({
                         {description && (
                             <div className="text-sm text-gray-600 mt-1">
                                 {description.formadores && <p>{description.formadores}</p>}
-                                {description.detalhes && <p>{description.detalhes}</p>}
+                                {description.detalhes && <p className="whitespace-pre-wrap">{description.detalhes}</p>}
                             </div>
                         )}
                     </div>
