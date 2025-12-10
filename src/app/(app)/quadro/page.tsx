@@ -30,6 +30,7 @@ import {
   CheckCircle,
   FileSignature,
   QrCode,
+  FolderOpen,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -76,28 +77,32 @@ import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
 import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
+import { cn } from '@/lib/utils';
+
 
 type Columns = {
   [key in FormadorStatus]: {
     title: string;
     items: Formacao[];
+    colorClass: string;
   };
 };
 
-const columnTitles: { [key in FormadorStatus]: string } = {
-  preparacao: 'Preparação',
-  'em-formacao': 'Em Formação',
-  'pos-formacao': 'Pós Formação',
-  concluido: 'Concluído',
-  arquivado: 'Arquivado',
+const columnConfig: { [key in FormadorStatus]: { title: string, colorClass: string } } = {
+  preparacao: { title: 'Preparação', colorClass: 'bg-green-500 border-green-500' },
+  'em-formacao': { title: 'Em Formação', colorClass: 'bg-blue-500 border-blue-500' },
+  'pos-formacao': { title: 'Pós Formação', colorClass: 'bg-yellow-500 border-yellow-500' },
+  concluido: { title: 'Concluído', colorClass: 'bg-purple-500 border-purple-500' },
+  arquivado: { title: 'Arquivado', colorClass: 'bg-gray-500 border-gray-500' },
 };
 
+
 const initialColumns: Columns = {
-  preparacao: { title: 'Preparação', items: [] },
-  'em-formacao': { title: 'Em Formação', items: [] },
-  'pos-formacao': { title: 'Pós Formação', items: [] },
-  concluido: { title: 'Concluído', items: [] },
-  arquivado: { title: 'Arquivado', items: [] },
+  preparacao: { ...columnConfig.preparacao, items: [] },
+  'em-formacao': { ...columnConfig['em-formacao'], items: [] },
+  'pos-formacao': { ...columnConfig['pos-formacao'], items: [] },
+  concluido: { ...columnConfig.concluido, items: [] },
+  arquivado: { ...columnConfig.arquivado, items: [] },
 };
 
 export default function QuadroPage() {
@@ -123,11 +128,11 @@ export default function QuadroPage() {
       );
 
       const newColumns: Columns = {
-        preparacao: { title: 'Preparação', items: [] },
-        'em-formacao': { title: 'Em Formação', items: [] },
-        'pos-formacao': { title: 'Pós Formação', items: [] },
-        concluido: { title: 'Concluído', items: [] },
-        arquivado: { title: 'Arquivado', items: [] },
+        preparacao: { ...columnConfig.preparacao, items: [] },
+        'em-formacao': { ...columnConfig['em-formacao'], items: [] },
+        'pos-formacao': { ...columnConfig['pos-formacao'], items: [] },
+        concluido: { ...columnConfig.concluido, items: [] },
+        arquivado: { ...columnConfig.arquivado, items: [] },
       };
 
       const today = startOfToday();
@@ -331,115 +336,120 @@ export default function QuadroPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
           {Object.entries(columns).filter(([columnId]) => columnId !== 'arquivado').map(([columnId, column]) => (
-            <div key={columnId}>
-              <Card className="bg-muted/50">
-                <CardHeader className="p-4 border-b">
-                  <CardTitle className="text-lg flex items-center justify-between">
-                    <span>{column.title}</span>
-                    <span className="text-sm font-normal text-muted-foreground bg-background h-6 w-6 flex items-center justify-center rounded-full">
-                      {column.items.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 space-y-3 min-h-[100px]">
-                  {column.items.map((item) => (
-                    <Card
-                      key={item.id}
-                      className="bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => openDetailDialog(item)}
-                    >
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <h3 className="font-semibold text-base flex items-center gap-2">
-                             {getIconForItem(item)}
-                            {item.titulo}
-                          </h3>
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                  variant="ghost"
-                                  className="h-7 w-7 p-0"
-                              >
-                                  <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Ver Detalhes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Editar
-                              </DropdownMenuItem>
-                               <DropdownMenuItem asChild>
-                                  <Link href={`/ficha/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                      <FileSignature className="mr-2 h-4 w-4" />
-                                      Gerar Ficha
-                                  </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild>
-                                  <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                                  Formulário de Avaliação
-                                  </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openQRCodeDialog(item); }}>
-                                <QrCode className="mr-2 h-4 w-4" />
-                                Gerar QR Code
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {item.status === 'pos-formacao' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Marcar como Concluído
+            <div key={columnId} className="bg-muted/40 rounded-lg h-full">
+              <div className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{column.title}</h2>
+                      <span className={cn('h-5 w-5 rounded-full text-xs text-white flex items-center justify-center font-bold', column.colorClass)}>
+                        {column.items.length}
+                      </span>
+                  </div>
+                <div className="space-y-4">
+                  {column.items.length > 0 ? (
+                    column.items.map((item) => (
+                      <Card
+                        key={item.id}
+                        className={cn('bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4', column.colorClass.replace('bg-', 'border-'))}
+                        onClick={() => openDetailDialog(item)}
+                      >
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-start justify-between">
+                            <h3 className="font-semibold text-sm flex items-center gap-2">
+                              {getIconForItem(item)}
+                              {item.titulo}
+                            </h3>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 -mr-2 -mt-1"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Ver Detalhes
                                 </DropdownMenuItem>
-                              )}
-                              {item.status === 'concluido' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
-                                  <Archive className="mr-2 h-4 w-4" />
-                                  Arquivar
+                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
                                 </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                  onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
-                              >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir
-                              </DropdownMenuItem>
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {item.descricao}
-                        </p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
-                            <div className="flex items-center gap-4">
-                               {item.materiaisIds && item.materiaisIds.length > 0 && (
-                                    <div className="flex items-center gap-1">
-                                        <Paperclip className="h-4 w-4" />
-                                        <span>{item.materiaisIds.length}</span>
-                                    </div>
+                                 <DropdownMenuItem asChild>
+                                    <Link href={`/ficha/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                        <FileSignature className="mr-2 h-4 w-4" />
+                                        Gerar Ficha
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
+                                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                                    Formulário de Avaliação
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openQRCodeDialog(item); }}>
+                                  <QrCode className="mr-2 h-4 w-4" />
+                                  Gerar QR Code
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {item.status === 'pos-formacao' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Marcar como Concluído
+                                  </DropdownMenuItem>
                                 )}
-                                {item.participantes && item.participantes > 0 && (
-                                     <div className="flex items-center gap-1">
-                                        <Users className="h-4 w-4" />
-                                        <span>{item.participantes}</span>
-                                    </div>
+                                {item.status === 'concluido' && (
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Arquivar
+                                  </DropdownMenuItem>
                                 )}
-                            </div>
-                            <Badge variant="outline" className="font-mono">
-                                <Hash className="h-3 w-3 mr-1" />
-                                {item.codigo}
-                            </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
+                                <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Excluir
+                                </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {item.descricao}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                              <div className="flex items-center gap-3">
+                                 {item.materiaisIds && item.materiaisIds.length > 0 && (
+                                      <div className="flex items-center gap-1">
+                                          <Paperclip className="h-3 w-3" />
+                                          <span>{item.materiaisIds.length}</span>
+                                      </div>
+                                  )}
+                                  {item.participantes && item.participantes > 0 && (
+                                       <div className="flex items-center gap-1">
+                                          <Users className="h-3 w-3" />
+                                          <span>{item.participantes}</span>
+                                      </div>
+                                  )}
+                              </div>
+                              <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5">
+                                  <Hash className="h-2.5 w-2.5 mr-0.5" />
+                                  {item.codigo}
+                              </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-10">
+                      <FolderOpen className="h-10 w-10 mb-2" />
+                      <p className="text-sm">Nenhuma atividade aqui</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           ))}
         </div>
