@@ -658,7 +658,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
         
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
             <CardHeader>
                 <CardTitle>Dados Gerais do Projeto</CardTitle>
             </CardHeader>
@@ -735,7 +735,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
              <CardHeader>
                 <CardTitle>Implementação e Métricas</CardTitle>
             </CardHeader>
@@ -896,7 +896,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
         
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Agendamento de Reuniões</CardTitle>
@@ -945,7 +945,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Eventos Adicionais</CardTitle>
@@ -1007,7 +1007,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
             <CardHeader>
                 <CardTitle>Avaliações e Simulados</CardTitle>
             </CardHeader>
@@ -1113,7 +1113,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-lg shadow-primary/10">
             <CardHeader>
                 <CardTitle>Cronograma de Devolutivas</CardTitle>
                 <CardDescription>
