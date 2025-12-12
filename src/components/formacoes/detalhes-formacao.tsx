@@ -71,6 +71,7 @@ const checklistItems = [
     { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
     { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
     { id: 'antes_atualizarApresentacaoQR', label: 'Atualizar a apresentação com o QRCode do município', phase: 'antes' },
+    { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
     { id: 'antes_atualizarApresentacaoPresenca', label: 'Atualizar a apresentação com o QRCode da presença e avaliação', phase: 'antes' },
     { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
     
