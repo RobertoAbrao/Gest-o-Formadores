@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare } from 'lucide-react';
 import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
@@ -52,6 +53,11 @@ export default function ProjetosPage() {
   const [selectedProjeto, setSelectedProjeto] = useState<ProjetoImplatancao | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // State for unsaved changes confirmation
+  const [isFormDirty, setIsFormDirty] = useState(false);
+  const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
+
 
   const fetchProjetosAndMateriais = useCallback(async () => {
     setLoading(true);
@@ -88,6 +94,7 @@ export default function ProjetosPage() {
   
   const handleSuccess = () => {
     fetchProjetosAndMateriais();
+    setIsFormDirty(false); // Reset dirty state on success
     setIsFormDialogOpen(false);
     setSelectedProjeto(null);
   }
@@ -115,6 +122,26 @@ export default function ProjetosPage() {
     setSelectedProjeto(projeto);
     setIsDetailDialogOpen(true);
   }
+  
+  const handleFormDialogOpenChange = (open: boolean) => {
+    if (!open && isFormDirty) {
+      setIsConfirmCloseOpen(true);
+    } else {
+      setIsFormDialogOpen(open);
+      if (!open) {
+        setSelectedProjeto(null);
+        setIsFormDirty(false); // Reset dirty state on close
+      }
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setIsConfirmCloseOpen(false);
+    setIsFormDialogOpen(false);
+    setSelectedProjeto(null);
+    setIsFormDirty(false);
+  };
+
 
   const handleDialogChange = (setter: React.Dispatch<React.SetStateAction<boolean>>) => (open: boolean) => {
     setter(open);
@@ -149,7 +176,7 @@ export default function ProjetosPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Gerenciar Projetos</h1>
             <p className="text-muted-foreground">Adicione, edite e acompanhe os projetos de implantação.</p>
         </div>
-        <Dialog open={isFormDialogOpen} onOpenChange={handleDialogChange(setIsFormDialogOpen)}>
+        <Dialog open={isFormDialogOpen} onOpenChange={handleFormDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -165,7 +192,11 @@ export default function ProjetosPage() {
             </DialogHeader>
             <ScrollArea className='max-h-[80vh]'>
                 <div className='p-4'>
-                    <FormProjeto projeto={selectedProjeto} onSuccess={handleSuccess} />
+                    <FormProjeto 
+                      projeto={selectedProjeto} 
+                      onSuccess={handleSuccess}
+                      onDirtyChange={setIsFormDirty}
+                    />
                 </div>
             </ScrollArea>
           </DialogContent>
@@ -293,6 +324,25 @@ export default function ProjetosPage() {
                 )}
             </DialogContent>
         </Dialog>
+        
+        <AlertDialog open={isConfirmCloseOpen} onOpenChange={setIsConfirmCloseOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Você possui alterações não salvas. Se sair agora, todo o seu progresso será perdido.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmClose} variant="destructive">
+                        Sair sem Salvar
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    

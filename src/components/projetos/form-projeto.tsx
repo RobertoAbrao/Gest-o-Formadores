@@ -141,6 +141,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface FormProjetoProps {
   projeto?: ProjetoImplatancao | null;
   onSuccess: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 interface Estado {
@@ -205,7 +206,7 @@ type FileUploadKey =
   | 'brasao'
   | `eventosAdicionais.${number}`;
 
-export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
+export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<FileUploadKey | null>(null);
@@ -292,6 +293,13 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
       })) || [],
     },
   });
+  
+  const { formState: { isDirty } } = form;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
 
   const selectedUf = form.watch('uf');
   const brasaoId = form.watch('brasaoId');
@@ -441,6 +449,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
   async function onSubmit(values: FormValues) {
     setLoading(true);
     try {
+      
       const dataToSave = {
           ...values,
           dataMigracao: timestampOrNull(values.dataMigracao),
@@ -907,7 +916,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardHeader>
             <CardContent className="space-y-4">
                 {reuniaoFields.map((field, index) => (
-                    <Card key={field.id} className="p-4 bg-muted/40">
+                    <Card key={field.id} className="p-4 bg-muted/40 shadow-sm shadow-primary/5">
                         <div className='flex justify-between items-center mb-4'>
                             <h4 className='font-semibold text-base'>Reunião {index + 1}</h4>
                             <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeReuniao(index)}>
@@ -958,7 +967,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 {eventoFields.map((field, index) => {
                     const etapaKey = `eventosAdicionais.${index}` as const;
                     return (
-                        <Card key={field.id} className="p-4 bg-muted/40">
+                        <Card key={field.id} className="p-4 bg-muted/40 shadow-sm shadow-primary/5">
                              <div className='flex justify-between items-center mb-4'>
                                 <h4 className='font-semibold text-base'>Evento #{index + 1}</h4>
                                 <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeEvento(index)}>
@@ -1012,7 +1021,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 <CardTitle>Avaliações e Simulados</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Card className="p-4 bg-muted/40">
+                <Card className="p-4 bg-muted/40 shadow-sm shadow-primary/5">
                     <CardHeader className="p-0 mb-4">
                         <CardTitle className="text-base">Avaliação Diagnóstica</CardTitle>
                     </CardHeader>
@@ -1056,7 +1065,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                 {([1, 2, 3, 4] as const).map(i => {
                     const etapaKey = `simulados.s${i}` as const;
                     return (
-                        <Card key={etapaKey} className="p-4 bg-muted/40">
+                        <Card key={etapaKey} className="p-4 bg-muted/40 shadow-sm shadow-primary/5">
                              <CardHeader className="p-0 mb-4">
                                 <CardTitle className="text-base">Simulado {i}</CardTitle>
                             </CardHeader>
@@ -1125,7 +1134,7 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                         const etapaKey = `devolutivas.d${i}` as const;
                         const devolutiva = form.watch(etapaKey);
                         return (
-                            <Card key={etapaKey} className='p-4 bg-muted/40'>
+                            <Card key={etapaKey} className='p-4 bg-muted/40 shadow-sm shadow-primary/5'>
                                 <CardHeader className="p-0 mb-4 flex-row justify-between items-start">
                                     <CardTitle className="text-base">Devolutiva {i}</CardTitle>
                                     <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
@@ -1267,10 +1276,12 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
             </CardContent>
         </Card>
 
-        <Button type="submit" className="w-full !mt-8" disabled={loading}>
+        <Button type="submit" className="w-full !mt-8" disabled={loading || !isDirty}>
           {loading ? (<Loader2 className="animate-spin" />) : (isEditMode ? 'Salvar Alterações' : 'Criar Projeto')}
         </Button>
       </form>
     </Form>
   );
 }
+
+    
