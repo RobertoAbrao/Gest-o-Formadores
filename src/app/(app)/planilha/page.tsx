@@ -131,13 +131,13 @@ export default function PlanilhaPage() {
         
         const formadorMatch = selectedFormador === 'all' || 
             p.formadoresIds?.includes(selectedFormador) ||
-            Object.values(p.devolutivas || {}).some(d => d.formadores?.some(nome => allFormadores.find(f => f.nomeCompleto === nome)?.id === selectedFormador));
+            Object.values(p.devolutivas || {}).some(d => d.formadores?.some(nome => formadores.find(f => f.nomeCompleto === nome)?.id === selectedFormador));
 
         const statusMatch = statusFilter === 'all' || p.atividades.some(a => (statusFilter === 'ok' && a.ok) || (statusFilter === 'pending' && !a.ok));
 
         return searchMatch && ufMatch && formadorMatch && statusMatch;
     });
-  }, [projetosComAtividades, searchTerm, selectedUf, selectedFormador, statusFilter, allFormadores]);
+  }, [projetosComAtividades, searchTerm, selectedUf, selectedFormador, statusFilter, formadores]);
   
   const ufs = useMemo(() => [...new Set(projetos.map(p => p.uf))].sort(), [projetos]);
   
@@ -328,5 +328,3 @@ export default function PlanilhaPage() {
     </div>
   );
 }
-
-    
