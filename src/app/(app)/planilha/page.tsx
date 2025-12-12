@@ -29,17 +29,17 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FormProjeto } from '@/components/projetos/form-projeto';
-
+import { Separator } from '@/components/ui/separator';
 
 interface Activity {
-  projetoId: string;
-  municipio: string;
-  uf: string;
-  atividade: string;
+  nome: string;
   startDate: Date | null;
   endDate: Date | null;
-  formadores: string[];
   ok: boolean;
+}
+
+interface ProjetoComAtividades extends ProjetoImplatancao {
+    atividades: Activity[];
 }
 
 export default function PlanilhaPage() {
@@ -91,83 +91,77 @@ export default function PlanilhaPage() {
     }
   }, [user, router, fetchData]);
 
-  const allActivities = useMemo(() => {
-    const activities: Activity[] = [];
-    const formadorMap = new Map(formadores.map(f => [f.id, f.nomeCompleto]));
-
-    projetos.forEach(p => {
-        const getFormadorNomes = (ids?: string[]): string[] => {
-            if (!ids) return [];
-            return ids.map(id => formadorMap.get(id) || 'Desconhecido').filter(nome => nome !== 'Desconhecido');
-        }
-
+  const projetosComAtividades = useMemo<ProjetoComAtividades[]>(() => {
+    return projetos.map(p => {
+        const atividades: Activity[] = [];
+        
         if (p.dataImplantacao) {
-            activities.push({
-                projetoId: p.id, municipio: p.municipio, uf: p.uf, atividade: "Implantação",
-                startDate: p.dataImplantacao.toDate(), endDate: p.dataImplantacao.toDate(),
-                formadores: getFormadorNomes(p.formadoresIds), ok: true,
-            });
+            atividades.push({ nome: "Implantação", startDate: p.dataImplantacao.toDate(), endDate: p.dataImplantacao.toDate(), ok: true });
         }
         if (p.diagnostica?.data) {
-             activities.push({
-                projetoId: p.id, municipio: p.municipio, uf: p.uf, atividade: "Avaliação Diagnóstica",
-                startDate: p.diagnostica.data.toDate(), endDate: p.diagnostica.data.toDate(),
-                formadores: getFormadorNomes(p.formadoresIds), ok: !!p.diagnostica.ok,
-            });
+            atividades.push({ nome: "Avaliação Diagnóstica", startDate: p.diagnostica.data.toDate(), endDate: p.diagnostica.data.toDate(), ok: !!p.diagnostica.ok });
         }
         if (p.simulados) {
             Object.entries(p.simulados).forEach(([key, simulado]) => {
-                if (simulado.dataInicio && simulado.dataFim) {
-                     activities.push({
-                        projetoId: p.id, municipio: p.municipio, uf: p.uf, atividade: `Simulado ${key.replace('s','')}`,
-                        startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp).toDate(),
-                        formadores: getFormadorNomes(p.formadoresIds), ok: !!simulado.ok
-                    });
+                if (simulado.dataInicio) {
+                     atividades.push({ nome: `Simulado ${key.replace('s','')}`, startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!simulado.ok });
                 }
             })
         }
         if (p.devolutivas) {
             Object.entries(p.devolutivas).forEach(([key, devolutiva]) => {
-                const hasPeriod = 'dataInicio' in devolutiva && devolutiva.dataInicio && 'dataFim' in devolutiva && devolutiva.dataFim;
-                if (hasPeriod) {
-                    activities.push({
-                        projetoId: p.id, municipio: p.municipio, uf: p.uf, atividade: `Devolutiva ${key.replace('d','')}`,
-                        startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp).toDate(),
-                        formadores: devolutiva.formadores || getFormadorNomes(p.formadoresIds), ok: !!devolutiva.ok,
-                    });
+                 if (devolutiva.dataInicio) {
+                    atividades.push({ nome: `Devolutiva ${key.replace('d','')}`, startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!devolutiva.ok });
                 }
             })
         }
-    });
-    return activities.sort((a,b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0));
-  }, [projetos, formadores]);
+        
+        atividades.sort((a,b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0));
+        
+        return { ...p, atividades };
+    })
+  }, [projetos]);
   
-  const filteredActivities = useMemo(() => {
-    return allActivities.filter(activity => {
-        const searchMatch = searchTerm.trim() === '' || activity.municipio.toLowerCase().includes(searchTerm.toLowerCase());
-        const ufMatch = selectedUf === 'all' || activity.uf === selectedUf;
-        const formadorMatch = selectedFormador === 'all' || activity.formadores.some(nome => nome === selectedFormador);
-        const statusMatch = statusFilter === 'all' || (statusFilter === 'ok' && activity.ok) || (statusFilter === 'pending' && !activity.ok);
+  const formadoresMap = useMemo(() => new Map(formadores.map(f => [f.id, f.nomeCompleto])), [formadores]);
+
+  const filteredProjetos = useMemo(() => {
+    return projetosComAtividades.filter(p => {
+        const searchMatch = searchTerm.trim() === '' || p.municipio.toLowerCase().includes(searchTerm.toLowerCase());
+        const ufMatch = selectedUf === 'all' || p.uf === selectedUf;
+        
+        const formadorMatch = selectedFormador === 'all' || 
+            p.formadoresIds?.includes(selectedFormador) ||
+            Object.values(p.devolutivas || {}).some(d => d.formadores?.some(nome => allFormadores.find(f => f.nomeCompleto === nome)?.id === selectedFormador));
+
+        const statusMatch = statusFilter === 'all' || p.atividades.some(a => (statusFilter === 'ok' && a.ok) || (statusFilter === 'pending' && !a.ok));
+
         return searchMatch && ufMatch && formadorMatch && statusMatch;
     });
-  }, [allActivities, searchTerm, selectedUf, selectedFormador, statusFilter]);
+  }, [projetosComAtividades, searchTerm, selectedUf, selectedFormador, statusFilter, allFormadores]);
   
   const ufs = useMemo(() => [...new Set(projetos.map(p => p.uf))].sort(), [projetos]);
   
   const handleExport = () => {
-     if (filteredActivities.length === 0) {
+    if (filteredProjetos.length === 0) {
         toast({ variant: 'destructive', title: 'Nenhum dado para exportar.' });
         return;
-     }
-    const dataToExport = filteredActivities.map(activity => ({
-      'Município': activity.municipio,
-      'UF': activity.uf,
-      'Atividade': activity.atividade,
-      'Data Início': activity.startDate ? format(activity.startDate, "dd/MM/yyyy") : 'N/A',
-      'Data Fim': activity.endDate ? format(activity.endDate, "dd/MM/yyyy") : 'N/A',
-      'Formadores': activity.formadores.join(', '),
-      'Status': activity.ok ? 'Concluído' : 'Pendente',
-    }));
+    }
+
+    const dataToExport = filteredProjetos.flatMap(p => 
+        p.atividades.map(a => ({
+            'Município': p.municipio,
+            'UF': p.uf,
+            'Atividade': a.nome,
+            'Data Início': a.startDate ? format(a.startDate, "dd/MM/yyyy") : 'N/A',
+            'Data Fim': a.endDate ? format(a.endDate, "dd/MM/yyyy") : 'N/A',
+            'Status': a.ok ? 'Concluído' : 'Pendente',
+        }))
+    );
+
+    if (dataToExport.length === 0) {
+        toast({ variant: 'destructive', title: 'Nenhuma atividade para exportar nos projetos filtrados.' });
+        return;
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
@@ -186,12 +180,9 @@ export default function PlanilhaPage() {
     XLSX.writeFile(workbook, `Planilha Atividades.xlsx`);
   };
 
-  const handleEditClick = (projetoId: string) => {
-    const projeto = projetos.find(p => p.id === projetoId);
-    if (projeto) {
-        setSelectedProjeto(projeto);
-        setIsFormDialogOpen(true);
-    }
+  const handleEditClick = (projeto: ProjetoImplatancao) => {
+    setSelectedProjeto(projeto);
+    setIsFormDialogOpen(true);
   };
 
   const handleFormSuccess = () => {
@@ -215,7 +206,7 @@ export default function PlanilhaPage() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">Planilha de Atividades</h1>
             <p className="text-muted-foreground">Filtre e visualize todas as atividades dos projetos.</p>
         </div>
-        <Button variant="outline" onClick={handleExport} disabled={filteredActivities.length === 0}>
+        <Button variant="outline" onClick={handleExport} disabled={filteredProjetos.length === 0}>
             <Sheet className="mr-2 h-4 w-4" />
             Exportar para Planilhas
         </Button>
@@ -247,7 +238,7 @@ export default function PlanilhaPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Todos os Formadores</SelectItem>
-                        {formadores.map(f => <SelectItem key={f.id} value={f.nomeCompleto}>{f.nomeCompleto}</SelectItem>)}
+                        {formadores.map(f => <SelectItem key={f.id} value={f.id}>{f.nomeCompleto}</SelectItem>)}
                     </SelectContent>
                 </Select>
                  <ToggleGroup 
@@ -263,66 +254,56 @@ export default function PlanilhaPage() {
             </CardContent>
         </Card>
       
-      {allActivities.length === 0 ? (
+      {projetos.length === 0 ? (
          <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
             <GanttChartSquare className="w-12 h-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">Nenhuma atividade encontrada</h3>
-            <p className="text-sm text-muted-foreground">Não há atividades de projeto para exibir na planilha.</p>
+            <h3 className="mt-4 text-lg font-semibold">Nenhum projeto encontrado</h3>
+            <p className="text-sm text-muted-foreground">Comece criando um novo projeto para visualizar suas atividades aqui.</p>
         </div>
       ) : (
-        <Card className="shadow-md">
-            <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Projeto</TableHead>
-                                <TableHead>Atividade</TableHead>
-                                <TableHead>Período</TableHead>
-                                <TableHead>Formadores</TableHead>
-                                <TableHead className='text-center'>Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredActivities.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                        Nenhuma atividade encontrada para os filtros selecionados.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredActivities.map((activity, index) => (
-                                    <TableRow 
-                                        key={`${activity.projetoId}-${index}`} 
-                                        className="cursor-pointer"
-                                        onClick={() => handleEditClick(activity.projetoId)}
-                                    >
-                                        <TableCell className="font-medium">
-                                            {activity.municipio} <span className="text-muted-foreground">({activity.uf})</span>
-                                        </TableCell>
-                                        <TableCell>{activity.atividade}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">
-                                            {activity.startDate ? format(activity.startDate, 'dd/MM/yy') : 'N/A'} - {activity.endDate ? format(activity.endDate, 'dd/MM/yy') : 'N/A'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-1">
-                                                {activity.formadores.map(nome => <Badge key={nome} variant="secondary">{nome.split(' ')[0]}</Badge>)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {activity.ok ? 
-                                                <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : 
-                                                <XCircle className="h-5 w-5 text-destructive mx-auto" />
-                                            }
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjetos.map((projeto) => (
+                <Card 
+                    key={projeto.id} 
+                    className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => handleEditClick(projeto)}
+                >
+                    <CardHeader>
+                        <CardTitle>{projeto.municipio}</CardTitle>
+                        <CardDescription>{projeto.uf}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-2">
+                        {projeto.atividades.length === 0 ? (
+                             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade agendada.</p>
+                        ) : (
+                            projeto.atividades.map((atividade, index) => (
+                                <div key={index} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
+                                    <span className="font-medium">{atividade.nome}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">
+                                            {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
+                                        </span>
+                                        {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </CardContent>
+                    <CardFooter>
+                        <p className="text-xs text-muted-foreground">
+                            {projeto.formadoresIds?.length || 0} formador(es) associado(s)
+                        </p>
+                    </CardFooter>
+                </Card>
+            ))}
+            {filteredProjetos.length === 0 && (
+                 <div className="md:col-span-2 lg:col-span-3 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                    <Search className="w-12 h-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">Nenhum projeto encontrado</h3>
+                    <p className="text-sm text-muted-foreground">Tente ajustar seus filtros de busca.</p>
                 </div>
-            </CardContent>
-        </Card>
+            )}
+        </div>
       )}
 
         <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
@@ -347,3 +328,5 @@ export default function PlanilhaPage() {
     </div>
   );
 }
+
+    
