@@ -50,6 +50,7 @@ import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { generateFormationCode } from '@/lib/utils';
 import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -657,307 +658,267 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
         
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
         
-        {/* DADOS GERAIS */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h3 className="font-semibold text-lg">Dados Gerais</h3>
-          <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField control={form.control} name="uf" render={({ field }) => (
-                  <FormItem><FormLabel>UF</FormLabel>
-                      <Select onValueChange={(value) => {
-                          field.onChange(value);
-                          form.setValue('municipio', '');
-                          form.setValue('formadoresIds', []);
-                      }} value={field.value}>
-                        <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecione o estado" />
-                            </SelectTrigger>
-                        </FormControl>
-                          <SelectContent>{estados.map(uf => (<SelectItem key={uf.id} value={uf.sigla}>{uf.nome}</SelectItem>))}</SelectContent>
-                      </Select><FormMessage />
-                  </FormItem>
-              )}/>
-               <FormField control={form.control} name="municipio" render={({ field }) => (
-                  <FormItem><FormLabel>Município</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
-                          <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
-                          </SelectContent>
-                      </Select><FormMessage />
-                  </FormItem>
-              )}/>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={form.control} name="versao" render={({ field }) => (
-              <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <FormField control={form.control} name="material" render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Material</FormLabel>
-                    <FormControl>
-                        <Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}/>
-            <FormField control={form.control} name="dossieUrl" render={({ field }) => (
-                <FormItem className="sm:col-span-2">
-                    <FormLabel>Link do Dossiê Final (Google Drive)</FormLabel>
-                    <FormControl>
-                        <div className="flex items-center gap-2">
-                            <DownloadCloud className="h-5 w-5 text-muted-foreground" />
-                            <Input placeholder="https://drive.google.com/..." {...field} value={field.value ?? ''} />
-                        </div>
-                    </FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}/>
-          </div>
-          <div className="space-y-2">
-            <FormLabel>Brasão do Município</FormLabel>
-            {brasaoAnexo ? (
-              <div className="flex items-center gap-4">
-                <img src={brasaoAnexo.url} alt="Preview do Brasão" className="h-16 w-16 rounded-md object-contain border p-1" />
-                <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteAnexo(brasaoAnexo.id!, 'brasao')}>
-                  <Trash2 className="mr-2 h-4 w-4"/> Remover Brasão
-                </Button>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" onClick={() => handleAnexoTrigger('brasao')} disabled={uploading === 'brasao' || !isEditMode}>
-                {uploading === 'brasao' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Shield className="mr-2 h-4 w-4" />}
-                Enviar Brasão
-              </Button>
-            )}
-            {!isEditMode && <FormDescription className="text-xs">Salve o projeto primeiro para poder enviar um brasão.</FormDescription>}
-          </div>
-        </div>
-
-        {/* IMPLEMENTAÇÃO E MÉTRICAS */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h3 className="font-semibold text-lg">Implementação e Métricas</h3>
-          <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField control={form.control} name="dataMigracao" render={({ field }) => (
-              <FormItem className="flex flex-col"><FormLabel>Data de Migração</FormLabel>
-                <Popover><PopoverTrigger asChild><FormControl>
-                  <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                </PopoverContent></Popover><FormMessage />
-              </FormItem>
-            )}/>
-            <div className="space-y-2">
-                <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Data de Implantação</FormLabel>
-                        <div className="flex gap-2 items-center">
-                            <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                            </PopoverContent></Popover>
-                             <Button type="button" size="icon" variant="outline" onClick={() => handleAnexoTrigger('implantacao')} disabled={uploading === 'implantacao' || !isEditMode}>
-                                {uploading === 'implantacao' ? <Loader2 className="h-4 w-4 animate-spin"/> : <UploadCloud className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                )}/>
-                 <FormField control={form.control} name="implantacaoDetalhes" render={({ field }) => (
-                    <FormItem className='mt-2'>
-                        <FormLabel>Detalhes da Implantação</FormLabel>
-                        <FormControl><Textarea placeholder="Descreva observações sobre a implantação..." {...field} value={field.value ?? ''} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                 )}/>
-                 {form.watch("implantacaoFormacaoId") ? (
-                    <div className="text-sm text-green-600 flex items-center gap-2">
-                        <Check className="h-4 w-4" /> Formação de implantação criada.
-                    </div>
-                ) : (
-                    <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
-                    </Button>
-                )}
-                 {getAnexosForEtapa('implantacao').map(anexo => (
-                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
-                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'implantacao')} disabled={uploading === 'implantacao'}>
-                            <Trash2 className="h-4 w-4"/>
-                        </Button>
-                    </div>
-                ))}
-                 <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10" onClick={handleClearImplantacao}>
-                    <Eraser className="mr-2 h-3 w-3" /> Limpar Dados da Implantação
-                </Button>
-            </div>
-            <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
-              <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <FormField control={form.control} name="formacoesPendentes" render={({ field }) => (
-              <FormItem><FormLabel>Formações Pendentes</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 2" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <FormField
-                control={form.control}
-                name="formadoresIds"
-                render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Formadores</FormLabel>
-                        <Popover open={formadorPopoverOpen} onOpenChange={setFormadorPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedUf}>
-                                    <span className="truncate">
-                                        {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)`: 'Selecione formadores...'}
-                                    </span>
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[300px] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Buscar formador..." />
-                                    <CommandList>
-                                        <CommandEmpty>Nenhum formador encontrado para este UF.</CommandEmpty>
-                                        <CommandGroup>
-                                            {availableFormadores.map((formador) => (
-                                                <CommandItem
-                                                    key={formador.id}
-                                                    value={formador.nomeCompleto}
-                                                    onSelect={() => {
-                                                        const currentIds = field.value || [];
-                                                        const newIds = currentIds.includes(formador.id)
-                                                            ? currentIds.filter(id => id !== formador.id)
-                                                            : [...currentIds, formador.id];
-                                                        field.onChange(newIds);
-                                                    }}
-                                                >
-                                                    <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.id) ? 'opacity-100' : 'opacity-0')} />
-                                                    {formador.nomeCompleto}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {selectedFormadores.length > 0 && (
-                            <div className="pt-2 flex flex-wrap gap-1">
-                                {selectedFormadores.map(formador => (
-                                <Badge key={formador.id} variant="secondary">
-                                    {formador.nomeCompleto}
-                                    <button
-                                    type="button"
-                                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                    onClick={() => field.onChange(field.value?.filter(id => id !== formador.id))}
-                                    >
-                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                    </button>
-                                </Badge>
-                                ))}
-                            </div>
-                        )}
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-          </div>
-            {form.getValues('anexo') && (
-                <div className="space-y-2 pt-4 border-t">
-                    <Label className="text-destructive">Anexo Legado</Label>
-                    <div className="flex items-center justify-between p-2 border border-destructive/50 rounded-md bg-destructive/10">
-                        <p className="text-sm text-destructive">{form.getValues('anexo.nome')}</p>
-                        <Button type="button" size="sm" variant="destructive" onClick={handleDeleteAnexoLegado} disabled={loading}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir Anexo Legado
-                        </Button>
-                    </div>
-                    <FormDescription className="text-destructive">Este anexo está em um formato antigo. Exclua-o e envie novamente usando o novo sistema de anexos por etapa.</FormDescription>
-                </div>
-            )}
-        </div>
-        
-        {/* Agendamento de Reunião */}
-        <div className="space-y-4 p-4 border rounded-lg">
-            <div className='flex justify-between items-center'>
-                <h3 className="font-semibold text-lg">Agendamento de Reuniões</h3>
-                <Button type="button" size="sm" variant="outline" onClick={() => appendReuniao({ data: null, links: Array(4).fill({ url: '', descricao: '' }) })}>
-                    <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Reunião
-                </Button>
-            </div>
-            <Separator />
-            {reuniaoFields.map((field, index) => (
-                 <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
-                    <div className='flex justify-between items-center'>
-                        <h4 className='font-semibold text-base'>Reunião {index + 1}</h4>
-                        <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeReuniao(index)}>
-                            <Trash2 className='h-4 w-4'/>
-                        </Button>
-                    </div>
-                    <FormField control={form.control} name={`reunioes.${index}.data`} render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Data da Reunião</FormLabel>
-                            <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                            </PopoverContent></Popover><FormMessage />
+        <Card>
+            <CardHeader>
+                <CardTitle>Dados Gerais do Projeto</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="uf" render={({ field }) => (
+                        <FormItem><FormLabel>UF</FormLabel>
+                            <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue('municipio', '');
+                                form.setValue('formadoresIds', []);
+                            }} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione o estado" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>{estados.map(uf => (<SelectItem key={uf.id} value={uf.sigla}>{uf.nome}</SelectItem>))}</SelectContent>
+                            </Select><FormMessage />
                         </FormItem>
                     )}/>
-                    <div className="space-y-4">
-                        {Array.from({ length: 4 }).map((_, linkIndex) => (
-                            <div key={linkIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.url`} render={({ field }) => (
-                                    <FormItem><FormLabel>Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.descricao`} render={({ field }) => (
-                                    <FormItem><FormLabel>Descrição do Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                                )}/>
+                    <FormField control={form.control} name="municipio" render={({ field }) => (
+                        <FormItem><FormLabel>Município</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
+                                </SelectContent>
+                            </Select><FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="versao" render={({ field }) => (
+                        <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="material" render={({ field }) => (
+                        <FormItem><FormLabel>Material</FormLabel><FormControl><Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="dossieUrl" render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                            <FormLabel>Link do Dossiê Final (Google Drive)</FormLabel>
+                            <FormControl>
+                                <div className="flex items-center gap-2">
+                                    <DownloadCloud className="h-5 w-5 text-muted-foreground" />
+                                    <Input placeholder="https://drive.google.com/..." {...field} value={field.value ?? ''} />
+                                </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+                 <div className="space-y-2">
+                    <FormLabel>Brasão do Município</FormLabel>
+                    {brasaoAnexo ? (
+                    <div className="flex items-center gap-4">
+                        <img src={brasaoAnexo.url} alt="Preview do Brasão" className="h-16 w-16 rounded-md object-contain border p-1" />
+                        <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteAnexo(brasaoAnexo.id!, 'brasao')}>
+                        <Trash2 className="mr-2 h-4 w-4"/> Remover Brasão
+                        </Button>
+                    </div>
+                    ) : (
+                    <Button type="button" variant="outline" onClick={() => handleAnexoTrigger('brasao')} disabled={uploading === 'brasao' || !isEditMode}>
+                        {uploading === 'brasao' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Shield className="mr-2 h-4 w-4" />}
+                        Enviar Brasão
+                    </Button>
+                    )}
+                    {!isEditMode && <FormDescription className="text-xs">Salve o projeto primeiro para poder enviar um brasão.</FormDescription>}
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+             <CardHeader>
+                <CardTitle>Implementação e Métricas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="dataMigracao" render={({ field }) => (
+                    <FormItem className="flex flex-col"><FormLabel>Data de Migração</FormLabel>
+                        <Popover><PopoverTrigger asChild><FormControl>
+                        <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                        </PopoverContent></Popover><FormMessage />
+                    </FormItem>
+                    )}/>
+                     <div className="space-y-2">
+                        <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Data de Implantação</FormLabel>
+                                <div className="flex gap-2 items-center">
+                                    <Popover><PopoverTrigger asChild><FormControl>
+                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                    </PopoverContent></Popover>
+                                    <Button type="button" size="icon" variant="outline" onClick={() => handleAnexoTrigger('implantacao')} disabled={uploading === 'implantacao' || !isEditMode}>
+                                        {uploading === 'implantacao' ? <Loader2 className="h-4 w-4 animate-spin"/> : <UploadCloud className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                        )}/>
+                        {getAnexosForEtapa('implantacao').map(anexo => (
+                            <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'implantacao')} disabled={uploading === 'implantacao'}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
                             </div>
                         ))}
                     </div>
+                 </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <FormField control={form.control} name="implantacaoDetalhes" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Detalhes da Implantação</FormLabel>
+                            <FormControl><Textarea placeholder="Descreva observações sobre a implantação..." {...field} value={field.value ?? ''} /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
+                    <div className="space-y-2">
+                        {form.watch("implantacaoFormacaoId") ? (
+                            <div className="text-sm text-green-600 flex flex-col gap-2">
+                                <span className='flex items-center gap-2'>
+                                  <Check className="h-4 w-4" /> Formação de implantação criada.
+                                </span>
+                                <Button type="button" size="sm" variant="ghost" className="text-xs h-auto p-1" onClick={() => form.setValue('implantacaoFormacaoId', undefined)}>
+                                    Desvincular
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao')}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
+                            </Button>
+                        )}
+                        <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10" onClick={handleClearImplantacao}>
+                            <Eraser className="mr-2 h-3 w-3" /> Limpar Dados
+                        </Button>
+                    </div>
                 </div>
-            ))}
-        </div>
-
-        {/* EVENTOS ADICIONAIS */}
-        <div className="space-y-4 p-4 border rounded-lg">
-            <div className='flex justify-between items-center'>
-                <h3 className="font-semibold text-lg">Eventos Adicionais</h3>
-                <Button type="button" size="sm" variant="outline" onClick={() => appendEvento({ titulo: '', data: null, detalhes: '', anexosIds: [] })}>
-                    <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Evento
-                </Button>
-            </div>
-            <Separator />
-            {eventoFields.map((field, index) => {
-                const etapaKey = `eventosAdicionais.${index}` as const;
-                return (
-                    <div key={field.id} className="space-y-4 p-4 border rounded-lg relative">
-                        <div className='flex justify-between items-center'>
-                            <h4 className='font-semibold text-base'>Evento #{index + 1}</h4>
-                            <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeEvento(index)}>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
+                        <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="formacoesPendentes" render={({ field }) => (
+                        <FormItem><FormLabel>Formações Pendentes</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 2" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField
+                        control={form.control}
+                        name="formadoresIds"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col sm:col-span-2">
+                                <FormLabel>Formadores Responsáveis</FormLabel>
+                                <Popover open={formadorPopoverOpen} onOpenChange={setFormadorPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedUf}>
+                                            <span className="truncate">
+                                                {selectedFormadores.length > 0 ? `${selectedFormadores.length} selecionado(s)`: 'Selecione formadores...'}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Buscar formador..." />
+                                            <CommandList>
+                                                <CommandEmpty>Nenhum formador encontrado para este UF.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {availableFormadores.map((formador) => (
+                                                        <CommandItem
+                                                            key={formador.id}
+                                                            value={formador.nomeCompleto}
+                                                            onSelect={() => {
+                                                                const currentIds = field.value || [];
+                                                                const newIds = currentIds.includes(formador.id)
+                                                                    ? currentIds.filter(id => id !== formador.id)
+                                                                    : [...currentIds, formador.id];
+                                                                field.onChange(newIds);
+                                                            }}
+                                                        >
+                                                            <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.id) ? 'opacity-100' : 'opacity-0')} />
+                                                            {formador.nomeCompleto}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {selectedFormadores.length > 0 && (
+                                    <div className="pt-2 flex flex-wrap gap-1">
+                                        {selectedFormadores.map(formador => (
+                                        <Badge key={formador.id} variant="secondary">
+                                            {formador.nomeCompleto}
+                                            <button
+                                            type="button"
+                                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                            onClick={() => field.onChange(field.value?.filter(id => id !== formador.id))}
+                                            >
+                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                            </button>
+                                        </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+                 {form.getValues('anexo') && (
+                    <div className="space-y-2 pt-4 border-t">
+                        <Label className="text-destructive">Anexo Legado</Label>
+                        <div className="flex items-center justify-between p-2 border border-destructive/50 rounded-md bg-destructive/10">
+                            <p className="text-sm text-destructive">{form.getValues('anexo.nome')}</p>
+                            <Button type="button" size="sm" variant="destructive" onClick={handleDeleteAnexoLegado} disabled={loading}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Excluir Anexo Legado
+                            </Button>
+                        </div>
+                        <FormDescription className="text-destructive">Este anexo está em um formato antigo. Exclua-o e envie novamente usando o novo sistema de anexos por etapa.</FormDescription>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <div className='flex justify-between items-center'>
+                    <CardTitle>Agendamento de Reuniões</CardTitle>
+                    <Button type="button" size="sm" variant="outline" onClick={() => appendReuniao({ data: null, links: Array(4).fill({ url: '', descricao: '' }) })}>
+                        <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Reunião
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {reuniaoFields.map((field, index) => (
+                    <Card key={field.id} className="p-4 bg-muted/40">
+                        <div className='flex justify-between items-center mb-4'>
+                            <h4 className='font-semibold text-base'>Reunião {index + 1}</h4>
+                            <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeReuniao(index)}>
                                 <Trash2 className='h-4 w-4'/>
                             </Button>
                         </div>
-                        <FormField control={form.control} name={`${etapaKey}.titulo`} render={({ field }) => (
-                            <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input placeholder="Ex: Visita Técnica" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <FormField control={form.control} name={`${etapaKey}.data`} render={({ field }) => (
-                                <FormItem className="flex flex-col"><FormLabel>Data do Evento</FormLabel>
+                        <div className="space-y-4">
+                            <FormField control={form.control} name={`reunioes.${index}.data`} render={({ field }) => (
+                                <FormItem className="flex flex-col"><FormLabel>Data da Reunião</FormLabel>
                                     <Popover><PopoverTrigger asChild><FormControl>
-                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                                         {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                     </Button>
@@ -966,292 +927,345 @@ export function FormProjeto({ projeto, onSuccess }: FormProjetoProps) {
                                     </PopoverContent></Popover><FormMessage />
                                 </FormItem>
                             )}/>
-                             <div className="flex flex-col justify-end">
-                                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
-                                    {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                    Enviar Anexo
-                                </Button>
-                             </div>
-                        </div>
-                        <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
-                            <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Descreva o evento..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        {getAnexosForEtapa(etapaKey).map(anexo => (
-                            <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
-                                <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
-                                    <Trash2 className="h-4 w-4"/>
-                                </Button>
+                            <div className="space-y-4">
+                                {Array.from({ length: 4 }).map((_, linkIndex) => (
+                                    <div key={linkIndex} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.url`} render={({ field }) => (
+                                            <FormItem><FormLabel>Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="https://exemplo.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                        <FormField control={form.control} name={`reunioes.${index}.links.${linkIndex}.descricao`} render={({ field }) => (
+                                            <FormItem><FormLabel>Descrição do Link {linkIndex + 1}</FormLabel><FormControl><Input placeholder="Ex: Gravação da reunião" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                )
-            })}
-        </div>
-
-        {/* AVALIAÇÕES E SIMULADOS */}
-        <div className="space-y-4 p-4 border rounded-lg">
-          <h3 className="font-semibold text-lg">Avaliações e Simulados</h3>
-          <Separator />
-            {/* Diagnóstica */}
-            <div className='flex flex-col gap-4 p-2 rounded-md border'>
-              <div className='flex flex-wrap items-end gap-4'>
-                <FormField control={form.control} name="diagnostica.data" render={({ field }) => (
-                  <FormItem className="flex flex-col"><FormLabel>Avaliação Diagnóstica</FormLabel>
-                    <Popover><PopoverTrigger asChild><FormControl>
-                      <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                    </PopoverContent></Popover><FormMessage />
-                  </FormItem>
-                )}/>
-                <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                )}/>
-                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger('diagnostica')} disabled={uploading === 'diagnostica' || !isEditMode}>
-                    {uploading === 'diagnostica' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                    Enviar Anexo
-                </Button>
-              </div>
-              <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
-                  <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-              )}/>
-               {getAnexosForEtapa('diagnostica').map(anexo => (
-                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
-                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'diagnostica')} disabled={uploading === 'diagnostica'}>
-                            <Trash2 className="h-4 w-4"/>
-                        </Button>
-                    </div>
+                        </div>
+                    </Card>
                 ))}
-            </div>
-            {/* Simulados */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {([1, 2, 3, 4] as const).map(i => {
-                const etapaKey = `simulados.s${i}` as const;
-                return (
-                    <div key={etapaKey} className='p-3 rounded-md border space-y-3'>
-                    <h4 className='font-medium'>Simulado {i}</h4>
-                    <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                        </PopoverContent></Popover><FormMessage />
-                        </FormItem>
-                    )}/>
-                    <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                        </PopoverContent></Popover><FormMessage />
-                        </FormItem>
-                    )}/>
-                    <div className="flex items-center justify-between gap-4">
-                        <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                        )}/>
-                        <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
-                            {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                            Anexar
-                        </Button>
-                    </div>
-                    <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
-                        <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                    )}/>
-                    {getAnexosForEtapa(etapaKey).map(anexo => (
-                        <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
-                            <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
-                                <Trash2 className="h-4 w-4"/>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <div className='flex justify-between items-center'>
+                    <CardTitle>Eventos Adicionais</CardTitle>
+                    <Button type="button" size="sm" variant="outline" onClick={() => appendEvento({ titulo: '', data: null, detalhes: '', anexosIds: [] })}>
+                        <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Evento
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {eventoFields.map((field, index) => {
+                    const etapaKey = `eventosAdicionais.${index}` as const;
+                    return (
+                        <Card key={field.id} className="p-4 bg-muted/40">
+                             <div className='flex justify-between items-center mb-4'>
+                                <h4 className='font-semibold text-base'>Evento #{index + 1}</h4>
+                                <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => removeEvento(index)}>
+                                    <Trash2 className='h-4 w-4'/>
+                                </Button>
+                            </div>
+                            <div className="space-y-4">
+                                <FormField control={form.control} name={`${etapaKey}.titulo`} render={({ field }) => (
+                                    <FormItem><FormLabel>Título do Evento</FormLabel><FormControl><Input placeholder="Ex: Visita Técnica" {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name={`${etapaKey}.data`} render={({ field }) => (
+                                        <FormItem className="flex flex-col"><FormLabel>Data do Evento</FormLabel>
+                                            <Popover><PopoverTrigger asChild><FormControl>
+                                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent></Popover><FormMessage />
+                                        </FormItem>
+                                    )}/>
+                                    <div className="flex flex-col justify-end">
+                                        <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                            {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                            Enviar Anexo
+                                        </Button>
+                                    </div>
+                                </div>
+                                <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Descreva o evento..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                {getAnexosForEtapa(etapaKey).map(anexo => (
+                                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )
+                })}
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Avaliações e Simulados</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Card className="p-4 bg-muted/40">
+                    <CardHeader className="p-0 mb-4">
+                        <CardTitle className="text-base">Avaliação Diagnóstica</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 space-y-4">
+                        <div className='flex flex-wrap items-end gap-4'>
+                            <FormField control={form.control} name="diagnostica.data" render={({ field }) => (
+                            <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
+                                <Popover><PopoverTrigger asChild><FormControl>
+                                <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                </PopoverContent></Popover><FormMessage />
+                            </FormItem>
+                            )}/>
+                            <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
+                            <FormItem className="flex flex-row items-center space-x-2 h-10"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                            )}/>
+                            <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger('diagnostica')} disabled={uploading === 'diagnostica' || !isEditMode}>
+                                {uploading === 'diagnostica' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                Enviar Anexo
                             </Button>
                         </div>
-                    ))}
-                    </div>
-                )
-              })}
-            </div>
-        </div>
-        
-        {/* DEVOLUTIVAS */}
-        <div className="space-y-4 p-4 border rounded-lg">
-            <h3 className="font-semibold text-lg">Cronograma de Devolutivas</h3>
-            <p className="text-sm text-muted-foreground">
-              Você pode agendar as devolutivas aqui ou criar uma formação completa para elas, para um gerenciamento mais detalhado.
-            </p>
-            <Separator />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {([1, 2, 3, 4] as const).map(i => {
-                    const etapaKey = `devolutivas.d${i}` as const;
-                    const devolutiva = form.watch(etapaKey);
-                    return (
-                        <div key={etapaKey} className='p-3 rounded-md border space-y-3'>
-                            <div className="flex justify-between items-start">
-                              <h4 className='font-medium'>Devolutiva {i}</h4>
-                               <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
-                                    <Eraser className="mr-2 h-3 w-3" /> Limpar
-                                </Button>
-                            </div>
-                            <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
-                              <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
-                                <Popover><PopoverTrigger asChild><FormControl>
-                                  <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                </PopoverContent></Popover><FormMessage />
-                              </FormItem>
-                            )}/>
-                             <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
-                              <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
-                                <Popover><PopoverTrigger asChild><FormControl>
-                                  <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                </PopoverContent></Popover><FormMessage />
-                              </FormItem>
-                            )}/>
-                            <FormField
-                                control={form.control}
-                                name={`${etapaKey}.formadores`}
-                                render={({ field }) => {
-                                    const selectedDevolutivaFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
-
-                                    return (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Formadores</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                        <span className="truncate">
-                                                            {selectedDevolutivaFormadores.length > 0 ? `${selectedDevolutivaFormadores.length} selecionado(s)` : "Selecione formadores..."}
-                                                        </span>
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[300px] p-0">
-                                                    <Command>
-                                                        <CommandInput placeholder="Buscar formador..." />
-                                                        <CommandList>
-                                                            <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
-                                                            <CommandGroup>
-                                                                {allFormadores.map((formador) => (
-                                                                    <CommandItem
-                                                                        key={formador.id}
-                                                                        value={formador.nomeCompleto}
-                                                                        onSelect={() => {
-                                                                            const currentValues = field.value || [];
-                                                                            const newValues = currentValues.includes(formador.nomeCompleto)
-                                                                                ? currentValues.filter(name => name !== formador.nomeCompleto)
-                                                                                : [...currentValues, formador.nomeCompleto];
-                                                                            field.onChange(newValues);
-                                                                        }}
-                                                                    >
-                                                                        <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.nomeCompleto) ? 'opacity-100' : 'opacity-0')} />
-                                                                        {formador.nomeCompleto}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            {selectedDevolutivaFormadores.length > 0 && (
-                                                <div className="pt-1 flex flex-wrap gap-1">
-                                                    {selectedDevolutivaFormadores.map(formador => (
-                                                        <Badge key={formador.id} variant="secondary">
-                                                            {formador.nomeCompleto}
-                                                            <button
-                                                                type="button"
-                                                                className="ml-1 rounded-full outline-none"
-                                                                onClick={() => field.onChange(field.value?.filter(name => name !== formador.nomeCompleto))}
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </button>
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <FormMessage />
-                                        </FormItem>
-                                    );
-                                }}
-                            />
-                            <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
-                              <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                            <div className='flex justify-between items-center gap-2 pt-2 border-t'>
-                                <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
-                                )}/>
-                                <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
-                                    {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                    Anexar
-                                </Button>
-                            </div>
-                            {getAnexosForEtapa(etapaKey).map(anexo => (
+                        <FormField control={form.control} name="diagnostica.detalhes" render={({ field }) => (
+                            <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a avaliação diagnóstica..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        {getAnexosForEtapa('diagnostica').map(anexo => (
                                 <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
                                     <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
+                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'diagnostica')} disabled={uploading === 'diagnostica'}>
                                         <Trash2 className="h-4 w-4"/>
                                     </Button>
                                 </div>
-                             ))}
-                            <Separator className="!my-4"/>
-                            {devolutiva?.formacaoId ? (
-                                <div className="space-y-2">
-                                  <p className="text-sm text-muted-foreground">
-                                      Formação criada: <span className="font-semibold text-foreground">{devolutiva.formacaoTitulo}</span>
-                                  </p>
-                                  <div className="flex gap-2">
-                                     <Button variant="outline" size="sm" asChild>
-                                        <Link href={`/quadro`} target="_blank">Ver no Quadro</Link>
-                                     </Button>
-                                     <Button 
+                            ))}
+                    </CardContent>
+                </Card>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {([1, 2, 3, 4] as const).map(i => {
+                    const etapaKey = `simulados.s${i}` as const;
+                    return (
+                        <Card key={etapaKey} className="p-4 bg-muted/40">
+                             <CardHeader className="p-0 mb-4">
+                                <CardTitle className="text-base">Simulado {i}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 space-y-4">
+                                <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
+                                    <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
+                                    <Popover><PopoverTrigger asChild><FormControl>
+                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                    </PopoverContent></Popover><FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
+                                    <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
+                                    <Popover><PopoverTrigger asChild><FormControl>
+                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                    </PopoverContent></Popover><FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <div className="flex items-center justify-between gap-4">
+                                    <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-2 pt-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                                    )}/>
+                                    <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                        {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                        Anexar
+                                    </Button>
+                                </div>
+                                <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre o simulado..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                {getAnexosForEtapa(etapaKey).map(anexo => (
+                                    <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                        <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Cronograma de Devolutivas</CardTitle>
+                <CardDescription>
+                Você pode agendar as devolutivas aqui ou criar uma formação completa para elas, para um gerenciamento mais detalhado.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {([1, 2, 3, 4] as const).map(i => {
+                        const etapaKey = `devolutivas.d${i}` as const;
+                        const devolutiva = form.watch(etapaKey);
+                        return (
+                            <Card key={etapaKey} className='p-4 bg-muted/40'>
+                                <CardHeader className="p-0 mb-4 flex-row justify-between items-start">
+                                    <CardTitle className="text-base">Devolutiva {i}</CardTitle>
+                                    <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
+                                            <Eraser className="mr-2 h-3 w-3" /> Limpar
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="p-0 space-y-4">
+                                    <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
+                                    <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
+                                        <Popover><PopoverTrigger asChild><FormControl>
+                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                        </PopoverContent></Popover><FormMessage />
+                                    </FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
+                                    <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
+                                        <Popover><PopoverTrigger asChild><FormControl>
+                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                        </PopoverContent></Popover><FormMessage />
+                                    </FormItem>
+                                    )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name={`${etapaKey}.formadores`}
+                                        render={({ field }) => {
+                                            const selectedDevolutivaFormadores = allFormadores.filter(f => field.value?.includes(f.nomeCompleto));
+
+                                            return (
+                                                <FormItem className="flex flex-col">
+                                                    <FormLabel>Formadores</FormLabel>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                                <span className="truncate">
+                                                                    {selectedDevolutivaFormadores.length > 0 ? `${selectedDevolutivaFormadores.length} selecionado(s)` : "Selecione formadores..."}
+                                                                </span>
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[300px] p-0">
+                                                            <Command>
+                                                                <CommandInput placeholder="Buscar formador..." />
+                                                                <CommandList>
+                                                                    <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {allFormadores.map((formador) => (
+                                                                            <CommandItem
+                                                                                key={formador.id}
+                                                                                value={formador.nomeCompleto}
+                                                                                onSelect={() => {
+                                                                                    const currentValues = field.value || [];
+                                                                                    const newValues = currentValues.includes(formador.nomeCompleto)
+                                                                                        ? currentValues.filter(name => name !== formador.nomeCompleto)
+                                                                                        : [...currentValues, formador.nomeCompleto];
+                                                                                    field.onChange(newValues);
+                                                                                }}
+                                                                            >
+                                                                                <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.nomeCompleto) ? 'opacity-100' : 'opacity-0')} />
+                                                                                {formador.nomeCompleto}
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
+                                    <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
+                                    <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <div className='flex justify-between items-center gap-2 pt-2 border-t'>
+                                        <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
+                                        )}/>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                            {uploading === etapaKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                            Anexar
+                                        </Button>
+                                    </div>
+                                    {getAnexosForEtapa(etapaKey).map(anexo => (
+                                        <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                            <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Separator className="!my-4"/>
+                                    {devolutiva?.formacaoId ? (
+                                        <div className="space-y-2">
+                                        <p className="text-sm text-muted-foreground">
+                                            Formação criada: <span className="font-semibold text-foreground">{devolutiva.formacaoTitulo}</span>
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <Button variant="outline" size="sm" asChild>
+                                                <Link href={`/quadro`} target="_blank">Ver no Quadro</Link>
+                                            </Button>
+                                            <Button 
+                                                type="button" 
+                                                variant="secondary" 
+                                                size="sm"
+                                                onClick={() => handleUpdateFormation(i)}
+                                                disabled={loading}
+                                            >
+                                                <RefreshCw className="mr-2 h-4 w-4" />
+                                                Atualizar
+                                            </Button>
+                                        </div>
+                                        </div>
+                                    ) : (
+                                        <Button 
                                         type="button" 
                                         variant="secondary" 
-                                        size="sm"
-                                        onClick={() => handleUpdateFormation(i)}
+                                        onClick={() => handleCreateDevolutivaFormation(i)}
                                         disabled={loading}
-                                     >
-                                        <RefreshCw className="mr-2 h-4 w-4" />
-                                        Atualizar
-                                     </Button>
-                                  </div>
-                                </div>
-                            ) : (
-                                <Button 
-                                  type="button" 
-                                  variant="secondary" 
-                                  onClick={() => handleCreateDevolutivaFormation(i)}
-                                  disabled={loading}
-                                >
-                                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                                  Criar Formação para Devolutiva
-                                </Button>
-                            )}
-                        </div>
-                    );
+                                        >
+                                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                        Criar Formação para Devolutiva
+                                        </Button>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
                 })}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
 
         <Button type="submit" className="w-full !mt-8" disabled={loading}>
           {loading ? (<Loader2 className="animate-spin" />) : (isEditMode ? 'Salvar Alterações' : 'Criar Projeto')}
