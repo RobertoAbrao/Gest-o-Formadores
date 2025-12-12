@@ -221,40 +221,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   
   const isEditMode = !!projeto;
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-        setLoading(true);
-        try {
-            const [formadoresSnap, estadosResponse, anexosSnap] = await Promise.all([
-                getDocs(collection(db, 'formadores')),
-                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'),
-                projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null)
-            ]);
-            
-            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
-            setAllFormadores(formadoresData);
-
-            if (anexosSnap) {
-                const anexosData = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
-                setAllAnexos(anexosData);
-            }
-
-            const estadosData = await estadosResponse.json();
-            setEstados(estadosData);
-
-        } catch (error) {
-            console.error("Failed to fetch initial data", error);
-            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os dados necessários." });
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchInitialData();
-  }, [toast, projeto]);
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const defaultValues = useMemo(() => {
+    return {
       municipio: projeto?.municipio || '',
       uf: projeto?.uf || '',
       versao: projeto?.versao || '',
@@ -291,10 +259,20 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
           ...e,
           data: toDate(e.data),
       })) || [],
-    },
+    }
+  }, [projeto]);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
   });
   
   const { formState: { isDirty } } = form;
+
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
+
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -303,6 +281,37 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
   const selectedUf = form.watch('uf');
   const brasaoId = form.watch('brasaoId');
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+        setLoading(true);
+        try {
+            const [formadoresSnap, estadosResponse, anexosSnap] = await Promise.all([
+                getDocs(collection(db, 'formadores')),
+                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'),
+                projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null)
+            ]);
+            
+            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            setAllFormadores(formadoresData);
+
+            if (anexosSnap) {
+                const anexosData = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
+                setAllAnexos(anexosData);
+            }
+
+            const estadosData = await estadosResponse.json();
+            setEstados(estadosData);
+
+        } catch (error) {
+            console.error("Failed to fetch initial data", error);
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os dados necessários." });
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchInitialData();
+  }, [toast, projeto]);
 
   useEffect(() => {
     if (!selectedUf) {
@@ -667,7 +676,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
         
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
             <CardHeader>
                 <CardTitle>Dados Gerais do Projeto</CardTitle>
             </CardHeader>
@@ -744,7 +753,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
              <CardHeader>
                 <CardTitle>Implementação e Métricas</CardTitle>
             </CardHeader>
@@ -905,7 +914,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
         
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Agendamento de Reuniões</CardTitle>
@@ -954,7 +963,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Eventos Adicionais</CardTitle>
@@ -1016,7 +1025,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
             <CardHeader>
                 <CardTitle>Avaliações e Simulados</CardTitle>
             </CardHeader>
@@ -1122,7 +1131,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg shadow-primary/10">
+        <Card className="shadow-md shadow-primary/5">
             <CardHeader>
                 <CardTitle>Cronograma de Devolutivas</CardTitle>
                 <CardDescription>
