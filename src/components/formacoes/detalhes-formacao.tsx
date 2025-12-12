@@ -72,6 +72,7 @@ const checklistItems = [
     { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
     { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
     { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
+    { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
     
     { id: 'dia_testarSistema', label: 'Testar sistema de luz e som com a equipe técnica', phase: 'dia' },
     { id: 'dia_disponibilizarWifi', label: 'Disponibilizar acessos ao wi-fi', phase: 'dia' },
@@ -90,7 +91,6 @@ const checklistItems = [
     { id: 'apos_divulgarMidias', label: 'Divulgar o evento nas mídias', phase: 'apos' },
     { id: 'apos_arquivarMateriais', label: 'Arquivar fotos, vídeos e relatórios', phase: 'apos' },
     { id: 'apos_enviarAvaliacaoIndividual', label: 'Enviar avaliação individual', phase: 'apos' },
-    { id: 'apos_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'apos' },
     { id: 'apos_solicitarImagens', label: 'Solicitar imagens', phase: 'apos' },
     { id: 'apos_conferirEngajamento', label: 'Conferir o engajamento', phase: 'apos' },
 ];
