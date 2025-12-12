@@ -8,6 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
 const RespostasAbertasSchema = z.object({
@@ -85,7 +86,7 @@ const gerarMapaMentalFlow = ai.defineFlow(
       Agora, gere o mapa mental para os dados fornecidos.
     `;
 
-    const { text } = await ai.generate({ prompt });
+    const { text } = await ai.generate({ model: googleAI('gemini-2.0-flash'), prompt });
     return text;
   }
 );
