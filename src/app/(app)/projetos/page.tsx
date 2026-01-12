@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare, FolderOpen } from 'lucide-react';
 import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -33,12 +33,19 @@ import { useToast } from '@/hooks/use-toast';
 import { Timestamp } from 'firebase/firestore';
 import { DetalhesProjeto } from '@/components/projetos/detalhes-projeto';
 import Link from 'next/link';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 
 const formatDate = (timestamp: Timestamp | null | undefined) => {
     if (!timestamp) return 'N/A';
     return timestamp.toDate().toLocaleDateString('pt-BR');
 }
+
+type GroupedProjetos = {
+    [year: string]: ProjetoImplatancao[];
+}
+
 
 export default function ProjetosPage() {
   const { user } = useAuth();
@@ -160,6 +167,19 @@ export default function ProjetosPage() {
         : projetos;
   }, [projetos, searchTerm]);
 
+  const groupedProjetos = useMemo(() => {
+    return filteredProjetos.reduce((acc, projeto) => {
+        const year = projeto.dataCriacao ? projeto.dataCriacao.toDate().getFullYear().toString() : 'Sem Data';
+        if (!acc[year]) {
+            acc[year] = [];
+        }
+        acc[year].push(projeto);
+        return acc;
+    }, {} as GroupedProjetos);
+  }, [filteredProjetos]);
+
+  const sortedYears = useMemo(() => Object.keys(groupedProjetos).sort((a,b) => Number(b) - Number(a)), [groupedProjetos]);
+
 
   if (loading) {
     return (
@@ -220,73 +240,87 @@ export default function ProjetosPage() {
             <p className="text-sm text-muted-foreground">Comece adicionando um novo projeto para visualizá-lo aqui.</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Município</TableHead>
-                        <TableHead className="hidden lg:table-cell">Material</TableHead>
-                        <TableHead className="hidden sm:table-cell">Implantação</TableHead>
-                        <TableHead className="hidden sm:table-cell">Diagnóstica</TableHead>
-                        <TableHead className="hidden md:table-cell">Alunos</TableHead>
-                        <TableHead className="hidden md:table-cell">Formadores</TableHead>
-                        <TableHead className="w-[60px]"></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredProjetos.map((projeto) => (
-                    <TableRow key={projeto.id} onClick={() => openDetailDialog(projeto)} className="cursor-pointer">
-                        <TableCell className="font-medium">
-                            <div>{projeto.municipio}</div>
-                            <div className="text-xs text-muted-foreground">{projeto.uf}</div>
-                        </TableCell>
-                        <TableCell 
-                            className="hidden lg:table-cell text-muted-foreground"
-                        >
-                            {projeto.material || 'N/A'}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-center">
-                            {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.formadoresIds?.length || 0}</TableCell>
-                        <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                                <span className="sr-only">Abrir menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(projeto)}}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Visualizar Detalhes
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/projeto-relatorio/${projeto.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center w-full">
-                                  <GanttChartSquare className="mr-2 h-4 w-4" />
-                                  Ver Linha do Tempo
-                                </Link>
-                              </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(projeto)}}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(projeto.id)}}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                            </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
+        <Accordion type="multiple" defaultValue={[sortedYears[0]]} className="w-full space-y-4">
+            {sortedYears.map(year => (
+                <AccordionItem value={year} key={year} className="border rounded-lg px-4 bg-card shadow-sm">
+                    <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-semibold">{year}</h3>
+                            <Badge variant="outline">{groupedProjetos[year].length} {groupedProjetos[year].length === 1 ? 'projeto' : 'projetos'}</Badge>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                         <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Município</TableHead>
+                                        <TableHead className="hidden lg:table-cell">Material</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Implantação</TableHead>
+                                        <TableHead className="hidden sm:table-cell">Diagnóstica</TableHead>
+                                        <TableHead className="hidden md:table-cell">Alunos</TableHead>
+                                        <TableHead className="hidden md:table-cell">Formadores</TableHead>
+                                        <TableHead className="w-[60px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupedProjetos[year].map((projeto) => (
+                                    <TableRow key={projeto.id} onClick={() => openDetailDialog(projeto)} className="cursor-pointer">
+                                        <TableCell className="font-medium">
+                                            <div>{projeto.municipio}</div>
+                                            <div className="text-xs text-muted-foreground">{projeto.uf}</div>
+                                        </TableCell>
+                                        <TableCell 
+                                            className="hidden lg:table-cell text-muted-foreground"
+                                        >
+                                            {projeto.material || 'N/A'}
+                                        </TableCell>
+                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-center">
+                                            {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</TableCell>
+                                        <TableCell className="hidden md:table-cell text-muted-foreground">{projeto.formadoresIds?.length || 0}</TableCell>
+                                        <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
+                                                <span className="sr-only">Abrir menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(projeto)}}>
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                Visualizar Detalhes
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/projeto-relatorio/${projeto.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center w-full">
+                                                  <GanttChartSquare className="mr-2 h-4 w-4" />
+                                                  Ver Linha do Tempo
+                                                </Link>
+                                              </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(projeto)}}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Editar
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => {e.stopPropagation(); handleDelete(projeto.id)}}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Excluir
+                                            </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
       )}
 
       <Dialog open={isDetailDialogOpen} onOpenChange={handleDialogChange(setIsDetailDialogOpen)}>
@@ -344,5 +378,7 @@ export default function ProjetosPage() {
     </div>
   );
 }
+
+    
 
     
