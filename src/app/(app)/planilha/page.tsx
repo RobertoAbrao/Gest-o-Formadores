@@ -30,6 +30,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FormProjeto } from '@/components/projetos/form-projeto';
 import { Separator } from '@/components/ui/separator';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 interface Activity {
   nome: string;
@@ -41,6 +43,11 @@ interface Activity {
 interface ProjetoComAtividades extends ProjetoImplatancao {
     atividades: Activity[];
 }
+
+type GroupedProjetos = {
+    [year: string]: ProjetoComAtividades[];
+}
+
 
 export default function PlanilhaPage() {
   const { user } = useAuth();
@@ -140,6 +147,19 @@ export default function PlanilhaPage() {
   }, [projetosComAtividades, searchTerm, selectedUf, selectedFormador, statusFilter, formadores]);
   
   const ufs = useMemo(() => [...new Set(projetos.map(p => p.uf))].sort(), [projetos]);
+
+  const groupedProjetos = useMemo(() => {
+    return filteredProjetos.reduce((acc, projeto) => {
+        const year = projeto.dataCriacao ? projeto.dataCriacao.toDate().getFullYear().toString() : 'Sem Data';
+        if (!acc[year]) {
+            acc[year] = [];
+        }
+        acc[year].push(projeto);
+        return acc;
+    }, {} as GroupedProjetos);
+  }, [filteredProjetos]);
+
+  const sortedYears = useMemo(() => Object.keys(groupedProjetos).sort((a,b) => Number(b) - Number(a)), [groupedProjetos]);
   
   const handleExport = () => {
     if (filteredProjetos.length === 0) {
@@ -261,49 +281,63 @@ export default function PlanilhaPage() {
             <p className="text-sm text-muted-foreground">Comece criando um novo projeto para visualizar suas atividades aqui.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjetos.map((projeto) => (
-                <Card 
-                    key={projeto.id} 
-                    className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow"
-                    onClick={() => handleEditClick(projeto)}
-                >
-                    <CardHeader>
-                        <CardTitle>{projeto.municipio}</CardTitle>
-                        <CardDescription>{projeto.uf}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-2">
-                        {projeto.atividades.length === 0 ? (
-                             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade agendada.</p>
-                        ) : (
-                            projeto.atividades.map((atividade, index) => (
-                                <div key={index} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-                                    <span className="font-medium">{atividade.nome}</span>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                            {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
-                                        </span>
-                                        {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </CardContent>
-                    <CardFooter>
-                        <p className="text-xs text-muted-foreground">
-                            {projeto.formadoresIds?.length || 0} formador(es) associado(s)
-                        </p>
-                    </CardFooter>
-                </Card>
-            ))}
-            {filteredProjetos.length === 0 && (
+        <Accordion type="multiple" defaultValue={[sortedYears[0]]} className="w-full space-y-4">
+             {sortedYears.map(year => (
+                <AccordionItem value={year} key={year} className="border rounded-lg px-4 bg-card shadow-sm">
+                    <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-semibold">{year}</h3>
+                            <Badge variant="outline">{groupedProjetos[year].length} {groupedProjetos[year].length === 1 ? 'projeto' : 'projetos'}</Badge>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                           {groupedProjetos[year].map((projeto) => (
+                                <Card 
+                                    key={projeto.id} 
+                                    className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow"
+                                    onClick={() => handleEditClick(projeto)}
+                                >
+                                    <CardHeader>
+                                        <CardTitle>{projeto.municipio}</CardTitle>
+                                        <CardDescription>{projeto.uf}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-grow space-y-2">
+                                        {projeto.atividades.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade agendada.</p>
+                                        ) : (
+                                            projeto.atividades.map((atividade, index) => (
+                                                <div key={index} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
+                                                    <span className="font-medium">{atividade.nome}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
+                                                        </span>
+                                                        {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </CardContent>
+                                    <CardFooter>
+                                        <p className="text-xs text-muted-foreground">
+                                            {projeto.formadoresIds?.length || 0} formador(es) associado(s)
+                                        </p>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+             ))}
+             {filteredProjetos.length === 0 && (
                  <div className="md:col-span-2 lg:col-span-3 flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg">
                     <Search className="w-12 h-12 text-muted-foreground" />
                     <h3 className="mt-4 text-lg font-semibold">Nenhum projeto encontrado</h3>
                     <p className="text-sm text-muted-foreground">Tente ajustar seus filtros de busca.</p>
                 </div>
             )}
-        </div>
+        </Accordion>
       )}
 
         <Dialog open={isFormDialogOpen} onOpenChange={(open) => {
