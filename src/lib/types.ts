@@ -1,4 +1,5 @@
 
+
 import { Timestamp } from 'firebase/firestore';
 
 export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word' | 'Apresentação' | 'Pasta';
@@ -94,6 +95,10 @@ export interface LogisticaViagem {
   // Transporte
   valorPassagem?: number | null;
   trecho?: string;
+  dataIda?: Timestamp | null;
+  dataVolta?: Timestamp | null;
+  alertaLembrete?: string;
+  diasLembrete?: number;
 
   // Hospedagem
   hotel?: string;

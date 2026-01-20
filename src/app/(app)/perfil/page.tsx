@@ -9,48 +9,41 @@ import { Badge } from '@/components/ui/badge';
 import { User, Mail, Building, Loader2, BookText, BookMarked } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Formador } from '@/lib/types';
+import type { Formador, Assessor } from '@/lib/types';
 import { Separator } from '@/components/ui/separator';
 
 export default function PerfilPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [formadorData, setFormadorData] = useState<Formador | null>(null);
+  const [userData, setUserData] = useState<Formador | Assessor | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && user.perfil !== 'formador') {
-      router.replace('/dashboard');
-    }
-  }, [user, router]);
+    if (!user) return;
 
-  useEffect(() => {
-    if (user?.perfil === 'formador') {
-      const fetchFormadorData = async () => {
-        if (!user.uid) return;
-        setLoading(true);
-        try {
-          // In a real scenario, you might have a different ID mapping.
-          // Here, we assume the formador document ID is the same as the auth UID.
-          const docRef = doc(db, 'formadores', user.uid);
-          const docSnap = await getDoc(docRef);
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        const collectionName = user.perfil === 'formador' ? 'formadores' : 'assessores';
+        const docRef = doc(db, collectionName, user.uid);
+        const docSnap = await getDoc(docRef);
 
-          if (docSnap.exists()) {
-            setFormadorData({ id: docSnap.id, ...docSnap.data() } as Formador);
-          } else {
-            console.log("No such formador document!");
-          }
-        } catch (error) {
-          console.error("Error fetching formador data:", error);
-        } finally {
-          setLoading(false);
+        if (docSnap.exists()) {
+          setUserData({ id: docSnap.id, ...docSnap.data() } as Formador | Assessor);
+        } else {
+          console.log("No such user document!");
         }
-      };
-      fetchFormadorData();
-    }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserData();
   }, [user]);
 
-  if (loading || !user || user.perfil !== 'formador') {
+  if (loading || !user) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -70,10 +63,13 @@ export default function PerfilPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <User className="h-6 w-6 text-primary"/>
-                {formadorData?.nomeCompleto || user.nome}
+                {userData?.nomeCompleto || user.nome}
             </CardTitle>
             <CardDescription>
-                Seus dados são gerenciados por um administrador.
+                {user.perfil === 'administrador' 
+                    ? "Você tem acesso total ao sistema."
+                    : "Seus dados são gerenciados por um administrador."
+                }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -81,15 +77,15 @@ export default function PerfilPage() {
               <Mail className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm">{user.email}</span>
             </div>
-            {formadorData && (
+            {userData && user.perfil !== 'administrador' && (
               <>
-                {formadorData.disciplina && (
+                {(userData as Formador).disciplina && (
                     <div className="flex items-start gap-3">
                       <BookMarked className="h-5 w-5 text-muted-foreground mt-1" />
                       <div>
                         <p className="text-sm font-medium">Disciplina Principal</p>
                         <Badge variant="outline" className="text-base mt-1">
-                          {formadorData.disciplina}
+                          {(userData as Formador).disciplina}
                         </Badge>
                       </div>
                     </div>
@@ -99,7 +95,7 @@ export default function PerfilPage() {
                   <div>
                     <p className="text-sm font-medium">Municípios de Responsabilidade</p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {formadorData.municipiosResponsaveis.map((municipio) => (
+                      {userData.municipiosResponsaveis.map((municipio) => (
                         <Badge key={municipio} variant="secondary" className="text-base">
                           {municipio}
                         </Badge>
@@ -108,7 +104,7 @@ export default function PerfilPage() {
                   </div>
                 </div>
 
-                {formadorData.curriculo && (
+                {userData.curriculo && (
                   <>
                     <Separator />
                     <div className="flex items-start gap-3">
@@ -116,7 +112,7 @@ export default function PerfilPage() {
                       <div>
                         <p className="text-sm font-medium">Currículo</p>
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
-                          {formadorData.curriculo}
+                          {userData.curriculo}
                         </p>
                       </div>
                     </div>

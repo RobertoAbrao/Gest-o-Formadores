@@ -41,7 +41,7 @@ import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDemanda } from '@/components/diario/form-diario';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -96,17 +96,29 @@ export default function DiarioPage() {
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusDemanda | 'all'>('all');
+  const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
+  const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
 
   const fetchDemandas = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'demandas'), orderBy('dataCriacao', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
-      setDemandas(data);
+      const demandasQuery = query(collection(db, 'demandas'), orderBy('dataCriacao', 'desc'));
+      const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
+      
+      const [demandasSnapshot, adminsSnapshot] = await Promise.all([
+          getDocs(demandasQuery),
+          getDocs(adminsQuery)
+      ]);
+
+      const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
+      setDemandas(demandasData);
+      
+      const adminsData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome }));
+      setAdmins(adminsData);
+
     } catch (error) {
-      console.error("Error fetching demandas:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar o diário de bordo.' });
+      console.error("Error fetching data:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados do diário.' });
     } finally {
       setLoading(false);
     }
@@ -154,9 +166,10 @@ export default function DiarioPage() {
         d.demanda.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.responsavelNome.toLowerCase().includes(searchTerm.toLowerCase());
       const statusMatch = statusFilter === 'all' || d.status === statusFilter;
-      return searchMatch && statusMatch;
+      const responsavelMatch = responsavelFilter === 'all' || d.responsavelId === responsavelFilter;
+      return searchMatch && statusMatch && responsavelMatch;
     });
-  }, [demandas, searchTerm, statusFilter]);
+  }, [demandas, searchTerm, statusFilter, responsavelFilter]);
 
   const summaryStats = useMemo(() => {
     return demandas.reduce((acc, d) => {
@@ -234,8 +247,8 @@ export default function DiarioPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
-          <div className="relative flex-grow w-full">
+        <CardContent className="p-4 flex flex-col sm:flex-row flex-wrap items-center gap-4">
+          <div className="relative flex-grow w-full sm:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por município, demanda ou responsável..."
@@ -251,6 +264,15 @@ export default function DiarioPage() {
             <SelectContent>
               <SelectItem value="all">Todos os Status</SelectItem>
               {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filtrar por responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Responsáveis</SelectItem>
+              {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
             </SelectContent>
           </Select>
         </CardContent>
@@ -299,9 +321,11 @@ export default function DiarioPage() {
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(demanda); }}>
                           <Pencil className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(demanda); }}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                        </DropdownMenuItem>
+                        {user?.perfil === 'administrador' && (
+                           <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(demanda); }}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

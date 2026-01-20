@@ -87,6 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
           { href: '/despesas', label: 'Relatório de Despesas', icon: DollarSign },
           { href: '/perfil', label: 'Meu Perfil', icon: UserIcon },
+          { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
         ];
         
   // Conditionally render layout for the material viewer page
@@ -212,7 +213,7 @@ const UserMenu = ({ user, onLogout, router }: { user: any, onLogout: () => void,
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{user.nome}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push('/perfil')} disabled={user.perfil !== 'formador'}>
+        <DropdownMenuItem onClick={() => router.push('/perfil')}>
             Meu Perfil
         </DropdownMenuItem>
         <DropdownMenuSeparator />
