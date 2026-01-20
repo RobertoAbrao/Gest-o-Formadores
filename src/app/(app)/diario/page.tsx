@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -16,6 +17,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -36,12 +38,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, where, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDemanda } from '@/components/diario/form-diario';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -61,6 +63,9 @@ const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
 };
 
 const getRowClass = (demanda: Demanda): string => {
+    if (demanda.validado) {
+        return 'bg-teal-50 dark:bg-teal-900/40 opacity-80 hover:opacity-100';
+    }
     if (demanda.status === 'Concluída') {
       return 'bg-muted/50 text-muted-foreground opacity-70 hover:opacity-100';
     }
@@ -84,6 +89,8 @@ const getRowClass = (demanda: Demanda): string => {
     return 'bg-green-100 dark:bg-green-900/40 hover:bg-green-100/80 dark:hover:bg-green-900/50'; // Com prazo (mais de 3 dias)
 };
 
+const validatorEmails = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
+
 
 export default function DiarioPage() {
   const { user } = useAuth();
@@ -98,6 +105,9 @@ export default function DiarioPage() {
   const [statusFilter, setStatusFilter] = useState<StatusDemanda | 'all'>('all');
   const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
   const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
+  const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
+
+  const canValidate = useMemo(() => user?.email && validatorEmails.includes(user.email), [user]);
 
   const fetchDemandas = useCallback(async () => {
     setLoading(true);
@@ -132,6 +142,25 @@ export default function DiarioPage() {
     fetchDemandas();
     setIsDialogOpen(false);
     setSelectedDemanda(null);
+  };
+
+  const handleValidate = async (demandaId: string) => {
+    if (!canValidate) {
+        toast({ variant: 'destructive', title: 'Acesso negado.' });
+        return;
+    }
+    setLoadingValidation(demandaId);
+    try {
+        const demandaRef = doc(db, 'demandas', demandaId);
+        await updateDoc(demandaRef, { validado: true });
+        toast({ title: 'Sucesso!', description: 'Demanda validada com sucesso.' });
+        fetchDemandas();
+    } catch (error) {
+        console.error("Error validating demanda: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao validar', description: 'Não foi possível validar a demanda.' });
+    } finally {
+        setLoadingValidation(null);
+    }
   };
 
   const handleDelete = async () => {
@@ -301,10 +330,17 @@ export default function DiarioPage() {
               filteredDemandas.map((demanda) => (
                 <TableRow key={demanda.id} onClick={() => openEditDialog(demanda)} className={cn("cursor-pointer", getRowClass(demanda))}>
                   <TableCell>
-                    <Badge variant="outline" className="flex items-center gap-2">
-                       <div className={`h-2 w-2 rounded-full ${statusConfig[demanda.status]?.color || 'bg-gray-400'}`} />
-                       {demanda.status}
-                    </Badge>
+                    {demanda.validado ? (
+                      <Badge variant="outline" className="flex items-center gap-2 border-teal-500 bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700 text-teal-800">
+                        <BadgeCheck className={`h-3 w-3`} />
+                        Validada
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="flex items-center gap-2">
+                        <div className={`h-2 w-2 rounded-full ${statusConfig[demanda.status]?.color || 'bg-gray-400'}`} />
+                        {demanda.status}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="font-medium">{demanda.municipio} <span className="text-xs text-muted-foreground">{demanda.uf}</span></TableCell>
                   <TableCell className="max-w-xs truncate" title={demanda.demanda}>{demanda.demanda}</TableCell>
@@ -318,6 +354,22 @@ export default function DiarioPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {demanda.status === 'Concluída' && !demanda.validado && canValidate && (
+                          <>
+                            <DropdownMenuItem 
+                              onClick={(e) => { e.stopPropagation(); handleValidate(demanda.id); }}
+                              disabled={loadingValidation === demanda.id}
+                            >
+                               {loadingValidation === demanda.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                              )}
+                              Validar Demanda
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(demanda); }}>
                           <Pencil className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>

@@ -24,6 +24,7 @@ export interface Demanda {
   responsavelId: string;
   prazo?: Timestamp | null;
   observacoes?: string;
+  validado?: boolean;
 }
 
 export interface ChecklistItem {
