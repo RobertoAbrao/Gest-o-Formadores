@@ -48,6 +48,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { addDays, isBefore, startOfToday } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
 
@@ -57,6 +59,31 @@ const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
   'Concluída': { color: 'bg-green-500', label: 'Concluída' },
   'Aguardando retorno': { color: 'bg-orange-500', label: 'Aguardando Retorno' },
 };
+
+const getRowClass = (demanda: Demanda): string => {
+    if (demanda.status === 'Concluída') {
+      return 'bg-muted/50 text-muted-foreground opacity-70 hover:opacity-100';
+    }
+
+    if (!demanda.prazo) {
+      return '';
+    }
+    
+    const hoje = startOfToday();
+    const prazoDate = demanda.prazo.toDate();
+    const limiteAmarelo = addDays(hoje, 3);
+
+    if (isBefore(prazoDate, hoje)) {
+      return 'bg-red-100 dark:bg-red-900/40 hover:bg-red-100/80 dark:hover:bg-red-900/50'; // Atrasada
+    }
+    
+    if (isBefore(prazoDate, limiteAmarelo)) {
+      return 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/50'; // Vence em breve (dentro de 3 dias)
+    }
+    
+    return 'bg-green-100 dark:bg-green-900/40 hover:bg-green-100/80 dark:hover:bg-green-900/50'; // Com prazo (mais de 3 dias)
+};
+
 
 export default function DiarioPage() {
   const { user } = useAuth();
@@ -250,7 +277,7 @@ export default function DiarioPage() {
               </TableRow>
             ) : (
               filteredDemandas.map((demanda) => (
-                <TableRow key={demanda.id} onClick={() => openEditDialog(demanda)} className="cursor-pointer">
+                <TableRow key={demanda.id} onClick={() => openEditDialog(demanda)} className={cn("cursor-pointer", getRowClass(demanda))}>
                   <TableCell>
                     <Badge variant="outline" className="flex items-center gap-2">
                        <div className={`h-2 w-2 rounded-full ${statusConfig[demanda.status]?.color || 'bg-gray-400'}`} />
