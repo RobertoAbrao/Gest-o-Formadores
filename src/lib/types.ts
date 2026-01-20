@@ -25,6 +25,7 @@ export interface Demanda {
   prazo?: Timestamp | null;
   observacoes?: string;
   validado?: boolean;
+  prioridade?: 'Normal' | 'Urgente';
 }
 
 export interface ChecklistItem {

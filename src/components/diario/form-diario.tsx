@@ -54,6 +54,7 @@ const formSchema = z.object({
   demanda: z.string().min(10, { message: 'Descreva a demanda com pelo menos 10 caracteres.' }),
   status: z.enum(statusOptions, { required_error: 'Selecione um status.' }),
   responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
+  prioridade: z.enum(['Normal', 'Urgente']).default('Normal'),
   prazo: z.date().optional().nullable(),
   observacoes: z.string().optional(),
 });
@@ -88,6 +89,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       demanda: demanda?.demanda || '',
       status: demanda?.status || 'Pendente',
       responsavelId: demanda?.responsavelId || user?.uid || undefined,
+      prioridade: demanda?.prioridade || 'Normal',
       prazo: toDate(demanda?.prazo),
       observacoes: demanda?.observacoes || '',
     },
@@ -260,7 +262,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <FormField
             control={form.control}
             name="status"
@@ -300,6 +302,27 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 <FormMessage />
                 </FormItem>
             )}
+            />
+             <FormField
+                control={form.control}
+                name="prioridade"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Prioridade</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Defina a prioridade" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Normal">Normal</SelectItem>
+                        <SelectItem value="Urgente">Urgente</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )}
             />
         </div>
          <FormField

@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -54,6 +54,7 @@ import { addDays, isBefore, startOfToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
+const priorityOptions: Demanda['prioridade'][] = ['Normal', 'Urgente'];
 
 const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
   'Pendente': { color: 'bg-yellow-500', label: 'Pendente' },
@@ -104,6 +105,7 @@ export default function DiarioPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusDemanda | 'all'>('all');
   const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'Normal' | 'Urgente'>('all');
   const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
   const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
 
@@ -189,16 +191,31 @@ export default function DiarioPage() {
   };
 
   const filteredDemandas = useMemo(() => {
-    return demandas.filter(d => {
+    const filtered = demandas.filter(d => {
       const searchMatch = searchTerm === '' ||
         d.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.demanda.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.responsavelNome.toLowerCase().includes(searchTerm.toLowerCase());
       const statusMatch = statusFilter === 'all' || d.status === statusFilter;
       const responsavelMatch = responsavelFilter === 'all' || d.responsavelId === responsavelFilter;
-      return searchMatch && statusMatch && responsavelMatch;
+      const priorityMatch = priorityFilter === 'all' || d.prioridade === priorityFilter;
+      return searchMatch && statusMatch && responsavelMatch && priorityMatch;
     });
-  }, [demandas, searchTerm, statusFilter, responsavelFilter]);
+
+     // Sort by due date (prazo), ascending. Nulls/undefined go last.
+    return filtered.sort((a, b) => {
+      const aHasPrazo = a.prazo && a.prazo.toMillis();
+      const bHasPrazo = b.prazo && b.prazo.toMillis();
+
+      if (aHasPrazo && bHasPrazo) {
+        return a.prazo!.toMillis() - b.prazo!.toMillis();
+      }
+      if (aHasPrazo) return -1; // a has date, b doesn't, so a comes first
+      if (bHasPrazo) return 1; // b has date, a doesn't, so b comes first
+      return 0; // neither has a date
+    });
+
+  }, [demandas, searchTerm, statusFilter, responsavelFilter, priorityFilter]);
 
   const summaryStats = useMemo(() => {
     return demandas.reduce((acc, d) => {
@@ -304,6 +321,15 @@ export default function DiarioPage() {
               {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
             </SelectContent>
           </Select>
+           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as any)}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filtrar por prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as Prioridades</SelectItem>
+              {priorityOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -312,6 +338,7 @@ export default function DiarioPage() {
           <TableHeader>
             <TableRow>
               <TableHead className='w-24'>Status</TableHead>
+              <TableHead>Prioridade</TableHead>
               <TableHead>Município</TableHead>
               <TableHead>Demanda</TableHead>
               <TableHead className="hidden md:table-cell">Responsável</TableHead>
@@ -321,10 +348,10 @@ export default function DiarioPage() {
           </TableHeader>
           <TableBody>
             {loading && demandas.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
             ) : filteredDemandas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">Nenhuma demanda encontrada.</TableCell>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Nenhuma demanda encontrada.</TableCell>
               </TableRow>
             ) : (
               filteredDemandas.map((demanda) => (
@@ -340,6 +367,15 @@ export default function DiarioPage() {
                         <div className={`h-2 w-2 rounded-full ${statusConfig[demanda.status]?.color || 'bg-gray-400'}`} />
                         {demanda.status}
                       </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {demanda.prioridade === 'Urgente' ? (
+                      <Badge variant="destructive" className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Urgente
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline">Normal</Badge>
                     )}
                   </TableCell>
                   <TableCell className="font-medium">{demanda.municipio} <span className="text-xs text-muted-foreground">{demanda.uf}</span></TableCell>
