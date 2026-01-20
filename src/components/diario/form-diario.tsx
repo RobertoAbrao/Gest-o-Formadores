@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -41,6 +41,11 @@ interface Municipio {
     nome: string;
 }
 
+interface AdminUser {
+    id: string;
+    nome: string;
+}
+
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
 
 const formSchema = z.object({
@@ -48,6 +53,7 @@ const formSchema = z.object({
   uf: z.string().min(2, { message: 'O estado (UF) é obrigatório.' }),
   demanda: z.string().min(10, { message: 'Descreva a demanda com pelo menos 10 caracteres.' }),
   status: z.enum(statusOptions, { required_error: 'Selecione um status.' }),
+  responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
   prazo: z.date().optional().nullable(),
   observacoes: z.string().optional(),
 });
@@ -72,6 +78,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [estados, setEstados] = useState<Estado[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -80,12 +87,28 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       uf: demanda?.uf || '',
       demanda: demanda?.demanda || '',
       status: demanda?.status || 'Pendente',
+      responsavelId: demanda?.responsavelId || user?.uid || undefined,
       prazo: toDate(demanda?.prazo),
       observacoes: demanda?.observacoes || '',
     },
   });
 
   const selectedUf = form.watch('uf');
+  
+  useEffect(() => {
+    const fetchAdmins = async () => {
+        try {
+            const q = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
+            const querySnapshot = await getDocs(q);
+            const adminData = querySnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
+            setAdmins(adminData);
+        } catch (error) {
+            console.error("Failed to fetch admins", error);
+            toast({ variant: 'destructive', title: "Erro", description: "Não foi possível carregar a lista de administradores." });
+        }
+    };
+    fetchAdmins();
+  }, [toast]);
 
   useEffect(() => {
     const fetchEstados = async () => {
@@ -134,12 +157,16 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     }
     setLoading(true);
 
+    const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+
     try {
       const dataToSave = {
         ...values,
         municipio: values.municipio.trim(),
         uf: values.uf,
         demanda: values.demanda.trim(),
+        responsavelId: values.responsavelId,
+        responsavelNome: selectedAdmin?.nome || 'N/A',
         observacoes: values.observacoes?.trim(),
         prazo: values.prazo ? Timestamp.fromDate(values.prazo) : null,
         dataAtualizacao: serverTimestamp(),
@@ -153,8 +180,6 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
         await setDoc(newDocRef, {
           ...dataToSave,
           id: newDocRef.id,
-          responsavelId: user.uid,
-          responsavelNome: user.nome || 'N/A',
           dataCriacao: serverTimestamp(),
         });
         toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
@@ -258,6 +283,27 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
           />
           <FormField
             control={form.control}
+            name="responsavelId"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Responsável</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione o responsável" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+         <FormField
+            control={form.control}
             name="prazo"
             render={({ field }) => (
               <FormItem className="flex flex-col">
@@ -285,7 +331,6 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
               </FormItem>
             )}
           />
-        </div>
         <FormField
           control={form.control}
           name="observacoes"
