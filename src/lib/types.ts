@@ -12,6 +12,15 @@ export type StatusDemanda =
   | 'Concluída'
   | 'Aguardando retorno';
 
+export interface HistoricoItem {
+  id: string;
+  data: Timestamp;
+  autorId: string;
+  autorNome: string;
+  tipo: 'comentario' | 'alteracao' | 'criacao';
+  texto: string;
+}
+
 export interface Demanda {
   id: string;
   dataCriacao: Timestamp;
@@ -23,7 +32,7 @@ export interface Demanda {
   responsavelNome: string;
   responsavelId: string;
   prazo?: Timestamp | null;
-  observacoes?: string;
+  historico?: HistoricoItem[];
   validado?: boolean;
   prioridade?: 'Normal' | 'Urgente';
 }

@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -22,13 +23,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Demanda, StatusDemanda } from '@/lib/types';
+import type { Demanda, StatusDemanda, HistoricoItem } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 interface Estado {
     id: number;
@@ -56,7 +58,6 @@ const formSchema = z.object({
   responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
   prioridade: z.enum(['Normal', 'Urgente']).default('Normal'),
   prazo: z.date().optional().nullable(),
-  observacoes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -81,6 +82,9 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
 
+  const [comment, setComment] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -91,7 +95,6 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       responsavelId: demanda?.responsavelId || user?.uid || undefined,
       prioridade: demanda?.prioridade || 'Normal',
       prazo: toDate(demanda?.prazo),
-      observacoes: demanda?.observacoes || '',
     },
   });
 
@@ -150,6 +153,37 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     };
     fetchMunicipios();
   }, [selectedUf, toast]);
+  
+  const handleAddComment = async () => {
+    if (!comment.trim() || !user || !demanda) return;
+    setIsSubmittingComment(true);
+    try {
+        const newCommentItem: Omit<HistoricoItem, 'id' | 'data'> = {
+            autorId: user.uid,
+            autorNome: user.nome || 'Usuário',
+            tipo: 'comentario',
+            texto: comment.trim(),
+        };
+        
+        await updateDoc(doc(db, 'demandas', demanda.id), {
+            historico: arrayUnion({
+                ...newCommentItem,
+                id: doc(collection(db, 'demandas')).id,
+                data: Timestamp.now(),
+            }),
+            dataAtualizacao: serverTimestamp(),
+        });
+        
+        setComment('');
+        toast({ title: 'Sucesso', description: 'Comentário adicionado.' });
+        onSuccess();
+    } catch (error) {
+        console.error("Error adding comment:", error);
+        toast({ variant: "destructive", title: "Erro", description: "Não foi possível adicionar o comentário." });
+    } finally {
+        setIsSubmittingComment(false);
+    }
+  }
 
 
   async function onSubmit(values: FormValues) {
@@ -162,30 +196,72 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
 
     try {
-      const dataToSave = {
-        ...values,
-        municipio: values.municipio.trim(),
-        uf: values.uf,
-        demanda: values.demanda.trim(),
-        responsavelId: values.responsavelId,
-        responsavelNome: selectedAdmin?.nome || 'N/A',
-        observacoes: values.observacoes?.trim(),
-        prazo: values.prazo ? Timestamp.fromDate(values.prazo) : null,
-        dataAtualizacao: serverTimestamp(),
-      };
+        if (isEditMode && demanda) {
+            const alteracoes: Omit<HistoricoItem, 'id' | 'data'>[] = [];
+            const userNome = user.nome || 'Usuário';
 
-      if (isEditMode && demanda) {
-        await updateDoc(doc(db, 'demandas', demanda.id), dataToSave);
-        toast({ title: 'Sucesso!', description: 'Demanda atualizada com sucesso.' });
-      } else {
-        const newDocRef = doc(collection(db, 'demandas'));
-        await setDoc(newDocRef, {
-          ...dataToSave,
-          id: newDocRef.id,
-          dataCriacao: serverTimestamp(),
-        });
-        toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
-      }
+            if (values.status !== demanda.status) {
+                alteracoes.push({ autorId: user.uid, autorNome: userNome, tipo: 'alteracao', texto: `Status alterado de "${demanda.status}" para "${values.status}".` });
+            }
+            if (values.responsavelId !== demanda.responsavelId) {
+                alteracoes.push({ autorId: user.uid, autorNome: userNome, tipo: 'alteracao', texto: `Responsável alterado para "${selectedAdmin?.nome || 'N/A'}".` });
+            }
+            if (values.prioridade !== demanda.prioridade) {
+                alteracoes.push({ autorId: user.uid, autorNome: userNome, tipo: 'alteracao', texto: `Prioridade alterada de "${demanda.prioridade}" para "${values.prioridade}".` });
+            }
+             const prazoAntigo = toDate(demanda.prazo)?.getTime();
+             const prazoNovo = values.prazo?.getTime();
+             if (prazoAntigo !== prazoNovo) {
+                 const textoPrazo = `Prazo alterado para ${values.prazo ? format(values.prazo, 'dd/MM/yyyy') : 'N/A'}.`;
+                 alteracoes.push({ autorId: user.uid, autorNome: userNome, tipo: 'alteracao', texto: textoPrazo });
+             }
+
+            const dataToSave: any = {
+                ...values,
+                municipio: values.municipio.trim(),
+                demanda: values.demanda.trim(),
+                responsavelNome: selectedAdmin?.nome || 'N/A',
+                prazo: values.prazo ? Timestamp.fromDate(values.prazo) : null,
+                dataAtualizacao: serverTimestamp(),
+            };
+            
+            if (alteracoes.length > 0) {
+                dataToSave.historico = arrayUnion(...alteracoes.map(item => ({
+                    ...item,
+                    id: doc(collection(db, 'demandas')).id,
+                    data: Timestamp.now()
+                })));
+            }
+            
+            await updateDoc(doc(db, 'demandas', demanda.id), dataToSave);
+            toast({ title: 'Sucesso!', description: 'Demanda atualizada com sucesso.' });
+        } else {
+            const newDocRef = doc(collection(db, 'demandas'));
+            const historicoInicial: HistoricoItem[] = [{
+                id: newDocRef.id,
+                data: Timestamp.now(),
+                autorId: user.uid,
+                autorNome: user.nome || 'Usuário',
+                tipo: 'criacao',
+                texto: 'Demanda criada.'
+            }];
+
+            await setDoc(newDocRef, {
+                id: newDocRef.id,
+                municipio: values.municipio.trim(),
+                uf: values.uf,
+                demanda: values.demanda.trim(),
+                status: values.status,
+                responsavelId: values.responsavelId,
+                responsavelNome: selectedAdmin?.nome || 'N/A',
+                prioridade: values.prioridade,
+                prazo: values.prazo ? Timestamp.fromDate(values.prazo) : null,
+                dataCriacao: serverTimestamp(),
+                dataAtualizacao: serverTimestamp(),
+                historico: historicoInicial,
+            });
+            toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
+        }
       onSuccess();
     } catch (error: any) {
       console.error("Submit error:", error);
@@ -354,20 +430,52 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
               </FormItem>
             )}
           />
-        <FormField
-          control={form.control}
-          name="observacoes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Observações Importantes</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Dificuldades, atrasos, decisões tomadas, etc." {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full !mt-6" disabled={loading}>
+        
+        {isEditMode && demanda && (
+            <div className="space-y-4 pt-6">
+                <Separator />
+                <h3 className="text-base font-semibold">Histórico e Comentários</h3>
+                <div className="border rounded-lg p-3 bg-muted/50 max-h-60 overflow-y-auto space-y-4">
+                    {demanda.historico && demanda.historico.length > 0 ? (
+                        [...demanda.historico].sort((a,b) => b.data.toMillis() - a.data.toMillis()).map(item => (
+                            <div key={item.id} className="flex items-start gap-3 text-sm">
+                                <div className="mt-1">
+                                    {item.tipo === 'comentario' ? <MessageSquarePlus className="h-4 w-4 text-muted-foreground"/> : <Edit3 className="h-4 w-4 text-muted-foreground"/>}
+                                </div>
+                                <div className="flex-1">
+                                    <p className={cn(item.tipo === 'comentario' ? 'text-foreground' : 'text-muted-foreground italic')}>
+                                        {item.texto}
+                                    </p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                                        <UserIcon className="h-3 w-3" />
+                                        <span>{item.autorNome}</span>
+                                        <Clock className="h-3 w-3 ml-2" />
+                                        <span>{format(item.data.toDate(), "dd/MM/yy 'às' HH:mm")}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhum histórico para esta demanda.</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <FormLabel htmlFor="comment">Adicionar comentário</FormLabel>
+                    <Textarea 
+                        id="comment"
+                        placeholder="Digite seu comentário..." 
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                    />
+                    <Button type="button" size="sm" onClick={handleAddComment} disabled={!comment.trim() || isSubmittingComment}>
+                        {isSubmittingComment && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                        Enviar Comentário
+                    </Button>
+                </div>
+            </div>
+        )}
+
+        <Button type="submit" className="w-full !mt-8" disabled={loading}>
           {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Registrar Demanda')}
         </Button>
       </form>
