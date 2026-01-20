@@ -5,6 +5,26 @@ export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word' 
 export type FormadorStatus = 'preparacao' | 'em-formacao' | 'pos-formacao' | 'concluido' | 'arquivado';
 export type TipoDespesa = 'Alimentação' | 'Transporte' | 'Hospedagem' | 'Material Didático' | 'Outros';
 
+export type StatusDemanda =
+  | 'Pendente'
+  | 'Em andamento'
+  | 'Concluída'
+  | 'Aguardando retorno';
+
+export interface Demanda {
+  id: string;
+  dataCriacao: Timestamp;
+  dataAtualizacao: Timestamp;
+  municipio: string;
+  uf: string;
+  demanda: string;
+  status: StatusDemanda;
+  responsavelNome: string;
+  responsavelId: string;
+  prazo?: Timestamp | null;
+  observacoes?: string;
+}
+
 export interface ChecklistItem {
   checked: boolean;
   observation?: string;

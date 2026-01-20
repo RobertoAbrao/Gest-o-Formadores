@@ -21,6 +21,7 @@ import {
   CalendarDays,
   GanttChartSquare,
   GalleryHorizontal,
+  BookOpenCheck,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -70,6 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     user.perfil === 'administrador'
       ? [
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
           { href: '/formadores', label: 'Formadores', icon: Users },
           { href: '/assessores', label: 'Assessores', icon: Briefcase },
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
