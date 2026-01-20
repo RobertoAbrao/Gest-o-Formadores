@@ -23,17 +23,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { Demanda, StatusDemanda } from '@/lib/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 
-const ufs = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
-  'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
+interface Estado {
+    id: number;
+    sigla: string;
+    nome: string;
+}
+
+interface Municipio {
+    id: number;
+    nome: string;
+}
 
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
 
@@ -63,6 +69,10 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [loading, setLoading] = useState(false);
   const isEditMode = !!demanda;
 
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,6 +84,48 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       observacoes: demanda?.observacoes || '',
     },
   });
+
+  const selectedUf = form.watch('uf');
+
+  useEffect(() => {
+    const fetchEstados = async () => {
+        try {
+            const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+            const data = await response.json();
+            setEstados(data);
+        } catch (error) {
+            console.error('Failed to fetch estados', error);
+            toast({ variant: "destructive", title: "Erro de rede", description: "Não foi possível carregar a lista de estados." });
+        }
+    };
+    fetchEstados();
+  }, [toast]);
+
+  useEffect(() => {
+    if (!selectedUf) {
+      setMunicipios([]);
+      return;
+    };
+    const fetchMunicipios = async () => {
+        setLoadingMunicipios(true);
+        try {
+            const response = await fetch(`/api/municipios/${selectedUf}`);
+            const data = await response.json();
+             if (response.ok) {
+                setMunicipios(data);
+            } else {
+                throw new Error(data.error || 'Erro ao buscar municípios');
+            }
+        } catch (error) {
+            console.error('Failed to fetch municipios', error);
+            toast({ variant: 'destructive', title: "Erro de rede", description: "Não foi possível carregar os municípios." });
+        } finally {
+            setLoadingMunicipios(false);
+        }
+    };
+    fetchMunicipios();
+  }, [selectedUf, toast]);
+
 
   async function onSubmit(values: FormValues) {
     if (!user) {
@@ -124,34 +176,46 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="municipio"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Município</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nome do município" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
+           <FormField
             control={form.control}
             name="uf"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>UF</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    form.setValue('municipio', ''); // Reset municipio when UF changes
+                }} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder="Selecione o estado" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                    {estados.map(estado => <SelectItem key={estado.id} value={estado.sigla}>{estado.nome}</SelectItem>)}
                   </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+            control={form.control}
+            name="municipio"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Município</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {municipios.map(m => (
+                            <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
@@ -242,3 +306,5 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     </Form>
   );
 }
+
+    
