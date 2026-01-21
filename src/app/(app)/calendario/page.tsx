@@ -358,7 +358,7 @@ export default function CalendarioPage() {
         <div className="no-print">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário de Planejamento ${currentYear}</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário de Planejamento {currentYear}</h1>
                 <p className="text-muted-foreground">
                   Selecione um projeto para planejar ou a visão geral para consolidar.
                 </p>
