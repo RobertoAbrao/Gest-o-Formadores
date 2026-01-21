@@ -249,14 +249,37 @@ export default function CalendarioPage() {
     'migracao': { backgroundColor: '#5eead4' },
     'avaliacao-diagnostica': { backgroundColor: '#f472b6' }
   };
+  
+    const cronogramaData = useMemo<CronogramaItem[]>(() => {
+    if (selectedProjectId === 'todos' || selectedProjectId === 'geral') {
+      const data: CronogramaItem[] = [];
+      events.forEach(event => {
+        let dataSugerida: string;
+        const startDate = event.startDate.toDate();
+        const endDate = event.endDate.toDate();
+        if (startDate.getTime() === endDate.getTime()) {
+          dataSugerida = format(startDate, 'dd/MM/yyyy');
+        } else {
+          dataSugerida = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
+        }
+        const eventoTitle = selectedProjectId === 'todos' && event.projectName ? `[${event.projectName}] ${event.tooltip}` : event.tooltip;
+        data.push({ evento: eventoTitle, dataSugerida: dataSugerida });
+      });
 
-  const cronogramaData = useMemo<CronogramaItem[]>(() => {
-    if (selectedProjectId === 'todos' || selectedProjectId === 'geral') return [];
+      return data.sort((a,b) => {
+        const aDateMatch = a.dataSugerida.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        const bDateMatch = b.dataSugerida.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (!aDateMatch) return 1;
+        if (!bDateMatch) return -1;
+        const aDate = new Date(`${aDateMatch[3]}-${aDateMatch[2]}-${aDateMatch[1]}`);
+        const bDate = new Date(`${bDateMatch[3]}-${bDateMatch[2]}-${bDateMatch[1]}`);
+        return aDate.getTime() - bDate.getTime();
+      });
+    }
 
     const relevantEventNames = ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'];
     const data: CronogramaItem[] = [];
 
-    // Process events
     events.forEach(event => {
       let dataSugerida: string;
       const startDate = event.startDate.toDate();
@@ -269,16 +292,13 @@ export default function CalendarioPage() {
       data.push({ evento: event.tooltip, dataSugerida: dataSugerida });
     });
 
-    // Ensure all relevant events are present
     relevantEventNames.forEach(eventName => {
       if (!data.some(item => item.evento.includes(eventName.split(' ')[0]))) {
-        // A simple check; might need refinement for more complex tooltips
         if (
             (eventName.includes('Simulado') && !data.some(d => d.evento.includes('Simulado'))) ||
             (eventName.includes('Devolutiva') && !data.some(d => d.evento.includes('Devolutiva'))) ||
             (!eventName.includes('Simulado') && !eventName.includes('Devolutiva'))
         ) {
-           // data.push({ evento: eventName, dataSugerida: 'A definir' });
         }
       }
     });
@@ -342,6 +362,20 @@ export default function CalendarioPage() {
 
   const isViewOnly = selectedProjectId === 'todos' || loading;
 
+  const printTitle = useMemo(() => {
+    if (selectedProjectId === 'todos') {
+        return "Visão Geral - Todos os Projetos";
+    }
+    if (selectedProjectId === 'geral') {
+        return "Cronograma de Ações - Planejamento Geral";
+    }
+    const projeto = projetos.find(p => p.id === selectedProjectId);
+    if (projeto) {
+        return `Cronograma de Ações - Proposta de Datas - ${projeto.municipio}`;
+    }
+    return 'Cronograma de Ações - Proposta de Datas';
+  }, [selectedProjectId, projetos]);
+
   return (
     <>
       <style jsx global>{`
@@ -382,7 +416,7 @@ export default function CalendarioPage() {
                         </SelectGroup>
                     </SelectContent>
                 </Select>
-                <Button onClick={() => window.print()} variant="outline" disabled={isViewOnly || cronogramaData.length === 0}>
+                <Button onClick={() => window.print()} variant="outline" disabled={loading || cronogramaData.length === 0}>
                     <Printer className="mr-2 h-4 w-4" />
                     Imprimir Cronograma
                 </Button>
@@ -413,10 +447,10 @@ export default function CalendarioPage() {
                   </CardContent>
             </Card>
 
-            {selectedProjectId !== 'todos' && selectedProjectId !== 'geral' && (
+            {cronogramaData.length > 0 && (
                  <Card className="mt-4">
                     <CardHeader>
-                        <CardTitle>Cronograma de Ações - Proposta de Datas</CardTitle>
+                        <CardTitle>{printTitle}</CardTitle>
                         <p className="text-sm text-muted-foreground">
                             Este cronograma é gerado automaticamente com base nos eventos marcados no calendário acima.
                         </p>
@@ -426,23 +460,21 @@ export default function CalendarioPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[200px]">Evento</TableHead>
+                                        <TableHead className="w-[300px]">Evento</TableHead>
                                         <TableHead>Data Sugerida (Editora)</TableHead>
                                         <TableHead>Nova Data (Município)</TableHead>
                                         <TableHead>Status (Aprovado/Pendente)</TableHead>
-                                        <TableHead>Observações</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {cronogramaData.length > 0 ? cronogramaData.map((item, index) => (
+                                    {cronogramaData.map((item, index) => (
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">{item.evento}</TableCell>
                                             <TableCell>{item.dataSugerida}</TableCell>
                                             <TableCell></TableCell>
                                             <TableCell></TableCell>
-                                            <TableCell></TableCell>
                                         </TableRow>
-                                    )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">Nenhum evento agendado para este projeto.</TableCell></TableRow>}
+                                    ))}
                                 </TableBody>
                             </Table>
                         }
@@ -490,16 +522,15 @@ export default function CalendarioPage() {
           <div className="space-y-12">
             <header className="flex justify-between items-center pb-4 border-b-2">
                 <AppLogo />
-                <h2 className="text-xl font-bold">Cronograma de Ações - Proposta de Datas</h2>
+                <h2 className="text-xl font-bold">{printTitle}</h2>
             </header>
             <Table className="print-table">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px] font-bold">Evento</TableHead>
+                  <TableHead className="w-[300px] font-bold">Evento</TableHead>
                   <TableHead className="font-bold">Data Sugerida (Editora)</TableHead>
                   <TableHead className="font-bold">Nova Data (Município)</TableHead>
                   <TableHead className="font-bold">Status (Aprovado/Pendente)</TableHead>
-                  <TableHead className="font-bold">Observações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -507,7 +538,6 @@ export default function CalendarioPage() {
                   <TableRow key={index}>
                     <TableCell className="font-medium">{item.evento}</TableCell>
                     <TableCell>{item.dataSugerida}</TableCell>
-                    <TableCell></TableCell>
                     <TableCell></TableCell>
                     <TableCell></TableCell>
                   </TableRow>
