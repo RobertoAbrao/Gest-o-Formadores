@@ -34,7 +34,8 @@ type EventType =
     | 'devolutiva'
     | 'avaliacao'
     | 'implantacao'
-    | 'migracao';
+    | 'migracao'
+    | 'avaliacao-diagnostica';
 
 const eventTypes: { value: EventType, label: string }[] = [
     { value: 'continuidade-ferias', label: 'Continuidade das férias ano letivo 2025' },
@@ -48,6 +49,7 @@ const eventTypes: { value: EventType, label: string }[] = [
     { value: 'simulado', label: 'Simulado' },
     { value: 'devolutiva', label: 'Devolutiva' },
     { value: 'avaliacao', label: 'Avaliação Trimestral' },
+    { value: 'avaliacao-diagnostica', label: 'Avaliação Diagnóstica' },
     { value: 'implantacao', label: 'Implantação' },
     { value: 'migracao', label: 'Migração de Dados' },
 ];
@@ -245,6 +247,7 @@ export default function CalendarioPage() {
     'avaliacao': { border: '2px solid #fdba74' },
     'implantacao': { backgroundColor: '#a78bfa' },
     'migracao': { backgroundColor: '#5eead4' },
+    'avaliacao-diagnostica': { backgroundColor: '#f472b6' }
   };
 
   const cronogramaData = useMemo<CronogramaItem[]>(() => {
@@ -355,7 +358,7 @@ export default function CalendarioPage() {
         <div className="no-print">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário de Planejamento {currentYear}</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-headline">Calendário de Planejamento ${currentYear}</h1>
                 <p className="text-muted-foreground">
                   Selecione um projeto para planejar ou a visão geral para consolidar.
                 </p>
@@ -372,7 +375,7 @@ export default function CalendarioPage() {
                             <SelectItem value="todos">Visão Geral (Todos os Projetos)</SelectItem>
                         </SelectGroup>
                         <SelectGroup>
-                            <SelectLabel>Projetos ({currentYear})</SelectLabel>
+                            <SelectLabel>Projetos (${currentYear})</SelectLabel>
                             {projetos.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.municipio} - {p.uf}</SelectItem>
                             ))}
@@ -401,6 +404,7 @@ export default function CalendarioPage() {
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
+                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['avaliacao-diagnostica']}></div>Avaliação Diagnóstica</div>
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
                           <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
@@ -562,4 +566,3 @@ export default function CalendarioPage() {
     </>
   );
 }
-
