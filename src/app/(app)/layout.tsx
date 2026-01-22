@@ -132,8 +132,10 @@ const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogo
                 key={link.href}
                 href={link.href}
                 className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    pathname.startsWith(link.href) && link.href !=='/' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80'
+                  'flex items-center gap-3 rounded-lg px-3 py-2 transition-all',
+                  pathname.startsWith(link.href) && link.href !== '/'
+                    ? 'bg-primary-foreground text-primary font-semibold hover:bg-primary-foreground/90'
+                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -174,9 +176,11 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
               key={link.href}
               href={link.href}
               className={cn(
-                  'flex items-center gap-4 rounded-xl px-3 py-2 transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  pathname.startsWith(link.href) && link.href !=='/' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80'
-                  )}
+                'flex items-center gap-4 rounded-xl px-3 py-2 transition-all',
+                pathname.startsWith(link.href) && link.href !== '/'
+                  ? 'bg-primary-foreground text-primary font-semibold hover:bg-primary-foreground/90'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+              )}
             >
               <link.icon className="h-5 w-5" />
               {link.label}
