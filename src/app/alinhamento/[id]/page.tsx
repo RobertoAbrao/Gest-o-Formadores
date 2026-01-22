@@ -68,7 +68,19 @@ export default function AlinhamentoPage() {
     resolver: zodResolver(alinhamentoSchema),
     shouldFocusError: false,
     defaultValues: {
+      dataReuniao: undefined,
+      horarioReuniao: '',
       responsaveis: [{ nome: '', funcao: '' }],
+      formatoAdocao: '',
+      duracaoProjeto: '',
+      etapasUtilizarao: '',
+      qtdAlunos: undefined,
+      qtdProfessores: undefined,
+      motivosAdocao: '',
+      expectativas: '',
+      ideb: '',
+      doresMunicipio: '',
+      sugestoesFormacao: '',
     }
   });
 
@@ -99,7 +111,7 @@ export default function AlinhamentoPage() {
     } finally {
       setLoading(false);
     }
-  }, [projetoId, form]);
+  }, [projetoId]);
 
   useEffect(() => {
     fetchData();
@@ -175,13 +187,13 @@ export default function AlinhamentoPage() {
   
   const FormRow = ({ name, label }: { name: any, label: string }) => (
     <FormField control={form.control} name={name} render={({ field }) => (
-        <FormItem><FormLabel>{label}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+        <FormItem><FormLabel>{label}</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
     )}/>
   );
   
   const NumberRow = ({ name, label }: { name: any, label: string }) => (
     <FormField control={form.control} name={name} render={({ field }) => (
-        <FormItem><FormLabel>{label}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+        <FormItem><FormLabel>{label}</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
     )}/>
   );
 
@@ -218,7 +230,7 @@ export default function AlinhamentoPage() {
                                         </FormItem>
                                     )}/>
                                     <FormField control={form.control} name="horarioReuniao" render={({ field }) => (
-                                        <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
                                     <FormItem><FormLabel>Município</FormLabel><FormControl><Input value={projeto.municipio} disabled /></FormControl></FormItem>
                                 </div>
@@ -228,10 +240,10 @@ export default function AlinhamentoPage() {
                                     {fields.map((item, index) => (
                                         <div key={item.id} className="flex gap-2 items-end p-2 border rounded-md">
                                             <FormField control={form.control} name={`responsaveis.${index}.nome`} render={({ field }) => (
-                                                <FormItem className="flex-grow"><FormLabel className='text-xs'>Nome</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                                <FormItem className="flex-grow"><FormLabel className='text-xs'>Nome</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                             )}/>
                                             <FormField control={form.control} name={`responsaveis.${index}.funcao`} render={({ field }) => (
-                                                <FormItem className="flex-grow"><FormLabel className='text-xs'>Função</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                                <FormItem className="flex-grow"><FormLabel className='text-xs'>Função</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                             )}/>
                                              <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
                                                 <Trash2 className="h-4 w-4" />
