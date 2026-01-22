@@ -104,7 +104,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <SidebarNav links={navLinks} user={user} onLogout={handleLogout} />
       <div className="flex flex-col">
-        <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+        <header className="flex h-14 items-center justify-between gap-4 border-b border-primary/50 bg-primary px-4 lg:h-[60px] lg:px-6">
           <MobileNav links={navLinks} user={user} onLogout={handleLogout} />
           <div className="w-full flex-1">
             {/* Can add a search bar here if needed */}
@@ -120,10 +120,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogout: () => void }) => {
     const pathname = usePathname();
   return (
-    <div className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block">
+    <div className="hidden border-r border-primary/50 bg-primary text-primary-foreground md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-14 items-center border-b border-sidebar-border px-4 lg:h-[60px] lg:px-6">
-            <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-sidebar-foreground" />
+        <div className="flex h-14 items-center border-b border-primary/50 px-4 lg:h-[60px] lg:px-6">
+            <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-primary-foreground" />
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -134,8 +134,8 @@ const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogo
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 transition-all',
                   pathname.startsWith(link.href) && link.href !== '/'
-                    ? 'bg-primary-foreground text-primary font-semibold hover:bg-primary-foreground/90'
-                    : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    ? 'bg-accent text-accent-foreground font-semibold'
+                    : 'text-primary-foreground/80 hover:bg-primary/90'
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -157,19 +157,19 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
     return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+        <Button variant="ghost" size="icon" className="shrink-0 md:hidden hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground">
           <PanelLeft className="h-5 w-5" />
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border">
+      <SheetContent side="left" className="flex flex-col bg-primary text-primary-foreground border-primary/50">
         <SheetHeader>
             <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
             <SheetDescription className="sr-only">Navegue pelas seções do aplicativo.</SheetDescription>
         </SheetHeader>
         <nav className="grid gap-2 text-lg font-medium">
           <Link href="/dashboard" className="mb-4">
-             <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-sidebar-foreground" />
+             <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-primary-foreground" />
           </Link>
           {links.map((link) => (
             <Link
@@ -178,8 +178,8 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
               className={cn(
                 'flex items-center gap-4 rounded-xl px-3 py-2 transition-all',
                 pathname.startsWith(link.href) && link.href !== '/'
-                  ? 'bg-primary-foreground text-primary font-semibold hover:bg-primary-foreground/90'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-accent text-accent-foreground font-semibold'
+                  : 'text-primary-foreground/80 hover:bg-primary/90'
               )}
             >
               <link.icon className="h-5 w-5" />
@@ -188,7 +188,7 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
           ))}
         </nav>
         <div className="mt-auto">
-            <Button size="sm" className="w-full bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/90" onClick={onLogout}>
+            <Button size="sm" className="w-full bg-primary/90 text-primary-foreground hover:bg-primary" onClick={onLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
             </Button>
@@ -206,10 +206,10 @@ const UserMenu = ({ user, onLogout, router }: { user: any, onLogout: () => void,
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="icon" className="rounded-full">
+        <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/90">
           <Avatar>
             <AvatarImage src={undefined} alt={user.nome || 'User'} />
-            <AvatarFallback>{getInitials(user.nome)}</AvatarFallback>
+            <AvatarFallback className="bg-destructive/80 text-destructive-foreground">{getInitials(user.nome)}</AvatarFallback>
           </Avatar>
           <span className="sr-only">Toggle user menu</span>
         </Button>

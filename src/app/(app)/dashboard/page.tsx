@@ -50,9 +50,9 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState([
-    { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-blue-500' },
-    { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500' },
-    { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500' },
+    { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
+    { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
+    { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
   ]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
@@ -96,9 +96,9 @@ export default function DashboardPage() {
       ]);
       
       setStats([
-        { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-blue-500' },
-        { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500' },
-        { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500' },
+        { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
+        { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
+        { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
       ]);
         
       const allEvents: CalendarEvent[] = [];
@@ -360,22 +360,10 @@ export default function DashboardPage() {
   };
 
   const modifiersStyles = {
-    formacao: {
-      backgroundColor: 'hsl(var(--primary) / 0.1)',
-      color: 'hsl(var(--primary))',
-    },
-    'projeto-marco': {
-      backgroundColor: 'hsl(var(--accent) / 0.1)',
-      color: 'hsl(var(--accent-foreground))',
-    },
-    'projeto-acompanhamento': {
-      backgroundColor: 'hsl(var(--chart-4) / 0.1)',
-       color: 'hsl(var(--chart-4))',
-    },
-     lembrete: {
-      backgroundColor: 'hsl(var(--chart-3) / 0.1)',
-      color: 'hsl(var(--chart-3))',
-    },
+    formacao: { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' },
+    'projeto-marco': { backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))', opacity: 0.8 },
+    'projeto-acompanhamento': { backgroundColor: 'hsl(var(--chart-4) / 0.2)', color: 'hsl(var(--chart-4))' },
+    lembrete: { backgroundColor: 'hsl(var(--chart-3) / 0.2)', color: 'hsl(var(--chart-3))' },
   };
   
   const formatEventDate = (eventDate: Date) => {
@@ -409,126 +397,13 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
         <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
       </div>
-       <div className='space-y-4'>
-            {(yesterdayEvents.length > 0 || upcomingEvents.length > 0) && (
-                <Alert className='bg-amber-100/60 border-amber-200/80 text-amber-900 dark:bg-amber-900/20 dark:border-amber-500/30 dark:text-amber-200 [&>svg]:text-amber-500'>
-                    <BellRing className="h-4 w-4" />
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <AlertTitle>Eventos e Acompanhamento</AlertTitle>
-                        </div>
-                        <Button variant="outline" size="sm" asChild className="border-amber-400/50 bg-amber-50/50 hover:bg-amber-100/80 -mt-1">
-                            <a href={emailHref} target="_blank" rel="noopener noreferrer">
-                                <Mail className="mr-2 h-4 w-4"/>
-                                Enviar Resumo
-                            </a>
-                        </Button>
-                    </div>
-                    <AlertDescription>
-                        {/* Eventos da Semana */}
-                        {upcomingEvents.length > 0 && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 mt-2">
-                                <div>
-                                    <h4 className="font-semibold mb-2">Simulados da Semana</h4>
-                                    {simulados.length > 0 ? (
-                                        <ul className='space-y-2'>
-                                            {simulados.map((event, index) => (
-                                            <li key={`sim-${index}`} className='flex items-center justify-between gap-2 text-sm'>
-                                                <div className='flex items-center gap-2 truncate'>
-                                                    <Badge
-                                                        variant={isToday(event.date) || isTomorrow(event.date) ? 'default' : 'outline'}
-                                                        className={cn('text-xs', {
-                                                            'bg-primary text-primary-foreground': isToday(event.date),
-                                                            'bg-accent text-accent-foreground': isTomorrow(event.date),
-                                                        })}
-                                                    >
-                                                        {formatEventDate(event.date)}
-                                                    </Badge>
-                                                    <span className='truncate' title={event.title}>{event.title}</span>
-                                                </div>
-                                            </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-xs text-muted-foreground italic">Nenhum simulado na próxima semana.</p>
-                                    )}
-                                </div>
-                                
-                                <div>
-                                    <h4 className="font-semibold mb-2">Formações e Lembretes</h4>
-                                    {outrosEventos.length > 0 ? (
-                                        <ul className='space-y-2'>
-                                            {outrosEventos.map((event, index) => (
-                                            <li key={`otr-${index}`} className='flex items-center justify-between gap-2 text-sm'>
-                                                <div className='flex items-center gap-2 truncate'>
-                                                    <Badge
-                                                        variant={isToday(event.date) || isTomorrow(event.date) ? 'default' : 'outline'}
-                                                        className={cn('text-xs', {
-                                                            'bg-primary text-primary-foreground': isToday(event.date),
-                                                            'bg-accent text-accent-foreground': isTomorrow(event.date),
-                                                        })}
-                                                    >
-                                                        {formatEventDate(event.date)}
-                                                    </Badge>
-                                                    <span className='truncate' title={event.title}>{event.title}</span>
-                                                </div>
-                                                {event.details === 'Lembrete pessoal' && (
-                                                    <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className='h-6 w-6 flex-shrink-0' 
-                                                    onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}
-                                                    title="Marcar como concluído"
-                                                    >
-                                                        <CheckCircle2 className='h-4 w-4 text-green-600 hover:text-green-700' />
-                                                    </Button>
-                                                )}
-                                            </li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-xs text-muted-foreground italic">Nenhuma formação ou lembrete na próxima semana.</p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Resumo de Ontem */}
-                        {yesterdayEvents.length > 0 && (
-                            <>
-                                <Separator className="my-4 bg-amber-300/60 dark:bg-amber-500/30" />
-                                <div>
-                                     <h4 className="font-semibold mb-2 flex items-center gap-2"><History className="h-4 w-4" />Resumo de Ontem</h4>
-                                    <ul className='space-y-2'>
-                                    {yesterdayEvents.map((event, index) => (
-                                        <li key={`yest-${index}`} className='flex items-center justify-between gap-2 text-sm'>
-                                            <div className='flex items-center gap-2 truncate'>
-                                                <Badge
-                                                    variant={'outline'}
-                                                    className="border-amber-400 bg-amber-200/80 text-amber-900"
-                                                >
-                                                    Ontem
-                                                </Badge>
-                                                <span className='truncate' title={event.title}>{event.title}</span>
-                                            </div>
-                                        </li>
-                                    ))}
-                                    </ul>
-                                </div>
-                            </>
-                        )}
-                        <p className='mt-4 text-xs text-muted-foreground'>Selecione um dia no calendário para ver mais detalhes.</p>
-                    </AlertDescription>
-                </Alert>
-            )}
-        </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card key={stat.title} className={cn("shadow-sm border-l-4", stat.borderColor)}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={`h-6 w-6 ${stat.color}`} />
+              <stat.icon className={cn("h-6 w-6", stat.color)} />
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold">{stat.value}</div>
@@ -538,132 +413,130 @@ export default function DashboardPage() {
         ))}
       </div>
        
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2">
-            <CardHeader>
-                <div className='flex justify-between items-center gap-2 flex-wrap'>
-                     <CardTitle className="flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5" />
-                        Agenda de Eventos
-                    </CardTitle>
-                    <div className='flex items-center gap-2'>
-                        <Button size="sm" variant="outline" asChild>
-                            <Link href={`/agenda-relatorio/${reportYear}/${reportMonth}`} target='_blank'>
-                                <Printer className='mr-2 h-4 w-4' /> Imprimir Mês
-                            </Link>
-                        </Button>
-                        <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline">
-                                    <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className='sm:max-w-md'>
-                                <DialogHeader>
-                                    <DialogTitle>Criar Novo Lembrete</DialogTitle>
-                                    <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
-                                </DialogHeader>
-                                <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
-                                        <FormField control={form.control} name="titulo" render={({ field }) => (
-                                            <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="data" render={({ field }) => (
-                                            <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                                                <Popover><PopoverTrigger asChild><FormControl>
-                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                </PopoverContent></Popover><FormMessage />
-                                            </FormItem>
-                                        )}/>
-                                        <Button type='submit' disabled={form.formState.isSubmitting}>
-                                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                            Salvar Lembrete
-                                        </Button>
-                                    </form>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </div>
-                <CardDescription>
-                    Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {selectedDayEvents.length > 0 ? (
-                    <div className="space-y-4">
-                        {selectedDayEvents.map((event, index) => (
-                            <div key={index} className="space-y-2">
-                                <div>
-                                    <div className="flex justify-between items-start gap-2">
-                                        <h4 className="font-semibold">{event.title}</h4>
-                                        <Badge variant="outline" className={cn(
-                                            event.type === 'formacao' && 'border-primary text-primary',
-                                            event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
-                                            event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
-                                            event.type === 'lembrete' && 'border-chart-3 text-chart-3'
-                                        )}>
-                                            {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
-                                       <span className='flex items-center gap-1'>
-                                            {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : <Milestone className='h-3 w-3'/>}
-                                            {event.details}
-                                       </span>
-                                       {event.details === 'Lembrete pessoal' && (
-                                            <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
-                                                <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+      <Card className="border-accent">
+        <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-6">
+          <div className="lg:col-span-2">
+            <div className='flex justify-between items-center gap-2 flex-wrap mb-4'>
+                 <CardTitle className="flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    Agenda de Eventos
+                </CardTitle>
+                <div className='flex items-center gap-2'>
+                    <Button size="sm" asChild className="bg-warning text-warning-foreground hover:bg-warning/90">
+                        <Link href={`/agenda-relatorio/${reportYear}/${reportMonth}`} target='_blank'>
+                            <Printer className='mr-2 h-4 w-4' /> Imprimir Mês
+                        </Link>
+                    </Button>
+                    <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm" className="bg-warning text-warning-foreground hover:bg-warning/90">
+                                <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className='sm:max-w-md'>
+                            <DialogHeader>
+                                <DialogTitle>Criar Novo Lembrete</DialogTitle>
+                                <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
+                                    <FormField control={form.control} name="titulo" render={({ field }) => (
+                                        <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="data" render={({ field }) => (
+                                        <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
+                                            <Popover><PopoverTrigger asChild><FormControl>
+                                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
-                                       )}
-                                    </p>
-                                </div>
-                                {index < selectedDayEvents.length - 1 && <Separator />}
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                        Nenhum evento para o dia selecionado.
-                    </p>
-                )}
-            </CardContent>
-        </Card>
-        <Card className="flex flex-col justify-center items-center p-4 gap-4">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={setDate}
-            className="rounded-md border"
-            locale={ptBR}
-            modifiers={modifiers}
-            modifiersStyles={modifiersStyles}
-          />
-           <div className="w-full space-y-2 text-sm p-2">
-                <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles.formacao.backgroundColor, border: `1px solid ${modifiersStyles.formacao.color}` }} />
-                    <span className="text-muted-foreground">Formações</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles['projeto-marco'].backgroundColor, border: `1px solid ${modifiersStyles['projeto-marco'].color}` }}/>
-                    <span className="text-muted-foreground">Marcos de Projeto</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles['projeto-acompanhamento'].backgroundColor, border: `1px solid ${modifiersStyles['projeto-acompanhamento'].color}` }}/>
-                    <span className="text-muted-foreground">Acompanhamentos</span>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 rounded-full" style={{ backgroundColor: modifiersStyles.lembrete.backgroundColor, border: `1px solid ${modifiersStyles.lembrete.color}` }}/>
-                    <span className="text-muted-foreground">Lembretes</span>
+                                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            </PopoverContent></Popover><FormMessage />
+                                        </FormItem>
+                                    )}/>
+                                    <Button type='submit' disabled={form.formState.isSubmitting}>
+                                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        Salvar Lembrete
+                                    </Button>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
-        </Card>
-      </div>
+             <CardDescription>
+                Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
+            </CardDescription>
+             {selectedDayEvents.length > 0 ? (
+                <div className="space-y-4 mt-4">
+                    {selectedDayEvents.map((event, index) => (
+                        <div key={index} className="space-y-2">
+                            <div>
+                                <div className="flex justify-between items-start gap-2">
+                                    <h4 className="font-semibold">{event.title}</h4>
+                                    <Badge variant="outline" className={cn(
+                                        event.type === 'formacao' && 'border-primary text-primary',
+                                        event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
+                                        event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
+                                        event.type === 'lembrete' && 'border-chart-3 text-chart-3'
+                                    )}>
+                                        {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
+                                   <span className='flex items-center gap-1'>
+                                        {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : <Milestone className='h-3 w-3'/>}
+                                        {event.details}
+                                   </span>
+                                   {event.details === 'Lembrete pessoal' && (
+                                        <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
+                                            <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+                                        </Button>
+                                   )}
+                                </p>
+                            </div>
+                            {index < selectedDayEvents.length - 1 && <Separator />}
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhum evento para o dia selecionado.
+                </p>
+            )}
+          </div>
+          <div>
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md border"
+              locale={ptBR}
+              modifiers={modifiers}
+              modifiersStyles={modifiersStyles}
+            />
+            <div className="w-full space-y-2 text-sm p-2 mt-4">
+                  <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles.formacao.backgroundColor, borderColor: modifiersStyles.formacao.color }} />
+                      <span className="text-muted-foreground">Formações</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles['projeto-marco'].backgroundColor, borderColor: modifiersStyles['projeto-marco'].color }}/>
+                      <span className="text-muted-foreground">Marcos de Projeto</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles['projeto-acompanhamento'].backgroundColor, borderColor: modifiersStyles['projeto-acompanhamento'].color }}/>
+                      <span className="text-muted-foreground">Acompanhamentos</span>
+                  </div>
+                   <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles.lembrete.backgroundColor, borderColor: modifiersStyles.lembrete.color }}/>
+                      <span className="text-muted-foreground">Lembretes</span>
+                  </div>
+              </div>
+          </div>
+        </CardContent>
+      </Card>
 
        {followUpActions.length > 0 && (
                  <Card>
@@ -748,5 +621,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
