@@ -14,12 +14,13 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval, startOfDay } from 'date-fns';
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, Printer, Copy } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
 import type { ProjetoImplatancao } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -83,6 +84,8 @@ export default function CalendarioPage() {
   const [editingRange, setEditingRange] = useState<DateRange | undefined>();
   const [currentEventType, setCurrentEventType] = useState<EventType | ''>('');
   const [currentTooltip, setCurrentTooltip] = useState('');
+
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjetos = async () => {
@@ -201,6 +204,16 @@ export default function CalendarioPage() {
         setEditingEventId(null);
     }
   }
+
+  const handleCopyAlinhamentoLink = () => {
+    if (selectedProjectId === 'geral' || selectedProjectId === 'todos') return;
+    const url = `${window.location.origin}/alinhamento/${selectedProjectId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: 'Link Copiado!',
+      description: 'O link do formulário de alinhamento foi copiado para a área de transferência.',
+    });
+  };
 
   const eventsByDateString = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
@@ -416,6 +429,14 @@ export default function CalendarioPage() {
                         </SelectGroup>
                     </SelectContent>
                 </Select>
+                 <Button 
+                    onClick={handleCopyAlinhamentoLink} 
+                    variant="outline" 
+                    disabled={loading || selectedProjectId === 'geral' || selectedProjectId === 'todos'}
+                >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copiar Link do Alinhamento
+                </Button>
                 <Button onClick={() => window.print()} variant="outline" disabled={loading || cronogramaData.length === 0}>
                     <Printer className="mr-2 h-4 w-4" />
                     Imprimir Cronograma
