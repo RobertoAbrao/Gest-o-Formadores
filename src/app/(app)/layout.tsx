@@ -120,10 +120,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogout: () => void }) => {
     const pathname = usePathname();
   return (
-    <div className="hidden border-r bg-muted/40 md:block">
+    <div className="hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-            <AppLogo iconClassName="h-6 w-6" textClassName="text-xl" />
+        <div className="flex h-14 items-center border-b border-sidebar-border px-4 lg:h-[60px] lg:px-6">
+            <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-sidebar-foreground" />
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -132,8 +132,8 @@ const SidebarNav = ({ links, user, onLogout }: { links: any[], user: any, onLogo
                 key={link.href}
                 href={link.href}
                 className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                    pathname === link.href && 'bg-muted text-primary'
+                    'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    pathname.startsWith(link.href) && link.href !=='/' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80'
                 )}
               >
                 <link.icon className="h-4 w-4" />
@@ -160,22 +160,22 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex flex-col">
+      <SheetContent side="left" className="flex flex-col bg-sidebar text-sidebar-foreground border-sidebar-border">
         <SheetHeader>
             <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
             <SheetDescription className="sr-only">Navegue pelas seções do aplicativo.</SheetDescription>
         </SheetHeader>
         <nav className="grid gap-2 text-lg font-medium">
           <Link href="/dashboard" className="mb-4">
-             <AppLogo iconClassName="h-6 w-6" textClassName="text-xl" />
+             <AppLogo iconClassName="h-6 w-6" textClassName="text-xl text-sidebar-foreground" />
           </Link>
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                  'flex items-center gap-4 rounded-xl px-3 py-2 text-muted-foreground hover:text-foreground',
-                  pathname === link.href && 'bg-muted text-foreground'
+                  'flex items-center gap-4 rounded-xl px-3 py-2 transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  pathname.startsWith(link.href) && link.href !=='/' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80'
                   )}
             >
               <link.icon className="h-5 w-5" />
@@ -184,7 +184,7 @@ const MobileNav = ({ links, user, onLogout }: { links: any[], user: any, onLogou
           ))}
         </nav>
         <div className="mt-auto">
-            <Button size="sm" className="w-full" onClick={onLogout}>
+            <Button size="sm" className="w-full bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/90" onClick={onLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
             </Button>
