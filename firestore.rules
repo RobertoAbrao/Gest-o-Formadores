@@ -66,6 +66,12 @@ service cloud.firestore {
         allow write: if isUserAdmin(request.auth.uid);
     }
 
+    // Alinhamentos collection: anyone can create, only admins can read
+    match /alinhamentos/{alinhamentoId} {
+        allow read: if isUserAdmin(request.auth.uid);
+        allow create: if true;
+    }
+
     // Reminders collection: only admins can manage
     match /lembretes/{lembreteId} {
         allow read, write: if isUserAdmin(request.auth.uid);

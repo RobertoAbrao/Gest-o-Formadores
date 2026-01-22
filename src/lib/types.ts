@@ -322,3 +322,28 @@ export interface FichaDevolutiva {
     links: LinkOnline[];
     lastUpdated?: Timestamp;
 }
+
+export interface ResponsavelProjeto {
+  nome: string;
+  funcao: string;
+}
+
+export interface AlinhamentoTecnico {
+  id: string; // Will be the same as the projetoId
+  projetoId: string;
+  dataReuniao: Timestamp;
+  horarioReuniao: string;
+  municipio: string; // Pre-filled
+  responsaveis: ResponsavelProjeto[];
+  formatoAdocao: string;
+  duracaoProjeto: string;
+  etapasUtilizarao: string;
+  qtdAlunos: number;
+  qtdProfessores: number;
+  motivosAdocao: string;
+  expectativas: string;
+  ideb: string;
+  doresMunicipio: string;
+  sugestoesFormacao: string;
+  dataEnvio: Timestamp;
+}
