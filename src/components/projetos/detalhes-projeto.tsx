@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico } from '@/lib/types';
@@ -14,6 +13,8 @@ import Link from 'next/link';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+
 
 interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
@@ -509,3 +510,5 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
         </div>
     );
 }
+
+    
