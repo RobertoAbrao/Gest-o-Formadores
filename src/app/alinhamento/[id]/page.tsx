@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { Loader2, ClipboardCheck, CheckCircle2, ShieldOff, PlusCircle, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -42,14 +42,14 @@ const alinhamentoSchema = z.object({
     z.coerce.number({
         required_error: "A quantidade de alunos é obrigatória.",
         invalid_type_error: "Deve ser um número.",
-    }).positive("A quantidade de alunos deve ser maior que zero.")
+    }).positive("A quantidade de alunos deve ser maior que zero.").optional()
   ),
   qtdProfessores: z.preprocess(
     (val) => (String(val || '').trim() === '' ? undefined : val),
     z.coerce.number({
         required_error: "A quantidade de professores é obrigatória.",
         invalid_type_error: "Deve ser um número.",
-    }).positive("A quantidade de professores deve ser maior que zero.")
+    }).positive("A quantidade de professores deve ser maior que zero.").optional()
   ),
   motivosAdocao: z.string().min(10, 'Descreva os motivos com mais detalhes.'),
   expectativas: z.string().min(10, 'Descreva as expectativas com mais detalhes.'),
@@ -59,6 +59,31 @@ const alinhamentoSchema = z.object({
 });
 
 type AlinhamentoFormValues = z.infer<typeof alinhamentoSchema>;
+
+// Helper components defined outside the main component to prevent re-creation on re-renders
+const FormRow = ({ control, name, label }: { control: Control<AlinhamentoFormValues>, name: keyof AlinhamentoFormValues, label: string }) => (
+    <FormField control={control} name={name} render={({ field }) => (
+        <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <FormControl>
+                <Textarea {...field} value={field.value as string ?? ''} />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    )}/>
+);
+  
+const NumberRow = ({ control, name, label }: { control: Control<AlinhamentoFormValues>, name: keyof AlinhamentoFormValues, label: string }) => (
+    <FormField control={control} name={name} render={({ field }) => (
+        <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <FormControl>
+                <Input type="number" {...field} value={field.value as number ?? ''} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+            </FormControl>
+            <FormMessage />
+        </FormItem>
+    )}/>
+);
 
 
 export default function AlinhamentoPage() {
@@ -189,18 +214,6 @@ export default function AlinhamentoPage() {
   if (!projeto) {
       return null;
   }
-  
-  const FormRow = ({ name, label }: { name: any, label: string }) => (
-    <FormField control={form.control} name={name} render={({ field }) => (
-        <FormItem><FormLabel>{label}</FormLabel><FormControl><Textarea {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-    )}/>
-  );
-  
-  const NumberRow = ({ name, label }: { name: any, label: string }) => (
-    <FormField control={form.control} name={name} render={({ field }) => (
-        <FormItem><FormLabel>{label}</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-    )}/>
-  );
 
   return (
     <div className="flex flex-col gap-4 py-6 h-full items-center bg-muted">
@@ -265,23 +278,23 @@ export default function AlinhamentoPage() {
                              <div className="space-y-4 p-4 border rounded-lg">
                                 <h3 className='font-semibold text-lg'>Detalhes do Projeto</h3>
                                 <Separator />
-                                <FormRow name="formatoAdocao" label="Como o município pretende adotar o projeto (contraturno, uma vez na semana, etc.)?" />
-                                <FormRow name="duracaoProjeto" label="Qual será a duração do projeto (2 meses, 1 ano, etc.)?" />
-                                <FormRow name="etapasUtilizarao" label="Que anos/etapas utilizarão o material?" />
+                                <FormRow control={form.control} name="formatoAdocao" label="Como o município pretende adotar o projeto (contraturno, uma vez na semana, etc.)?" />
+                                <FormRow control={form.control} name="duracaoProjeto" label="Qual será a duração do projeto (2 meses, 1 ano, etc.)?" />
+                                <FormRow control={form.control} name="etapasUtilizarao" label="Que anos/etapas utilizarão o material?" />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <NumberRow name="qtdAlunos" label="Quantos alunos que participarão do projeto?" />
-                                  <NumberRow name="qtdProfessores" label="Quantos professores participarão do projeto?" />
+                                  <NumberRow control={form.control} name="qtdAlunos" label="Quantos alunos que participarão do projeto?" />
+                                  <NumberRow control={form.control} name="qtdProfessores" label="Quantos professores participarão do projeto?" />
                                 </div>
                             </div>
                             
                             <div className="space-y-4 p-4 border rounded-lg">
                                 <h3 className='font-semibold text-lg'>Contexto e Expectativas</h3>
                                 <Separator />
-                                <FormRow name="motivosAdocao" label="Qual(is) os principais motivos para a adoção do material?" />
-                                <FormRow name="expectativas" label="Qual(is) as expectativas do município em relação ao projeto?" />
-                                <FormRow name="ideb" label="Qual o Ideb do município?" />
-                                <FormRow name="doresMunicipio" label="Qual(is) as principais dores do município?" />
-                                <FormRow name="sugestoesFormacao" label="O que deve conter na formação que possa atender as dificuldades apontadas?" />
+                                <FormRow control={form.control} name="motivosAdocao" label="Qual(is) os principais motivos para a adoção do material?" />
+                                <FormRow control={form.control} name="expectativas" label="Qual(is) as expectativas do município em relação ao projeto?" />
+                                <FormRow control={form.control} name="ideb" label="Qual o Ideb do município?" />
+                                <FormRow control={form.control} name="doresMunicipio" label="Qual(is) as principais dores do município?" />
+                                <FormRow control={form.control} name="sugestoesFormacao" label="O que deve conter na formação que possa atender as dificuldades apontadas?" />
                             </div>
 
                             <Button type="submit" disabled={form.formState.isSubmitting}>
