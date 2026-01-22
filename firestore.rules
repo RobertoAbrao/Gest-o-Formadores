@@ -96,7 +96,7 @@ service cloud.firestore {
     }
     
     match /calendario_eventos/{eventId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if isUserAdmin(request.auth.uid);
     }
   }

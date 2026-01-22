@@ -14,12 +14,12 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval, startOfDay } from 'date-fns';
-import { Loader2, Printer, Copy } from 'lucide-react';
+import { Loader2, Printer, Copy, RefreshCw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp } from 'firebase/firestore';
-import type { ProjetoImplatancao } from '@/lib/types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc } from 'firebase/firestore';
+import type { ProjetoImplatancao, AlinhamentoTecnico } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 type EventType = 
@@ -78,6 +78,7 @@ export default function CalendarioPage() {
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('geral');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [alinhamento, setAlinhamento] = useState<AlinhamentoTecnico | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -113,9 +114,23 @@ export default function CalendarioPage() {
     } else {
         q = query(collection(db, "calendario_eventos"), where("projectId", "==", selectedProjectId));
     }
-    const querySnapshot = await getDocs(q);
+    
+    const [querySnapshot, alinhamentoSnap] = await Promise.all([
+      getDocs(q),
+      selectedProjectId !== 'todos' && selectedProjectId !== 'geral'
+        ? getDoc(doc(db, 'alinhamentos', selectedProjectId))
+        : Promise.resolve(null),
+    ]);
+
     const eventsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
     setEvents(eventsData);
+
+    if (alinhamentoSnap && alinhamentoSnap.exists()) {
+        setAlinhamento(alinhamentoSnap.data() as AlinhamentoTecnico);
+    } else {
+        setAlinhamento(null);
+    }
+    
     setLoading(false);
   }, [selectedProjectId]);
 
@@ -195,6 +210,71 @@ export default function CalendarioPage() {
     await fetchEvents();
     setIsModalOpen(false);
     setEditingRange(undefined);
+  };
+
+  const handleSyncDates = async () => {
+    if (!alinhamento?.cronograma || !selectedProjectId) {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Nenhum dado de alinhamento para sincronizar.' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const projetoRef = doc(db, 'projetos', selectedProjectId);
+      const updateData: { [key: string]: any } = {};
+
+      for (const item of alinhamento.cronograma) {
+        if (item.status !== 'Aprovado' || !item.novaData) continue;
+
+        const dates = item.novaData.split(' a ').map(dateStr => {
+          const [day, month, year] = dateStr.trim().split('/');
+          return Timestamp.fromDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+        });
+
+        const startDate = dates[0];
+        const endDate = dates.length > 1 ? dates[1] : startDate;
+
+        if (item.evento.includes('Migração de Dados')) {
+          updateData.dataMigracao = startDate;
+        } else if (item.evento.includes('Implantação')) {
+          updateData.dataImplantacao = startDate;
+        } else if (item.evento.includes('Avaliação Diagnóstica')) {
+          updateData['diagnostica.data'] = startDate;
+        } else if (item.evento.includes('Simulado')) {
+          const match = item.evento.match(/Simulado (\d)/);
+          if (match) {
+            const num = match[1];
+            updateData[`simulados.s${num}.dataInicio`] = startDate;
+            updateData[`simulados.s${num}.dataFim`] = endDate;
+          }
+        } else if (item.evento.includes('Devolutiva')) {
+          const match = item.evento.match(/Devolutiva (\d)/);
+          if (match) {
+            const num = match[1];
+            if (num === '4') { // Devolutiva 4 has only one date field
+              updateData[`devolutivas.d4.data`] = startDate;
+            } else {
+              updateData[`devolutivas.d${num}.dataInicio`] = startDate;
+              updateData[`devolutivas.d${num}.dataFim`] = endDate;
+            }
+          }
+        }
+      }
+      
+      if(Object.keys(updateData).length > 0) {
+        await updateDoc(projetoRef, updateData);
+        toast({ title: 'Sucesso!', description: 'As datas do projeto foram sincronizadas com sucesso.' });
+        fetchProjetos(); // Re-fetch all project data to be up-to-date
+      } else {
+         toast({ title: 'Nenhuma Ação', description: 'Não há datas aprovadas para sincronizar.' });
+      }
+
+    } catch (error) {
+      console.error("Date sync error:", error);
+      toast({ variant: 'destructive', title: 'Erro de Sincronização', description: 'Não foi possível atualizar as datas do projeto.' });
+    } finally {
+      setLoading(false);
+    }
   };
   
   const handleModalOpenChange = (open: boolean) => {
@@ -435,11 +515,17 @@ export default function CalendarioPage() {
                     disabled={loading || selectedProjectId === 'geral' || selectedProjectId === 'todos'}
                 >
                     <Copy className="mr-2 h-4 w-4" />
-                    Copiar Link do Alinhamento
+                    Copiar Link
                 </Button>
+                {alinhamento && (
+                   <Button onClick={handleSyncDates} variant="outline" disabled={loading}>
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Sincronizar Datas
+                    </Button>
+                )}
                 <Button onClick={() => window.print()} variant="outline" disabled={loading || cronogramaData.length === 0}>
                     <Printer className="mr-2 h-4 w-4" />
-                    Imprimir Cronograma
+                    Imprimir
                 </Button>
               </div>
             </div>
@@ -484,18 +570,21 @@ export default function CalendarioPage() {
                                         <TableHead className="w-[300px]">Evento</TableHead>
                                         <TableHead>Data Sugerida (Editora)</TableHead>
                                         <TableHead>Nova Data (Município)</TableHead>
-                                        <TableHead>Status (Aprovado/Pendente)</TableHead>
+                                        <TableHead>Status</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {cronogramaData.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.evento}</TableCell>
-                                            <TableCell>{item.dataSugerida}</TableCell>
-                                            <TableCell></TableCell>
-                                            <TableCell></TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {cronogramaData.map((item, index) => {
+                                        const alinhamentoItem = alinhamento?.cronograma?.find(c => c.evento === item.evento);
+                                        return (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{item.evento}</TableCell>
+                                                <TableCell>{item.dataSugerida}</TableCell>
+                                                <TableCell>{alinhamentoItem?.novaData || '-'}</TableCell>
+                                                <TableCell>{alinhamentoItem?.status || '-'}</TableCell>
+                                            </TableRow>
+                                        )
+                                    })}
                                 </TableBody>
                             </Table>
                         }
@@ -551,18 +640,21 @@ export default function CalendarioPage() {
                   <TableHead className="w-[300px] font-bold">Evento</TableHead>
                   <TableHead className="font-bold">Data Sugerida (Editora)</TableHead>
                   <TableHead className="font-bold">Nova Data (Município)</TableHead>
-                  <TableHead className="font-bold">Status (Aprovado/Pendente)</TableHead>
+                  <TableHead className="font-bold">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cronogramaData.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">{item.evento}</TableCell>
-                    <TableCell>{item.dataSugerida}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                ))}
+                {cronogramaData.map((item, index) => {
+                     const alinhamentoItem = alinhamento?.cronograma?.find(c => c.evento === item.evento);
+                     return (
+                        <TableRow key={index}>
+                            <TableCell className="font-medium">{item.evento}</TableCell>
+                            <TableCell>{item.dataSugerida}</TableCell>
+                            <TableCell>{alinhamentoItem?.novaData || ''}</TableCell>
+                            <TableCell>{alinhamentoItem?.status || ''}</TableCell>
+                        </TableRow>
+                    )
+                })}
               </TableBody>
             </Table>
             <footer className="pt-24">

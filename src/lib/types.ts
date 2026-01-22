@@ -328,6 +328,14 @@ export interface ResponsavelProjeto {
   funcao: string;
 }
 
+export interface CronogramaAlinhamentoItem {
+  evento: string;
+  dataSugerida: string;
+  novaData?: string;
+  status?: string;
+}
+
+
 export interface AlinhamentoTecnico {
   id: string; // Will be the same as the projetoId
   projetoId: string;
@@ -346,4 +354,5 @@ export interface AlinhamentoTecnico {
   doresMunicipio: string;
   sugestoesFormacao: string;
   dataEnvio: Timestamp;
+  cronograma?: CronogramaAlinhamentoItem[];
 }

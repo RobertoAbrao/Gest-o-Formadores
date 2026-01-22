@@ -3,7 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { addDoc, Timestamp, collection, doc, getDoc, setDoc } from 'firebase/firestore';
+import { addDoc, Timestamp, collection, doc, getDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, ClipboardCheck, CheckCircle2, ShieldOff, PlusCircle, Trash2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,18 +17,37 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
-import type { ProjetoImplatancao } from '@/lib/types';
+import type { ProjetoImplatancao, CronogramaAlinhamentoItem } from '@/lib/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface CalendarEvent {
+    id: string;
+    projectId: string;
+    projectName?: string;
+    type: string;
+    tooltip: string;
+    startDate: Timestamp;
+    endDate: Timestamp;
+}
 
 const responsavelSchema = z.object({
   nome: z.string().min(3, 'O nome é obrigatório.'),
   funcao: z.string().min(3, 'A função é obrigatória.'),
 });
+
+const cronogramaItemSchema = z.object({
+  evento: z.string(),
+  dataSugerida: z.string(),
+  novaData: z.string().optional(),
+  status: z.string().optional(),
+});
+
 
 const alinhamentoSchema = z.object({
   dataReuniao: z.date({ required_error: 'A data da reunião é obrigatória.' }),
@@ -56,6 +75,7 @@ const alinhamentoSchema = z.object({
   ideb: z.string().min(1, 'O IDEB é obrigatório.'),
   doresMunicipio: z.string().min(10, 'Descreva as dores com mais detalhes.'),
   sugestoesFormacao: z.string().min(10, 'Descreva as sugestões com mais detalhes.'),
+  cronograma: z.array(cronogramaItemSchema).optional(),
 });
 
 type AlinhamentoFormValues = z.infer<typeof alinhamentoSchema>;
@@ -94,6 +114,7 @@ export default function AlinhamentoPage() {
   const [projeto, setProjeto] = useState<ProjetoImplatancao | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [cronogramaItems, setCronogramaItems] = useState<CronogramaAlinhamentoItem[]>([]);
   
   const form = useForm<AlinhamentoFormValues>({
     resolver: zodResolver(alinhamentoSchema),
@@ -112,12 +133,18 @@ export default function AlinhamentoPage() {
       ideb: '',
       doresMunicipio: '',
       sugestoesFormacao: '',
+      cronograma: [],
     }
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "responsaveis"
+  });
+
+  const { fields: cronogramaFields } = useFieldArray({
+    control: form.control,
+    name: "cronograma",
   });
 
 
@@ -136,19 +163,50 @@ export default function AlinhamentoPage() {
         const projetoData = { id: projetoSnap.id, ...projetoSnap.data() } as ProjetoImplatancao;
         setProjeto(projetoData);
 
+        const eventsQuery = query(collection(db, "calendario_eventos"), where("projectId", "==", projetoId));
+        const eventsSnapshot = await getDocs(eventsQuery);
+        const eventsData = eventsSnapshot.docs.map(doc => doc.data() as CalendarEvent);
+
+        const cronogramaData = eventsData.map(event => {
+            let dataSugerida: string;
+            const startDate = event.startDate.toDate();
+            const endDate = event.endDate.toDate();
+            if (startDate.getTime() === endDate.getTime()) {
+                dataSugerida = format(startDate, 'dd/MM/yyyy');
+            } else {
+                dataSugerida = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
+            }
+            return { evento: event.tooltip, dataSugerida };
+        }).sort((a,b) => {
+            const aDateMatch = a.dataSugerida.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            const bDateMatch = b.dataSugerida.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (!aDateMatch) return 1;
+            if (!bDateMatch) return -1;
+            const aDate = new Date(`${aDateMatch[3]}-${aDateMatch[2]}-${aDateMatch[1]}`);
+            const bDate = new Date(`${bDateMatch[3]}-${bDateMatch[2]}-${bDateMatch[1]}`);
+            return aDate.getTime() - bDate.getTime();
+        });
+
+        setCronogramaItems(cronogramaData);
+
+         form.reset({
+            ...form.getValues(),
+            cronograma: cronogramaData.map(item => ({ ...item, novaData: '', status: 'Pendente' }))
+        });
+
     } catch (error: any) {
       console.error('Erro ao buscar dados do projeto:', error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
-  }, [projetoId]);
+  }, [projetoId, form]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const onInvalid = (errors: any) => {
+  const onInvalid = () => {
     toast({
         variant: 'destructive',
         title: "Erro de Validação",
@@ -158,7 +216,6 @@ export default function AlinhamentoPage() {
 
   const onSubmit = async (data: AlinhamentoFormValues) => {
     try {
-      // Usar o ID do projeto como ID do documento de alinhamento para criar um link 1-para-1
       const alinhamentoRef = doc(db, 'alinhamentos', projetoId);
       
       await setDoc(alinhamentoRef, {
@@ -295,6 +352,50 @@ export default function AlinhamentoPage() {
                                 <FormRow control={form.control} name="ideb" label="Qual o Ideb do município?" />
                                 <FormRow control={form.control} name="doresMunicipio" label="Qual(is) as principais dores do município?" />
                                 <FormRow control={form.control} name="sugestoesFormacao" label="O que deve conter na formação que possa atender as dificuldades apontadas?" />
+                            </div>
+
+                            <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>Cronograma de Ações</h3>
+                                <div className='overflow-x-auto'>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Evento</TableHead>
+                                                <TableHead>Data Sugerida (Editora)</TableHead>
+                                                <TableHead className="w-[200px]">Nova Data (Município)</TableHead>
+                                                <TableHead className="w-[180px]">Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {cronogramaFields.map((field, index) => (
+                                                <TableRow key={field.id}>
+                                                    <TableCell className="font-medium">{field.evento}</TableCell>
+                                                    <TableCell>{field.dataSugerida}</TableCell>
+                                                    <TableCell>
+                                                        <FormField control={form.control} name={`cronograma.${index}.novaData`} render={({ field }) => (
+                                                            <FormItem><FormControl><Input placeholder='Ex: 20/10/2025' {...field} /></FormControl><FormMessage /></FormItem>
+                                                        )}/>
+                                                    </TableCell>
+                                                     <TableCell>
+                                                        <FormField control={form.control} name={`cronograma.${index}.status`} render={({ field }) => (
+                                                            <FormItem>
+                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Aprovado">Aprovado</SelectItem>
+                                                                        <SelectItem value="Pendente">Pendente</SelectItem>
+                                                                        <SelectItem value="Reprovado">Reprovado</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}/>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
 
                             <Button type="submit" disabled={form.formState.isSubmitting}>
