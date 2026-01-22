@@ -47,9 +47,11 @@ service cloud.firestore {
         allow update, delete: if request.auth != null && (isUserAdmin(request.auth.uid) || request.auth.uid == resource.data.formadorId);
     }
 
-    // Projects collection: only admins can manage
+    // Projects collection: anyone can get a single project for the alignment form,
+    // but only admins can list or write.
     match /projetos/{projetoId} {
-        allow read, write: if isUserAdmin(request.auth.uid);
+        allow get: if true;
+        allow list, write: if isUserAdmin(request.auth.uid);
     }
     
     // Evaluations collection (participants): anyone can create, only admins can read
