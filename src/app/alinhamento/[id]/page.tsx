@@ -38,12 +38,18 @@ const alinhamentoSchema = z.object({
   duracaoProjeto: z.string().min(3, 'Este campo é obrigatório.'),
   etapasUtilizarao: z.string().min(3, 'Este campo é obrigatório.'),
   qtdAlunos: z.preprocess(
-    (a) => parseInt(z.string().parse(a || '0'), 10),
-    z.number().positive('A quantidade deve ser maior que zero.')
+    (val) => (String(val || '').trim() === '' ? undefined : val),
+    z.coerce.number({
+        required_error: "A quantidade de alunos é obrigatória.",
+        invalid_type_error: "Deve ser um número.",
+    }).positive("A quantidade de alunos deve ser maior que zero.")
   ),
   qtdProfessores: z.preprocess(
-    (a) => parseInt(z.string().parse(a || '0'), 10),
-    z.number().positive('A quantidade deve ser maior que zero.')
+    (val) => (String(val || '').trim() === '' ? undefined : val),
+    z.coerce.number({
+        required_error: "A quantidade de professores é obrigatória.",
+        invalid_type_error: "Deve ser um número.",
+    }).positive("A quantidade de professores deve ser maior que zero.")
   ),
   motivosAdocao: z.string().min(10, 'Descreva os motivos com mais detalhes.'),
   expectativas: z.string().min(10, 'Descreva as expectativas com mais detalhes.'),
@@ -118,7 +124,6 @@ export default function AlinhamentoPage() {
   }, [fetchData]);
 
   const onInvalid = (errors: any) => {
-    console.error(errors);
     toast({
         variant: 'destructive',
         title: "Erro de Validação",
@@ -291,4 +296,3 @@ export default function AlinhamentoPage() {
     </div>
   );
 }
-
