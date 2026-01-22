@@ -614,6 +614,7 @@ export default function CalendarioPage() {
                         classNames={{
                           day: cn("h-8 w-8 rounded-full", isViewOnly && "cursor-not-allowed"),
                           head_cell: "w-8",
+                          cell: "h-8 w-8",
                           day_today: "",
                         }}
                         locale={ptBR}
