@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo } from '@/lib/types';
+import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico } from '@/lib/types';
 import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteField, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
@@ -18,9 +19,18 @@ interface DetalhesProjetoProps {
   projeto: ProjetoImplatancao;
 }
 
-const formatDate = (timestamp: Timestamp | null | undefined): string => {
+const formatDate = (timestamp: Timestamp | null | undefined, includeTime = false): string => {
     if (!timestamp) return 'N/A';
-    return timestamp.toDate().toLocaleDateString('pt-BR');
+    const options: Intl.DateTimeFormatOptions = {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    };
+    if (includeTime) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
+    }
+    return timestamp.toDate().toLocaleDateString('pt-BR', options);
 };
 
 const StatusIcon = ({ ok }: { ok?: boolean }) => {
@@ -71,7 +81,7 @@ const DevolutivaCard = ({
                                 <ImageIcon className="h-3 w-3" />
                                 <span className="truncate">{anexo.nome}</span>
                             </a>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDeleteAnexo(anexo.id)}>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDeleteAnexo(anexo.id!)}>
                                 <Trash2 className="h-3 w-3" />
                             </Button>
                         </div>
@@ -97,6 +107,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
     const [formadores, setFormadores] = useState<Formador[]>([]);
     const [formacoes, setFormacoes] = useState<Map<string, Formacao>>(new Map());
     const [anexos, setAnexos] = useState<Anexo[]>([]);
+    const [alinhamento, setAlinhamento] = useState<AlinhamentoTecnico | null>(null);
     const [loading, setLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const { toast } = useToast();
@@ -130,24 +141,31 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
             const qAnexos = query(collection(db, 'anexos'), where('projetoId', '==', projeto.id));
             fetchPromises.push(getDocs(qAnexos));
             
-            const [formadoresSnap, formacoesSnap, anexosSnap] = await Promise.all(fetchPromises);
+            // Fetch Alinhamento
+            const qAlinhamento = doc(db, 'alinhamentos', projeto.id);
+            fetchPromises.push(getDoc(qAlinhamento));
+
+            const [formadoresSnap, formacoesSnap, anexosSnap, alinhamentoSnap] = await Promise.all(fetchPromises);
 
             if (formadoresSnap) {
-                 setFormadores(formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador)));
+                 setFormadores(formadoresSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Formador)));
             }
 
             if (formacoesSnap) {
                 const formacoesMap = new Map<string, Formacao>();
-                formacoesSnap.docs.forEach(doc => {
+                formacoesSnap.docs.forEach((doc: any) => {
                     formacoesMap.set(doc.id, { id: doc.id, ...doc.data() } as Formacao);
                 });
                 setFormacoes(formacoesMap);
             }
             
             if (anexosSnap) {
-                setAnexos(anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo)));
+                setAnexos(anexosSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Anexo)));
             }
             
+            if (alinhamentoSnap && alinhamentoSnap.exists()) {
+                setAlinhamento(alinhamentoSnap.data() as AlinhamentoTecnico);
+            }
 
         } catch (error) {
             console.error("Failed to fetch project details:", error);
@@ -205,6 +223,9 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
         return anexos.filter(a => a.etapa === etapa);
     };
 
+    const AlinhamentoField = ({ label, value }: { label: string, value?: string | number }) => (
+        value ? <p><strong>{label}:</strong> {value}</p> : null
+    );
 
     if (loading) {
         return (
@@ -255,6 +276,63 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                 </CardContent>
             </Card>
 
+            {alinhamento && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                            Alinhamento Técnico
+                        </CardTitle>
+                        <CardDescription>
+                            Respostas do formulário de alinhamento enviado em {formatDate(alinhamento.dataEnvio, true)}.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                        <div>
+                            <h4 className="font-semibold mb-2">Dados da Reunião</h4>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <AlinhamentoField label="Data" value={formatDate(alinhamento.dataReuniao)} />
+                                <AlinhamentoField label="Horário" value={alinhamento.horarioReuniao} />
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-2">Responsáveis</h4>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nome</TableHead>
+                                        <TableHead>Função</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {alinhamento.responsaveis.map((resp, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{resp.nome}</TableCell>
+                                            <TableCell>{resp.funcao}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-2">Detalhes e Contexto</h4>
+                             <div className="space-y-2">
+                                <AlinhamentoField label="Formato de Adoção" value={alinhamento.formatoAdocao} />
+                                <AlinhamentoField label="Duração do Projeto" value={alinhamento.duracaoProjeto} />
+                                <AlinhamentoField label="Etapas" value={alinhamento.etapasUtilizarao} />
+                                <AlinhamentoField label="Qtd. Alunos" value={alinhamento.qtdAlunos} />
+                                <AlinhamentoField label="Qtd. Professores" value={alinhamento.qtdProfessores} />
+                                <AlinhamentoField label="IDEB" value={alinhamento.ideb} />
+                                <AlinhamentoField label="Motivos da Adoção" value={alinhamento.motivosAdocao} />
+                                <AlinhamentoField label="Expectativas" value={alinhamento.expectativas} />
+                                <AlinhamentoField label="Dores do Município" value={alinhamento.doresMunicipio} />
+                                <AlinhamentoField label="Sugestões para Formação" value={alinhamento.sugestoesFormacao} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -284,7 +362,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                     <ImageIcon className="h-3 w-3" />
                                     <span className="truncate">{anexo.nome}</span>
                                 </a>
-                                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id)} disabled={isDeleting === anexo.id}>
+                                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                     {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                                 </Button>
                             </div>
@@ -370,7 +448,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                 <ImageIcon className="h-3 w-3" />
                                 <span className="truncate">{anexo.nome}</span>
                             </a>
-                             <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id)} disabled={isDeleting === anexo.id}>
+                             <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                 {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                             </Button>
                         </div>
@@ -393,7 +471,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                             <ImageIcon className="h-3 w-3" />
                                             <span className="truncate">{anexo.nome}</span>
                                         </a>
-                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id)} disabled={isDeleting === anexo.id}>
+                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                             {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                                         </Button>
                                     </div>
@@ -431,5 +509,3 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
         </div>
     );
 }
-
-    
