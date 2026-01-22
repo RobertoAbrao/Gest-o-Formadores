@@ -98,7 +98,7 @@ const NumberRow = ({ control, name, label }: { control: Control<AlinhamentoFormV
         <FormItem>
             <FormLabel>{label}</FormLabel>
             <FormControl>
-                <Input type="number" {...field} value={field.value as number ?? ''} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                <Input type="number" {...field} value={field.value === undefined ? '' : field.value} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
             </FormControl>
             <FormMessage />
         </FormItem>
@@ -206,7 +206,7 @@ export default function AlinhamentoPage() {
     fetchData();
   }, [fetchData]);
 
-  const onInvalid = () => {
+  const onInvalid = (errors: any) => {
     toast({
         variant: 'destructive',
         title: "Erro de Validação",
@@ -300,14 +300,14 @@ export default function AlinhamentoPage() {
                                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                             </Button>
                                             </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
                                             </PopoverContent></Popover><FormMessage />
                                         </FormItem>
                                     )}/>
                                     <FormField control={form.control} name="horarioReuniao" render={({ field }) => (
-                                        <FormItem><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem className="flex flex-col"><FormLabel>Horário</FormLabel><FormControl><Input type="time" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
-                                    <FormItem><FormLabel>Município</FormLabel><FormControl><Input value={projeto.municipio} disabled /></FormControl></FormItem>
+                                    <FormItem className="flex flex-col"><FormLabel>Município</FormLabel><FormControl><Input value={projeto.municipio} disabled /></FormControl></FormItem>
                                 </div>
                                 <div>
                                     <FormLabel>Responsáveis pelo projeto</FormLabel>
@@ -373,7 +373,7 @@ export default function AlinhamentoPage() {
                                                     <TableCell>{field.dataSugerida}</TableCell>
                                                     <TableCell>
                                                         <FormField control={form.control} name={`cronograma.${index}.novaData`} render={({ field }) => (
-                                                            <FormItem><FormControl><Input placeholder='Ex: 20/10/2025' {...field} /></FormControl><FormMessage /></FormItem>
+                                                            <FormItem><FormControl><Input placeholder='Ex: 20/10/2025' {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                                         )}/>
                                                     </TableCell>
                                                      <TableCell>
