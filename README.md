@@ -1,4 +1,4 @@
-# Portal de Apoio Pedagógico - Gestão de Formadores
+# Portal de Apoio Pedagógico - Gestão Pedagógica
 
 Este é um projeto Next.js que serve como um portal de apoio pedagógico, projetado para gerenciar formadores, formações, materiais de apoio, despesas e avaliações. O sistema possui dois perfis de usuário principais: Administrador e Formador, cada um com seu próprio conjunto de permissões e funcionalidades.
 

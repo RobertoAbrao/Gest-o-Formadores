@@ -312,7 +312,7 @@ export function RelatorioFormacaoPrint({ formacao, formadores, anexos, despesas,
       </main>
 
       <footer className="text-center text-xs text-gray-400 pt-8 mt-8 border-t">
-        Gestão Formadores - Portal de Apoio Pedagógico
+        Gestão Pedagógica - Portal de Apoio Pedagógico
       </footer>
     </div>
   );

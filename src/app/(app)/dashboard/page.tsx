@@ -327,7 +327,7 @@ export default function DashboardPage() {
         (formacao: Formacao) => `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}`
     );
   
-    body += "Atenciosamente,\nPortal de Gestão de Formadores";
+    body += "Atenciosamente,\nPortal de Gestão Pedagógica";
     return body;
   };
   

@@ -20,7 +20,7 @@ export default function AppLogo({ className, iconClassName, textClassName }: App
         className={cn("h-8 w-8", iconClassName)}
       />
       <h1 className={cn('text-2xl font-bold text-primary font-headline', textClassName)}>
-        Gestão de Formadores
+        Gestão Pedagógica
       </h1>
     </div>
   );
