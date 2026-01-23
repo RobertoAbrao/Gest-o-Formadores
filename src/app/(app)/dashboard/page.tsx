@@ -422,14 +422,14 @@ export default function DashboardPage() {
                     Agenda de Eventos
                 </CardTitle>
                 <div className='flex items-center gap-2'>
-                    <Button size="sm" asChild className="bg-warning text-warning-foreground hover:bg-warning/90">
+                    <Button size="sm" asChild>
                         <Link href={`/agenda-relatorio/${reportYear}/${reportMonth}`} target='_blank'>
                             <Printer className='mr-2 h-4 w-4' /> Imprimir Mês
                         </Link>
                     </Button>
                     <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button size="sm" className="bg-warning text-warning-foreground hover:bg-warning/90">
+                            <Button size="sm">
                                 <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
                             </Button>
                         </DialogTrigger>
