@@ -73,4 +73,4 @@ A estrutura de pastas segue as convenções do Next.js App Router:
 - `src/app/avaliacao/[id]`: Página pública do formulário de avaliação.
 - `src/components`: Componentes React reutilizáveis, incluindo componentes da UI (shadcn/ui), formulários e componentes de layout.
 - `src/hooks`: Hooks customizados, como `useAuth` para o gerenciamento de autenticação.
-- `src/lib`: Funções utilitárias, configuração do Firebase (`firebase.ts`) e definições de tipos TypeScript (`types.ts`).
+- `src/lib`: Funções utilitárias, configuração do Firebase (`firebase.ts`) e definições de tipos TypeScript (`types.ts`). 
