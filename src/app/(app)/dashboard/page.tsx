@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail } from 'lucide-react';
+import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
-import type { Formacao, ProjetoImplatancao, Lembrete, FormadorStatus } from '@/lib/types';
+import type { Formacao, ProjetoImplatancao, Lembrete, FormadorStatus, Demanda } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -84,15 +84,17 @@ export default function DashboardPage() {
       const formacoesCol = collection(db, 'formacoes');
       const projetosCol = collection(db, 'projetos');
       const lembretesCol = collection(db, 'lembretes');
+      const demandasCol = collection(db, 'demandas');
 
       const activeFormacoesQuery = query(formacoesCol, where('status', '!=', 'arquivado'));
       
-      const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot, lembretesSnapshot] = await Promise.all([
+      const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot, lembretesSnapshot, demandasSnapshot] = await Promise.all([
         getCountFromServer(formadoresCol),
         getCountFromServer(materiaisCol),
         getDocs(activeFormacoesQuery),
         getDocs(projetosCol),
-        getDocs(query(lembretesCol, where('concluido', '==', false)))
+        getDocs(query(lembretesCol, where('concluido', '==', false))),
+        getDocs(query(demandasCol, where('status', '!=', 'Concluída'))),
       ]);
       
       setStats([
@@ -177,6 +179,21 @@ export default function DashboardPage() {
             concluido: lembrete.concluido
           });
       })
+
+      const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
+      demandasData.forEach(demanda => {
+        if (demanda.prazo) {
+          allEvents.push({
+            date: demanda.prazo.toDate(),
+            type: 'lembrete',
+            title: `Prazo: ${demanda.demanda}`,
+            details: `Diário de Bordo - ${demanda.municipio}`,
+            relatedId: demanda.id,
+            concluido: false, // Since we query for non-completed ones
+          });
+        }
+      });
+
 
       setEvents(allEvents);
       
@@ -486,7 +503,7 @@ export default function DashboardPage() {
                                 </div>
                                 <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
                                    <span className='flex items-center gap-1'>
-                                        {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : <Milestone className='h-3 w-3'/>}
+                                        {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? (event.details.includes('Diário de Bordo') ? <ClipboardList className="h-3 w-3" /> : <Bell className='h-3 w-3' />) : <Milestone className='h-3 w-3'/>}
                                         {event.details}
                                    </span>
                                    {event.details === 'Lembrete pessoal' && (

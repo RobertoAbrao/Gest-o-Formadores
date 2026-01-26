@@ -356,3 +356,5 @@ export interface AlinhamentoTecnico {
   dataEnvio: Timestamp;
   cronograma?: CronogramaAlinhamentoItem[];
 }
+
+    
