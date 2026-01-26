@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const lembreteSchema = z.object({
@@ -327,9 +328,9 @@ export default function DashboardPage() {
     };
   
     body += generateSection(
-        "Próximos Eventos (7 dias)",
-        upcoming,
-        (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
+      "Próximos Eventos (7 dias)",
+      upcoming,
+      (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
     );
   
     body += generateSection(
@@ -408,6 +409,24 @@ export default function DashboardPage() {
   const reportYear = date ? date.getFullYear() : new Date().getFullYear();
   const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
+  const EventList = ({ events }: { events: CalendarEvent[] }) => (
+    <div className="space-y-4">
+      {events.map((event) => (
+        <div key={event.relatedId + event.title} className="flex items-start gap-4">
+          <div className="flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16">
+            <div className="text-primary">{formatEventDate(event.date)}</div>
+            <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
+          </div>
+          <div>
+            <p className="font-semibold">{event.title}</p>
+            <p className="text-sm text-muted-foreground">{event.details}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+
   return (
     <div className="flex flex-col gap-8 py-6">
       <div>
@@ -429,192 +448,189 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-       
-      <Card className="border-accent">
-        <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-6">
-          <div className="lg:col-span-2">
-            <div className='flex justify-between items-center gap-2 flex-wrap mb-4'>
-                 <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5" />
-                    Agenda de Eventos
-                </CardTitle>
-                <div className='flex items-center gap-2'>
-                    <Button size="sm" asChild>
-                        <Link href={`/agenda-relatorio/${reportYear}/${reportMonth}`} target='_blank'>
-                            <Printer className='mr-2 h-4 w-4' /> Imprimir Mês
-                        </Link>
-                    </Button>
-                    <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button size="sm">
-                                <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className='sm:max-w-md'>
-                            <DialogHeader>
-                                <DialogTitle>Criar Novo Lembrete</DialogTitle>
-                                <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
-                            </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
-                                    <FormField control={form.control} name="titulo" render={({ field }) => (
-                                        <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="data" render={({ field }) => (
-                                        <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                                            <Popover><PopoverTrigger asChild><FormControl>
-                                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                            </PopoverContent></Popover><FormMessage />
-                                        </FormItem>
-                                    )}/>
-                                    <Button type='submit' disabled={form.formState.isSubmitting}>
-                                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                        Salvar Lembrete
-                                    </Button>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-             <CardDescription>
-                Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'Nenhum dia selecionado'}
-            </CardDescription>
-             {selectedDayEvents.length > 0 ? (
-                <div className="space-y-4 mt-4">
-                    {selectedDayEvents.map((event, index) => (
-                        <div key={index} className="space-y-2">
-                            <div>
-                                <div className="flex justify-between items-start gap-2">
-                                    <h4 className="font-semibold">{event.title}</h4>
-                                    <Badge variant="outline" className={cn(
-                                        event.type === 'formacao' && 'border-primary text-primary',
-                                        event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
-                                        event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
-                                        event.type === 'lembrete' && 'border-chart-3 text-chart-3'
-                                    )}>
-                                        {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
-                                    </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
-                                   <span className='flex items-center gap-1'>
-                                        {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? (event.details.includes('Diário de Bordo') ? <ClipboardList className="h-3 w-3" /> : <Bell className='h-3 w-3' />) : <Milestone className='h-3 w-3'/>}
-                                        {event.details}
-                                   </span>
-                                   {event.details === 'Lembrete pessoal' && (
-                                        <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
-                                            <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
-                                        </Button>
-                                   )}
-                                </p>
-                            </div>
-                            {index < selectedDayEvents.length - 1 && <Separator />}
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                    Nenhum evento para o dia selecionado.
-                </p>
-            )}
-          </div>
-          <div>
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              className="rounded-md border"
-              locale={ptBR}
-              modifiers={modifiers}
-              modifiersStyles={modifiersStyles}
-            />
-            <div className="w-full space-y-2 text-sm p-2 mt-4">
-                  <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles.formacao.backgroundColor, borderColor: modifiersStyles.formacao.color }} />
-                      <span className="text-muted-foreground">Formações</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles['projeto-marco'].backgroundColor, borderColor: modifiersStyles['projeto-marco'].color }}/>
-                      <span className="text-muted-foreground">Marcos de Projeto</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles['projeto-acompanhamento'].backgroundColor, borderColor: modifiersStyles['projeto-acompanhamento'].color }}/>
-                      <span className="text-muted-foreground">Acompanhamentos</span>
-                  </div>
-                   <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full border" style={{ backgroundColor: modifiersStyles.lembrete.backgroundColor, borderColor: modifiersStyles.lembrete.color }}/>
-                      <span className="text-muted-foreground">Lembretes</span>
-                  </div>
-              </div>
-          </div>
-        </CardContent>
-      </Card>
 
-       {followUpActions.length > 0 && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-                            <AlertCircle className="h-5 w-5" /> Ações de Acompanhamento
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <BellRing className="h-5 w-5" />
+                        Central de Ações
+                    </CardTitle>
+                    <CardDescription>
+                        Eventos importantes e pendências que requerem sua atenção.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <Tabs defaultValue="proximos" className="w-full">
+                        <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="proximos">Próximos 7 dias</TabsTrigger>
+                            <TabsTrigger value="ontem">Resumo de Ontem</TabsTrigger>
+                            <TabsTrigger value="acompanhamento">Acompanhamento</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="proximos" className="pt-4">
+                            {upcomingEvents.length > 0 ? <EventList events={upcomingEvents} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento para os próximos 7 dias.</p>}
+                        </TabsContent>
+                        <TabsContent value="ontem" className="pt-4">
+                           {yesterdayEvents.length > 0 ? <EventList events={yesterdayEvents} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento registrado ontem.</p>}
+                        </TabsContent>
+                        <TabsContent value="acompanhamento" className="pt-4">
+                             {followUpActions.length > 0 ? (
+                                 <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Formação</TableHead>
+                                            <TableHead>Relatório</TableHead>
+                                            <TableHead className="text-right">Próxima Ação</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {followUpActions.map((formacao) => (
+                                            <TableRow key={formacao.id}>
+                                                <TableCell>
+                                                    {formacao.status === 'pos-formacao' ? (
+                                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
+                                                    ) : (
+                                                        <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-medium truncate">
+                                                    <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
+                                                        {formacao.titulo}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button variant="link" size="sm" asChild className="h-auto p-0">
+                                                        <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
+                                                    </Button>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {formacao.status === 'pos-formacao' ? (
+                                                        <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
+                                                            {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
+                                                        </Button>
+                                                    ) : (
+                                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
+                                                            {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                             ) : (
+                                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma ação de acompanhamento pendente.</p>
+                             )}
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="lg:col-span-1 space-y-8">
+            <Card>
+                <CardHeader>
+                    <div className='flex justify-between items-center gap-2 flex-wrap'>
+                        <CardTitle className="flex items-center gap-2">
+                            <CalendarIcon className="h-5 w-5" />
+                            Agenda de Eventos
                         </CardTitle>
-                        <CardDescription>
-                            Formações que precisam da sua atenção para a próxima etapa.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Formação</TableHead>
-                                    <TableHead>Relatório</TableHead>
-                                    <TableHead className="text-right">Próxima Ação</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {followUpActions.map((formacao) => (
-                                    <TableRow key={formacao.id}>
-                                        <TableCell>
-                                             {formacao.status === 'pos-formacao' ? (
-                                                <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="font-medium truncate">
-                                            <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
-                                                {formacao.titulo}
+                        <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm">
+                                    <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className='sm:max-w-md'>
+                                <DialogHeader>
+                                    <DialogTitle>Criar Novo Lembrete</DialogTitle>
+                                    <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
+                                </DialogHeader>
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
+                                        <FormField control={form.control} name="titulo" render={({ field }) => (
+                                            <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="data" render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                        <Button type='submit' disabled={form.formState.isSubmitting}>
+                                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                            Salvar Lembrete
+                                        </Button>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={setDate}
+                        className="rounded-md border"
+                        locale={ptBR}
+                        modifiers={modifiers}
+                        modifiersStyles={modifiersStyles}
+                    />
+                    <div className="w-full space-y-2 text-sm p-2 mt-4">
+                        <h4 className="font-semibold mb-2">Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'N/A'}</h4>
+                         {selectedDayEvents.length > 0 ? (
+                            <div className="space-y-4">
+                                {selectedDayEvents.map((event, index) => (
+                                    <div key={index} className="space-y-2">
+                                        <div>
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className="font-semibold">{event.title}</h4>
+                                                <Badge variant="outline" className={cn(
+                                                    event.type === 'formacao' && 'border-primary text-primary',
+                                                    event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
+                                                    event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
+                                                    event.type === 'lembrete' && 'border-chart-3 text-chart-3'
+                                                )}>
+                                                    {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
+                                                </Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
+                                            <span className='flex items-center gap-1'>
+                                                    {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? (event.details.includes('Diário de Bordo') ? <ClipboardList className="h-3 w-3" /> : <Bell className='h-3 w-3' />) : <Milestone className='h-3 w-3'/>}
+                                                    {event.details}
                                             </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button variant="link" size="sm" asChild className="h-auto p-0">
-                                                <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
-                                            </Button>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {formacao.status === 'pos-formacao' ? (
-                                                <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
-                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
-                                                </Button>
-                                            ) : (
-                                                <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
-                                                    {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
-                                                </Button>
+                                            {event.details === 'Lembrete pessoal' && (
+                                                    <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
+                                                        <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+                                                    </Button>
                                             )}
-                                        </TableCell>
-                                    </TableRow>
+                                            </p>
+                                        </div>
+                                        {index < selectedDayEvents.length - 1 && <Separator />}
+                                    </div>
                                 ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            )}
-
-       <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-8">
+                                Nenhum evento para o dia selecionado.
+                            </p>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
+       
+      <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
             <DialogContent className="sm:max-w-2xl">
                 {selectedFormacao && (
                   <>
@@ -638,3 +654,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
