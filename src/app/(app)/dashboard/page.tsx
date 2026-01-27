@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { Users, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
+import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState([
-    { title: 'Formadores Ativos', value: '0', icon: Users, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
+    { title: 'Demandas Pendentes', value: '0', icon: BookOpenCheck, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
     { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
     { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
   ]);
@@ -80,7 +80,6 @@ export default function DashboardPage() {
     if (user?.perfil !== 'administrador') return;
     setLoading(true);
     try {
-      const formadoresCol = collection(db, 'formadores');
       const materiaisCol = collection(db, 'materiais');
       const formacoesCol = collection(db, 'formacoes');
       const projetosCol = collection(db, 'projetos');
@@ -89,8 +88,7 @@ export default function DashboardPage() {
 
       const activeFormacoesQuery = query(formacoesCol, where('status', '!=', 'arquivado'));
       
-      const [formadoresSnapshot, materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot, lembretesSnapshot, demandasSnapshot] = await Promise.all([
-        getCountFromServer(formadoresCol),
+      const [materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot, lembretesSnapshot, demandasSnapshot] = await Promise.all([
         getCountFromServer(materiaisCol),
         getDocs(activeFormacoesQuery),
         getDocs(projetosCol),
@@ -99,7 +97,7 @@ export default function DashboardPage() {
       ]);
       
       setStats([
-        { title: 'Formadores Ativos', value: formadoresSnapshot.data().count.toString(), icon: Users, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
+        { title: 'Demandas Pendentes', value: demandasSnapshot.size.toString(), icon: BookOpenCheck, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
         { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
         { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
       ]);
@@ -654,5 +652,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     
