@@ -30,6 +30,8 @@ import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FormDemanda } from '@/components/diario/form-diario';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const lembreteSchema = z.object({
@@ -58,7 +60,8 @@ export default function DashboardPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [yesterdayEvents, setYesterdayEvents] = useState<CalendarEvent[]>([]);
-  const [followUpActions, setFollowUpActions] = useState<Formacao[]>([]);
+  const [activeFormations, setActiveFormations] = useState<Formacao[]>([]);
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -66,6 +69,8 @@ export default function DashboardPage() {
   const { setNotificationFavicon, clearNotificationFavicon } = useDynamicFavicon();
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
+  const [isDemandaDialogOpen, setIsDemandaDialogOpen] = useState(false);
+  const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
 
 
   const form = useForm<LembreteFormValues>({
@@ -103,14 +108,10 @@ export default function DashboardPage() {
       ]);
         
       const allEvents: CalendarEvent[] = [];
-      const followUps: Formacao[] = [];
-
       const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
-      formacoesData.forEach(formacao => {
-        if (formacao.status === 'pos-formacao' || formacao.status === 'concluido') {
-            followUps.push(formacao);
-        }
+      setActiveFormations(formacoesData);
 
+      formacoesData.forEach(formacao => {
         // Se a formação for uma devolutiva de projeto, não adiciona aqui para evitar duplicidade
         if (formacao.titulo.toLowerCase().includes('devolutiva')) {
             return;
@@ -134,8 +135,6 @@ export default function DashboardPage() {
           })
         }
       });
-
-      setFollowUpActions(followUps);
 
       const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
       projetosData.forEach(projeto => {
@@ -180,6 +179,7 @@ export default function DashboardPage() {
       })
 
       const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
+      setDemandas(demandasData);
       demandasData.forEach(demanda => {
         if (demanda.prazo) {
           allEvents.push({
@@ -225,6 +225,10 @@ export default function DashboardPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const followUpActions = useMemo(() => {
+    return activeFormations.filter(formacao => formacao.status === 'pos-formacao' || formacao.status === 'concluido');
+  }, [activeFormations]);
 
   useEffect(() => {
     const hasPendingActions = upcomingEvents.length > 0 || followUpActions.length > 0 || yesterdayEvents.length > 0;
@@ -312,6 +316,28 @@ export default function DashboardPage() {
       fetchData(); // Re-fetch on close to ensure data is fresh
     }
   }
+
+  const handleDemandaSuccess = () => {
+    fetchData();
+    setIsDemandaDialogOpen(false);
+    setSelectedDemanda(null);
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    if (event.details.includes('Diário de Bordo')) {
+      const demanda = demandas.find(d => d.id === event.relatedId);
+      if (demanda) {
+        setSelectedDemanda(demanda);
+        setIsDemandaDialogOpen(true);
+      }
+    } else if (event.type === 'formacao') {
+      const formacao = activeFormations.find(f => f.id === event.relatedId);
+      if (formacao) {
+        handleOpenDetails(formacao);
+      }
+    }
+  };
+
 
   const generateEmailBody = (upcoming: CalendarEvent[], yesterday: CalendarEvent[], followUps: Formacao[]): string => {
     let body = "Olá equipe,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
@@ -407,10 +433,14 @@ export default function DashboardPage() {
   const reportYear = date ? date.getFullYear() : new Date().getFullYear();
   const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
-  const EventList = ({ events }: { events: CalendarEvent[] }) => (
+  const EventList = ({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (event: CalendarEvent) => void }) => (
     <div className="space-y-4">
       {events.map((event) => (
-        <div key={event.relatedId + event.title} className="flex items-start gap-4">
+        <div
+          key={event.relatedId + event.title}
+          className="flex items-start gap-4 p-2 -m-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+          onClick={() => onEventClick(event)}
+        >
           <div className={cn(
             "flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16",
             isToday(event.date) && "bg-yellow-100 dark:bg-yellow-900/30"
@@ -470,10 +500,10 @@ export default function DashboardPage() {
                             <TabsTrigger value="acompanhamento">Acompanhamento</TabsTrigger>
                         </TabsList>
                         <TabsContent value="proximos" className="pt-4">
-                            {upcomingEvents.length > 0 ? <EventList events={upcomingEvents} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento para os próximos 7 dias.</p>}
+                            {upcomingEvents.length > 0 ? <EventList events={upcomingEvents} onEventClick={handleEventClick} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento para os próximos 7 dias.</p>}
                         </TabsContent>
                         <TabsContent value="ontem" className="pt-4">
-                           {yesterdayEvents.length > 0 ? <EventList events={yesterdayEvents} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento registrado ontem.</p>}
+                           {yesterdayEvents.length > 0 ? <EventList events={yesterdayEvents} onEventClick={handleEventClick} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento registrado ontem.</p>}
                         </TabsContent>
                         <TabsContent value="acompanhamento" className="pt-4">
                              {followUpActions.length > 0 ? (
@@ -650,6 +680,22 @@ export default function DashboardPage() {
                   </>
                 )}
             </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDemandaDialogOpen} onOpenChange={setIsDemandaDialogOpen}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
+              <DialogDescription>
+                  {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className='max-h-[80vh]'>
+              <div className='p-4'>
+                  <FormDemanda demanda={selectedDemanda} onSuccess={handleDemandaSuccess} />
+              </div>
+            </ScrollArea>
+          </DialogContent>
         </Dialog>
 
     </div>
