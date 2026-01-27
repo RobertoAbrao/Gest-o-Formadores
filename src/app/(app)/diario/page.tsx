@@ -250,7 +250,8 @@ export default function DiarioPage() {
 
   const emailHref = useMemo(() => {
     const subject = "Relatório de Demandas - Diário de Bordo";
-    const body = generateDemandsEmailBody(filteredDemandas);
+    const demandasParaEmail = filteredDemandas.filter(d => d.status !== 'Concluída' && !d.validado);
+    const body = generateDemandsEmailBody(demandasParaEmail);
     const recipients = [
         "alessandra@editoralt.com.br",
         "amaranta@editoralt.com.br",
