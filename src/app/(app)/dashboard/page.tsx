@@ -326,9 +326,9 @@ export default function DashboardPage() {
     };
   
     body += generateSection(
-      "Próximos Eventos (7 dias)",
-      upcoming,
-      (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
+        "Próximos Eventos (7 dias)",
+        upcoming,
+        (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
     );
   
     body += generateSection(
@@ -413,9 +413,9 @@ export default function DashboardPage() {
         <div key={event.relatedId + event.title} className="flex items-start gap-4">
           <div className={cn(
             "flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16",
-            isToday(event.date) && "bg-primary/10"
+            isToday(event.date) && "bg-yellow-100 dark:bg-yellow-900/30"
           )}>
-            <div className={cn("text-primary", isToday(event.date) && "font-bold")}>{formatEventDate(event.date)}</div>
+            <div className={cn("text-primary", isToday(event.date) && "font-bold text-yellow-800 dark:text-yellow-300")}>{formatEventDate(event.date)}</div>
             <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
           </div>
           <div>
