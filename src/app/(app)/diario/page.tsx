@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -226,6 +226,47 @@ export default function DiarioPage() {
     }, { pendente: 0, emAndamento: 0, aguardando: 0 });
   }, [demandas]);
   
+  const generateDemandsEmailBody = (demandas: Demanda[]): string => {
+    let body = "Olá equipe,\n\nSegue a lista de demandas do Diário de Bordo, filtrada pela visão atual:\n\n";
+
+    if (demandas.length === 0) {
+        body += "Nenhuma demanda encontrada com os filtros atuais.\n";
+    } else {
+        demandas.forEach(d => {
+            const prazo = d.prazo ? d.prazo.toDate().toLocaleDateString('pt-BR') : 'N/A';
+            body += `Município: ${d.municipio} - ${d.uf}\n`;
+            body += `Demanda: ${d.demanda}\n`;
+            body += `Status: ${d.status}\n`;
+            body += `Prioridade: ${d.prioridade || 'Normal'}\n`;
+            body += `Responsável: ${d.responsavelNome}\n`;
+            body += `Prazo: ${prazo}\n`;
+            body += `--------------------------------------------------\n\n`;
+        });
+    }
+
+    body += "\nAtenciosamente,\nPortal de Gestão Pedagógica";
+    return body;
+  };
+
+  const emailHref = useMemo(() => {
+    const subject = "Relatório de Demandas - Diário de Bordo";
+    const body = generateDemandsEmailBody(filteredDemandas);
+    const recipients = [
+        "alessandra@editoralt.com.br",
+        "amaranta@editoralt.com.br",
+        "assessoria@editoralt.com.br",
+        "irene@editoralt.com.br",
+        "kellem@editoralt.com.br"
+    ];
+    
+    const params = new URLSearchParams({
+        to: recipients.join(','),
+        su: subject,
+        body: body,
+    });
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
+  }, [filteredDemandas]);
 
   if (loading && demandas.length === 0) {
     return (
@@ -242,30 +283,38 @@ export default function DiarioPage() {
           <h1 className="text-3xl font-bold tracking-tight font-headline">Diário de Bordo</h1>
           <p className="text-muted-foreground">Registre e acompanhe as demandas dos municípios.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) setSelectedDemanda(null);
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Nova Demanda
+        <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <a href={emailHref} target="_blank" rel="noopener noreferrer">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Enviar por Email
+              </a>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
-              <DialogDescription>
-                {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className='max-h-[80vh]'>
-              <div className='p-4'>
-                <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setSelectedDemanda(null);
+            }}>
+            <DialogTrigger asChild>
+                <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nova Demanda
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+                <DialogHeader>
+                <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
+                <DialogDescription>
+                    {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
+                </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className='max-h-[80vh]'>
+                <div className='p-4'>
+                    <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
+                </div>
+                </ScrollArea>
+            </DialogContent>
+            </Dialog>
+        </div>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
