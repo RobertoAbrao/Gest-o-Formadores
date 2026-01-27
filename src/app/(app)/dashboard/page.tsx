@@ -186,7 +186,7 @@ export default function DashboardPage() {
             date: demanda.prazo.toDate(),
             type: 'lembrete',
             title: `Prazo: ${demanda.demanda}`,
-            details: `Diário de Bordo - ${demanda.municipio}`,
+            details: `Diário de Bordo - ${demanda.municipio} • Resp: ${demanda.responsavelNome}`,
             relatedId: demanda.id,
             concluido: false, // Since we query for non-completed ones
           });
