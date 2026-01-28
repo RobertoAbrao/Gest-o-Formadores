@@ -70,24 +70,33 @@ const getRowClass = (demanda: Demanda): string => {
     if (demanda.status === 'Concluída') {
       return 'bg-muted/50 text-muted-foreground opacity-70 hover:opacity-100';
     }
-
-    if (!demanda.prazo) {
-      return '';
-    }
     
     const hoje = startOfToday();
-    const prazoDate = demanda.prazo.toDate();
+    const prazoDate = demanda.prazo?.toDate();
+    
+    // Destaque para urgente, com sub-destaque se estiver atrasada
+    if (demanda.prioridade === 'Urgente') {
+      if (prazoDate && isBefore(prazoDate, hoje)) {
+        return 'bg-red-200 dark:bg-red-900/60 hover:bg-red-200/80 dark:hover:bg-red-900/70 font-semibold'; // Urgente e Atrasada
+      }
+      return 'bg-orange-100 dark:bg-orange-900/40 hover:bg-orange-100/80 dark:hover:bg-orange-900/50'; // Apenas Urgente
+    }
+
+    if (!prazoDate) {
+      return ''; // Sem prazo e não urgente, sem cor especial
+    }
+    
     const limiteAmarelo = addDays(hoje, 3);
 
     if (isBefore(prazoDate, hoje)) {
-      return 'bg-red-100 dark:bg-red-900/40 hover:bg-red-100/80 dark:hover:bg-red-900/50'; // Atrasada
+      return 'bg-red-100 dark:bg-red-900/40 hover:bg-red-100/80 dark:hover:bg-red-900/50'; // Atrasada (Normal)
     }
     
     if (isBefore(prazoDate, limiteAmarelo)) {
-      return 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/50'; // Vence em breve (dentro de 3 dias)
+      return 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/50'; // Vence em breve (Normal)
     }
     
-    return 'bg-green-100 dark:bg-green-900/40 hover:bg-green-100/80 dark:hover:bg-green-900/50'; // Com prazo (mais de 3 dias)
+    return ''; // Com prazo > 3 dias e não urgente, sem cor especial
 };
 
 const validatorEmails = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
@@ -202,19 +211,32 @@ export default function DiarioPage() {
       return searchMatch && statusMatch && responsavelMatch && priorityMatch;
     });
 
-     // Sort by due date (prazo), ascending. Nulls/undefined go last.
     return filtered.sort((a, b) => {
-      const aHasPrazo = a.prazo && a.prazo.toMillis();
-      const bHasPrazo = b.prazo && b.prazo.toMillis();
+      // Prioridade 'Urgente' tem maior peso
+      const aIsUrgente = a.prioridade === 'Urgente';
+      const bIsUrgente = b.prioridade === 'Urgente';
+      if (aIsUrgente && !bIsUrgente) return -1;
+      if (!aIsUrgente && bIsUrgente) return 1;
 
-      if (aHasPrazo && bHasPrazo) {
-        return a.prazo!.toMillis() - b.prazo!.toMillis();
+      // Status 'Concluída' e 'Validado' vão para o final
+      const aIsFinalizado = a.status === 'Concluída' || a.validado;
+      const bIsFinalizado = b.status === 'Concluída' || b.validado;
+      if (!aIsFinalizado && bIsFinalizado) return -1;
+      if (aIsFinalizado && !bIsFinalizado) return 1;
+
+      // Ordenar por prazo (mais próximo primeiro), nulos por último
+      const aPrazo = a.prazo?.toMillis();
+      const bPrazo = b.prazo?.toMillis();
+
+      if (aPrazo && bPrazo) {
+        return aPrazo - bPrazo;
       }
-      if (aHasPrazo) return -1; // a has date, b doesn't, so a comes first
-      if (bHasPrazo) return 1; // b has date, a doesn't, so b comes first
-      return 0; // neither has a date
-    });
+      if (aPrazo) return -1; // a tem prazo, b não
+      if (bPrazo) return 1;  // b tem prazo, a não
 
+      // Como fallback, ordena por data de criação mais recente
+      return (b.dataCriacao?.toMillis() ?? 0) - (a.dataCriacao?.toMillis() ?? 0);
+    });
   }, [demandas, searchTerm, statusFilter, responsavelFilter, priorityFilter]);
 
   const summaryStats = useMemo(() => {
