@@ -2,10 +2,10 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -23,9 +24,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Demanda, StatusDemanda, HistoricoItem } from '@/lib/types';
-import { useState, useEffect } from 'react';
-import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock } from 'lucide-react';
+import type { Demanda, StatusDemanda, HistoricoItem, Anexo } from '@/lib/types';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -58,6 +59,7 @@ const formSchema = z.object({
   responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
   prioridade: z.enum(['Normal', 'Urgente']).default('Normal'),
   prazo: z.date().optional().nullable(),
+  anexosIds: z.array(z.string()).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -71,6 +73,15 @@ const toDate = (timestamp: Timestamp | null | undefined): Date | undefined => {
   return timestamp ? timestamp.toDate() : undefined;
 };
 
+const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+};
+
 export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -81,9 +92,12 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [anexos, setAnexos] = useState<Anexo[]>([]);
 
   const [comment, setComment] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -95,6 +109,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       responsavelId: demanda?.responsavelId || user?.uid || undefined,
       prioridade: demanda?.prioridade || 'Normal',
       prazo: toDate(demanda?.prazo),
+      anexosIds: demanda?.anexosIds || [],
     },
   });
 
@@ -128,6 +143,25 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     };
     fetchEstados();
   }, [toast]);
+  
+  useEffect(() => {
+    const fetchAnexos = async () => {
+      if (demanda?.anexosIds && demanda.anexosIds.length > 0) {
+        try {
+          const q = query(collection(db, 'anexos'), where('__name__', 'in', demanda.anexosIds));
+          const snapshot = await getDocs(q);
+          const anexosData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
+          setAnexos(anexosData);
+        } catch (error) {
+          console.error("Error fetching anexos:", error);
+        }
+      }
+    };
+    if (isEditMode) {
+      fetchAnexos();
+    }
+  }, [demanda, isEditMode]);
+
 
   useEffect(() => {
     if (!selectedUf) {
@@ -184,6 +218,65 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
         setIsSubmittingComment(false);
     }
   }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+  
+    if (!isEditMode) {
+      toast({ variant: "destructive", title: "Ação necessária", description: "Por favor, salve a demanda primeiro para poder anexar arquivos." });
+      return;
+    }
+  
+    setUploading(true);
+    try {
+      const dataUrl = await fileToDataURL(file);
+      const novoAnexo: Omit<Anexo, 'id'> = {
+        nome: file.name,
+        url: dataUrl,
+        dataUpload: Timestamp.now(),
+        demandaId: demanda!.id,
+        autorId: user.uid,
+      };
+      
+      const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
+      
+      const currentAnexosIds = form.getValues('anexosIds') || [];
+      form.setValue('anexosIds', [...currentAnexosIds, anexoDocRef.id]);
+      
+      setAnexos(prev => [...prev, { ...novoAnexo, id: anexoDocRef.id }]);
+      
+      toast({ title: "Sucesso", description: "Anexo enviado." });
+    } catch (error) {
+      console.error("Erro no upload do arquivo:", error);
+      toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+  
+  const handleDeleteAnexo = async (anexoIdToDelete: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este anexo?")) return;
+  
+    setUploading(true); // Re-use uploading state to disable button
+    try {
+      await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
+      
+      const currentAnexosIds = form.getValues('anexosIds') || [];
+      form.setValue('anexosIds', currentAnexosIds.filter(id => id !== anexoIdToDelete));
+      
+      setAnexos(prev => prev.filter(anexo => anexo.id !== anexoIdToDelete));
+      toast({ title: "Sucesso", description: "Anexo excluído." });
+    } catch (error) {
+      console.error("Erro ao excluir anexo:", error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir o anexo.' });
+    } finally {
+      setUploading(false);
+    }
+  };
 
 
   async function onSubmit(values: FormValues) {
@@ -259,6 +352,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 dataCriacao: serverTimestamp(),
                 dataAtualizacao: serverTimestamp(),
                 historico: historicoInicial,
+                anexosIds: values.anexosIds || [],
             });
             toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
         }
@@ -473,6 +567,32 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                     </Button>
                 </div>
             </div>
+        )}
+
+        {isEditMode && demanda && (
+          <div className="space-y-4 pt-6">
+            <Separator />
+            <h3 className="text-base font-semibold">Anexos</h3>
+            <div className="space-y-2">
+              {anexos.map(anexo => (
+                <div key={anexo.id} className="text-sm text-primary flex items-center justify-between p-2 rounded-md bg-muted/50">
+                  <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="truncate">{anexo.nome}</span>
+                  </a>
+                  <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={uploading}>
+                    <Trash2 className="h-4 w-4"/>
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" />
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading || !isEditMode}>
+              {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="mr-2 h-4 w-4" />}
+              Adicionar Anexo
+            </Button>
+            {!isEditMode && <FormDescription>Salve a demanda primeiro para poder anexar arquivos.</FormDescription>}
+          </div>
         )}
 
         <Button type="submit" className="w-full !mt-8" disabled={loading}>

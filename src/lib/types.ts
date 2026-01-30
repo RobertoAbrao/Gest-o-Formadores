@@ -35,6 +35,7 @@ export interface Demanda {
   historico?: HistoricoItem[];
   validado?: boolean;
   prioridade?: 'Normal' | 'Urgente';
+  anexosIds?: string[];
 }
 
 export interface ChecklistItem {
@@ -89,8 +90,10 @@ export interface Anexo {
     nome: string;
     url: string;
     dataUpload: Timestamp;
+    autorId?: string;
     formacaoId?: string;
     projetoId?: string;
+    demandaId?: string;
     etapa?: string;
 }
 
