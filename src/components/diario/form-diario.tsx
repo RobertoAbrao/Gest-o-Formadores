@@ -5,7 +5,7 @@
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
