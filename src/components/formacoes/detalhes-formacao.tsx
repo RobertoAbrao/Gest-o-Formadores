@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -1110,7 +1111,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                   </p>
                                                   <div className="flex flex-col items-start p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
                                                       <div className="flex items-center justify-between w-full">
-                                                          <div className="flex items-center flex-1 truncate">
+                                                          <div className="flex items-center flex-1 min-w-0">
                                                               {!isImage && getFileIcon(anexo.nome)}
                                                               <a 
                                                                   href={anexo.url}

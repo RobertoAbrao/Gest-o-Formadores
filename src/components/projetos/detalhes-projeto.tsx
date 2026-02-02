@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico } from '@/lib/types';
@@ -78,8 +79,8 @@ const DevolutivaCard = ({
                      <p className="text-xs text-muted-foreground mb-1">Anexos:</p>
                     {anexos.map(anexo => (
                         <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
-                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
-                                <ImageIcon className="h-3 w-3" />
+                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
+                                <ImageIcon className="h-3 w-3 shrink-0" />
                                 <span className="truncate">{anexo.nome}</span>
                             </a>
                             <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDeleteAnexo(anexo.id!)}>
@@ -359,8 +360,8 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         </div>
                          {getAnexosForEtapa('implantacao').map(anexo => (
                              <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-1">
-                                <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
-                                    <ImageIcon className="h-3 w-3" />
+                                <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
+                                    <ImageIcon className="h-3 w-3 shrink-0" />
                                     <span className="truncate">{anexo.nome}</span>
                                 </a>
                                 <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
@@ -445,8 +446,8 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                     </div>
                      {getAnexosForEtapa('diagnostica').map(anexo => (
                         <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
-                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
-                                <ImageIcon className="h-3 w-3" />
+                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
+                                <ImageIcon className="h-3 w-3 shrink-0" />
                                 <span className="truncate">{anexo.nome}</span>
                             </a>
                              <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
@@ -468,8 +469,8 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                 </div>
                                 {getAnexosForEtapa(`simulados.s${i}`).map(anexo => (
                                     <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-2">
-                                        <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 truncate">
-                                            <ImageIcon className="h-3 w-3" />
+                                        <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
+                                            <ImageIcon className="h-3 w-3 shrink-0" />
                                             <span className="truncate">{anexo.nome}</span>
                                         </a>
                                         <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
@@ -510,5 +511,3 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
         </div>
     );
 }
-
-    
