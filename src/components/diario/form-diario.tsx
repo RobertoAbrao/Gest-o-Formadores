@@ -575,14 +575,14 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             <h3 className="text-base font-semibold">Anexos</h3>
             <div className="space-y-2">
               {anexos.map(anexo => (
-                <div key={anexo.id} className="text-sm text-primary flex items-center justify-between p-2 rounded-md bg-muted/50">
-                  <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
-                    <ImageIcon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{anexo.nome}</span>
-                  </a>
-                  <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={uploading}>
-                    <Trash2 className="h-4 w-4"/>
-                  </Button>
+                <div key={anexo.id} className="text-sm text-primary flex items-start justify-between gap-2 p-2 rounded-md bg-muted/50">
+                    <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
+                        <ImageIcon className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span className="break-words">{anexo.nome}</span>
+                    </a>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={uploading}>
+                        <Trash2 className="h-4 w-4"/>
+                    </Button>
                 </div>
               ))}
             </div>

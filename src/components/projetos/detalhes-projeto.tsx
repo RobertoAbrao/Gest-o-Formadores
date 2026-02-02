@@ -78,12 +78,12 @@ const DevolutivaCard = ({
                 <div className="mt-3 pt-3 border-t">
                      <p className="text-xs text-muted-foreground mb-1">Anexos:</p>
                     {anexos.map(anexo => (
-                        <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
-                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
-                                <ImageIcon className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{anexo.nome}</span>
+                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
+                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
+                                <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span className="break-words">{anexo.nome}</span>
                             </a>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => onDeleteAnexo(anexo.id!)}>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => onDeleteAnexo(anexo.id!)}>
                                 <Trash2 className="h-3 w-3" />
                             </Button>
                         </div>
@@ -359,12 +359,12 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             </div>
                         </div>
                          {getAnexosForEtapa('implantacao').map(anexo => (
-                             <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-1">
-                                <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
-                                    <ImageIcon className="h-3 w-3 shrink-0" />
-                                    <span className="truncate">{anexo.nome}</span>
+                             <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-1">
+                                <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
+                                    <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
+                                    <span className="break-words">{anexo.nome}</span>
                                 </a>
-                                <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
+                                 <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                     {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                                 </Button>
                             </div>
@@ -445,12 +445,12 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         </div>
                     </div>
                      {getAnexosForEtapa('diagnostica').map(anexo => (
-                        <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
-                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
-                                <ImageIcon className="h-3 w-3 shrink-0" />
-                                <span className="truncate">{anexo.nome}</span>
+                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
+                            <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
+                                <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
+                                <span className="break-words">{anexo.nome}</span>
                             </a>
-                             <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
+                             <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                 {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                             </Button>
                         </div>
@@ -468,12 +468,12 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                      <p><strong className="text-muted-foreground">Fim:</strong> {formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}</p>
                                 </div>
                                 {getAnexosForEtapa(`simulados.s${i}`).map(anexo => (
-                                    <div key={anexo.id} className="text-xs text-primary flex items-center justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-2">
-                                        <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
-                                            <ImageIcon className="h-3 w-3 shrink-0" />
-                                            <span className="truncate">{anexo.nome}</span>
+                                    <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-2">
+                                        <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
+                                            <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
+                                            <span className="break-words">{anexo.nome}</span>
                                         </a>
-                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
+                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => handleDeleteAnexo(anexo.id!)} disabled={isDeleting === anexo.id}>
                                             {isDeleting === anexo.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
                                         </Button>
                                     </div>

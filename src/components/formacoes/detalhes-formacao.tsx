@@ -203,12 +203,12 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
   const getFileIcon = (fileName: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase();
     if (extension === 'pdf') {
-        return <FileText className="h-10 w-10 text-red-500 mr-3" />;
+        return <FileText className="h-6 w-6 text-red-500 shrink-0" />;
     }
     if (extension === 'doc' || extension === 'docx') {
-        return <FileType className="h-10 w-10 text-blue-500 mr-3" />;
+        return <FileType className="h-6 w-6 text-blue-500 shrink-0" />;
     }
-    return <FileIcon className="h-10 w-10 text-gray-500 mr-3" />;
+    return <FileIcon className="h-6 w-6 text-gray-500 shrink-0" />;
   };
 
   const fetchData = useCallback(async () => {
@@ -1110,15 +1110,15 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                       {formatDate(anexo.dataUpload, { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                   </p>
                                                   <div className="flex flex-col items-start p-2 rounded-md border bg-card hover:bg-muted/50 transition-colors group mt-1">
-                                                      <div className="flex items-center justify-between w-full">
-                                                          <div className="flex items-center flex-1 min-w-0">
+                                                      <div className="flex items-start justify-between w-full gap-2">
+                                                          <div className="flex items-start flex-1 min-w-0 gap-2">
                                                               {!isImage && getFileIcon(anexo.nome)}
                                                               <a 
                                                                   href={anexo.url}
                                                                   target="_blank"
                                                                   rel="noopener noreferrer"
                                                                   download={anexo.nome}
-                                                                  className="truncate text-sm font-medium hover:underline"
+                                                                  className="text-sm font-medium hover:underline break-words pt-0.5"
                                                               >
                                                                   {anexo.nome}
                                                               </a>
@@ -1127,7 +1127,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                               <Button 
                                                                   size="icon" 
                                                                   variant="ghost" 
-                                                                  className="h-7 w-7 opacity-50 group-hover:opacity-100"
+                                                                  className="h-7 w-7 opacity-50 group-hover:opacity-100 shrink-0"
                                                                   onClick={(e) => {
                                                                       e.stopPropagation();
                                                                       e.preventDefault();
