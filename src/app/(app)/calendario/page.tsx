@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc, serverTimestamp } from 'firebase/firestore';
-import type { ProjetoImplatancao, AlinhamentoTecnico, Formador } from '@/lib/types';
+import type { ProjetoImplatancao, AlinhamentoTecnico, Formador, Demanda, HistoricoItem } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateFormationCode } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -81,6 +81,7 @@ export default function CalendarioPage() {
   const [loading, setLoading] = useState(true);
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
+  const [admins, setAdmins] = useState<{ id: string; nome: string }[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('geral');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [alinhamento, setAlinhamento] = useState<AlinhamentoTecnico | null>(null);
@@ -91,6 +92,7 @@ export default function CalendarioPage() {
   const [currentEventType, setCurrentEventType] = useState<EventType | ''>('');
   const [currentTooltip, setCurrentTooltip] = useState('');
   const [createFormation, setCreateFormation] = useState(false);
+  const [currentResponsavelId, setCurrentResponsavelId] = useState<string | undefined>();
 
   const { toast } = useToast();
 
@@ -105,9 +107,10 @@ export default function CalendarioPage() {
             where("dataCriacao", "<=", endOfYear)
         );
         
-        const [projetosSnapshot, formadoresSnapshot] = await Promise.all([
+        const [projetosSnapshot, formadoresSnapshot, adminsSnapshot] = await Promise.all([
           getDocs(qProjetos),
           getDocs(collection(db, 'formadores')),
+          getDocs(query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'))),
         ]);
 
         const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
@@ -115,6 +118,9 @@ export default function CalendarioPage() {
 
         const formadoresData = formadoresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
         setAllFormadores(formadoresData);
+        
+        const adminsData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome }));
+        setAdmins(adminsData);
 
         setLoading(false);
     };
@@ -188,13 +194,14 @@ export default function CalendarioPage() {
     }
     
     setCreateFormation(false); // Reset checkbox on new selection
+    setCurrentResponsavelId(undefined); // Reset responsible on new selection
 
     if (range.to) {
         setIsModalOpen(true);
     }
   };
 
-  const handleCreateFormationFromEvent = async (eventData: CalendarEvent, projeto: ProjetoImplatancao) => {
+  const handleCreateFormationFromEvent = async (eventData: CalendarEvent, projeto: ProjetoImplatancao, responsavelId?: string) => {
       const formadoresNomes = allFormadores
         .filter(f => projeto.formadoresIds?.includes(f.id))
         .map(f => f.nomeCompleto);
@@ -202,7 +209,7 @@ export default function CalendarioPage() {
       const newFormationData = {
         titulo: eventData.tooltip,
         descricao: `Atividade referente ao projeto de implantação em ${projeto.municipio}.`,
-        status: 'preparacao',
+        status: 'preparacao' as const,
         municipio: projeto.municipio,
         uf: projeto.uf,
         codigo: generateFormationCode(projeto.municipio),
@@ -239,10 +246,49 @@ export default function CalendarioPage() {
                 implantacaoFormacaoId: docRef.id,
             });
         }
+        
+        // Create a demand in Diário de Bordo if a responsible person is selected
+        if (responsavelId) {
+            const responsavel = admins.find(a => a.id === responsavelId);
+            if (responsavel) {
+                const demandaText = `Preparar e acompanhar: ${eventData.tooltip}`;
+                
+                const historicoInicial: HistoricoItem[] = [{
+                  id: doc(collection(db, 'demandas')).id,
+                  data: Timestamp.now(),
+                  autorId: 'system',
+                  autorNome: 'Sistema',
+                  tipo: 'criacao',
+                  texto: `Demanda criada automaticamente a partir do Calendário para a formação "${eventData.tooltip}".`
+                }];
+
+                const newDemand = {
+                    municipio: projeto.municipio,
+                    uf: projeto.uf,
+                    demanda: demandaText,
+                    status: 'Pendente' as const,
+                    responsavelId: responsavel.id,
+                    responsavelNome: responsavel.nome,
+                    prioridade: 'Normal' as const,
+                    prazo: eventData.startDate, // Use the event start date as prazo
+                    dataCriacao: serverTimestamp(),
+                    dataAtualizacao: serverTimestamp(),
+                    origem: 'automatica' as const,
+                    projetoOrigemId: projeto.id,
+                    formacaoOrigemId: docRef.id,
+                    historico: historicoInicial,
+                };
+                await addDoc(collection(db, 'demandas'), newDemand);
+                toast({
+                    title: 'Demanda Criada!',
+                    description: `Uma nova tarefa foi criada no Diário de Bordo para ${responsavel.nome}.`
+                });
+            }
+        }
 
       } catch (error) {
-        console.error("Error creating formation from calendar event:", error);
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação no Quadro.' });
+        console.error("Error creating formation or demand from calendar event:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação ou a demanda correspondente.' });
       }
   };
 
@@ -297,7 +343,7 @@ export default function CalendarioPage() {
         const eventToDelete = events.find(e => e.id === editingEventId);
         if (eventToDelete) {
             const projectUpdateData = getProjectUpdateData(eventToDelete.type, eventToDelete.tooltip, null, null);
-            if (Object.keys(projectUpdateData).length > 0) {
+            if (Object.keys(projectUpdateData).length > 0 && eventToDelete.projectId !== 'geral') {
                 const projetoRef = doc(db, 'projetos', eventToDelete.projectId);
                 await updateDoc(projetoRef, projectUpdateData);
             }
@@ -339,7 +385,7 @@ export default function CalendarioPage() {
         if (createFormation && eventId) {
             const projeto = projetos.find(p => p.id === selectedProjectId);
             if (projeto) {
-              await handleCreateFormationFromEvent({ ...eventData, id: eventId }, projeto);
+              await handleCreateFormationFromEvent({ ...eventData, id: eventId }, projeto, currentResponsavelId);
             }
         }
       }
@@ -426,6 +472,7 @@ export default function CalendarioPage() {
     if (!open) {
         setEditingRange(undefined);
         setEditingEventId(null);
+        setCurrentResponsavelId(undefined);
     }
   }
 
@@ -858,6 +905,24 @@ export default function CalendarioPage() {
                           </label>
                         </div>
                       )}
+                      {createFormation && (
+                        <div className="space-y-2 pt-2">
+                            <Label htmlFor="responsavel-demanda">Responsável pela Demanda</Label>
+                            <Select value={currentResponsavelId} onValueChange={setCurrentResponsavelId}>
+                                <SelectTrigger id="responsavel-demanda">
+                                    <SelectValue placeholder="Selecione um responsável" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {admins.map(admin => (
+                                        <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-sm text-muted-foreground">
+                                Uma nova demanda será criada no Diário de Bordo para este responsável.
+                            </p>
+                        </div>
+                       )}
                   </div>
                   <DialogFooter>
                       <Button variant="outline" onClick={() => handleModalOpenChange(false)}>Cancelar</Button>
@@ -869,5 +934,7 @@ export default function CalendarioPage() {
     </>
   );
 }
+
+    
 
     
