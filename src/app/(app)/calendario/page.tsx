@@ -217,16 +217,70 @@ export default function CalendarioPage() {
       };
 
       try {
-        await addDoc(collection(db, "formacoes"), {
+        const docRef = await addDoc(collection(db, "formacoes"), {
           ...newFormationData,
           dataCriacao: serverTimestamp(),
         });
         toast({ title: 'Sucesso!', description: `Formação "${eventData.tooltip}" criada no Quadro.` });
+        
+        // Link formation to devolutiva if applicable
+        const match = eventData.tooltip.match(/Devolutiva (\d)/);
+        if (match && projeto.id) {
+            const num = match[1];
+            const devolutivaKey = `devolutivas.d${num}.formacaoId`;
+            const devolutivaTitleKey = `devolutivas.d${num}.formacaoTitulo`;
+            await updateDoc(doc(db, 'projetos', projeto.id), {
+                [devolutivaKey]: docRef.id,
+                [devolutivaTitleKey]: eventData.tooltip,
+            });
+        }
+        if(eventData.type === 'implantacao' && projeto.id){
+            await updateDoc(doc(db, 'projetos', projeto.id), {
+                implantacaoFormacaoId: docRef.id,
+            });
+        }
+
       } catch (error) {
         console.error("Error creating formation from calendar event:", error);
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação no Quadro.' });
       }
   };
+
+  const getProjectUpdateData = (
+    type: string,
+    tooltip: string,
+    startDate: Timestamp | null,
+    endDate: Timestamp | null
+    ): { [key: string]: any } => {
+        const updateData: { [key: string]: any } = {};
+
+        if (type === 'migracao') {
+            updateData.dataMigracao = startDate;
+        } else if (type === 'implantacao') {
+            updateData.dataImplantacao = startDate;
+        } else if (type === 'avaliacao-diagnostica') {
+            updateData['diagnostica.data'] = startDate;
+        } else if (type === 'simulado') {
+            const match = tooltip.match(/Simulado (\d)/);
+            if (match) {
+                const num = match[1];
+                updateData[`simulados.s${num}.dataInicio`] = startDate;
+                updateData[`simulados.s${num}.dataFim`] = endDate;
+            }
+        } else if (type === 'devolutiva') {
+            const match = tooltip.match(/Devolutiva (\d)/);
+            if (match) {
+                const num = match[1];
+                if (num === '4') {
+                    updateData[`devolutivas.d4.data`] = startDate;
+                } else {
+                    updateData[`devolutivas.d${num}.dataInicio`] = startDate;
+                    updateData[`devolutivas.d${num}.dataFim`] = endDate;
+                }
+            }
+        }
+        return updateData;
+    };
 
 
   const handleSaveEvent = async () => {
@@ -240,8 +294,16 @@ export default function CalendarioPage() {
     try {
       // Case 1: User wants to clear an existing event
       if (editingEventId && !currentEventType) {
+        const eventToDelete = events.find(e => e.id === editingEventId);
+        if (eventToDelete) {
+            const projectUpdateData = getProjectUpdateData(eventToDelete.type, eventToDelete.tooltip, null, null);
+            if (Object.keys(projectUpdateData).length > 0) {
+                const projetoRef = doc(db, 'projetos', eventToDelete.projectId);
+                await updateDoc(projetoRef, projectUpdateData);
+            }
+        }
         await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
-        toast({ title: 'Sucesso', description: 'Evento removido.' });
+        toast({ title: 'Sucesso', description: 'Evento removido e projeto atualizado.' });
       } 
       // Case 2: User wants to create or update an event
       else if (currentEventType) {
@@ -263,6 +325,15 @@ export default function CalendarioPage() {
         } else {
             const docRef = await addDoc(collection(db, 'calendario_eventos'), eventData);
             eventId = docRef.id;
+        }
+
+        const projectUpdateData = getProjectUpdateData(currentEventType, currentTooltip, startDate, endDate);
+        if (Object.keys(projectUpdateData).length > 0 && selectedProjectId !== 'geral' && selectedProjectId !== 'todos') {
+            const projetoRef = doc(db, 'projetos', selectedProjectId);
+            await updateDoc(projetoRef, projectUpdateData);
+            toast({ title: 'Sucesso!', description: 'Calendário e projeto atualizados.' });
+        } else {
+            toast({ title: 'Sucesso!', description: 'Evento do calendário salvo.' });
         }
 
         if (createFormation && eventId) {
@@ -798,3 +869,5 @@ export default function CalendarioPage() {
     </>
   );
 }
+
+    
