@@ -14,13 +14,15 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval, startOfDay } from 'date-fns';
-import { Loader2, Printer, Copy, RefreshCw } from 'lucide-react';
+import { Loader2, Printer, Copy, RefreshCw, PlusCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc } from 'firebase/firestore';
-import type { ProjetoImplatancao, AlinhamentoTecnico } from '@/lib/types';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc, serverTimestamp } from 'firebase/firestore';
+import type { ProjetoImplatancao, AlinhamentoTecnico, Formador } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { generateFormationCode } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -55,6 +57,8 @@ const eventTypes: { value: EventType, label: string }[] = [
     { value: 'migracao', label: 'Migração de Dados' },
 ];
 
+const creatableEventTypes: EventType[] = ['simulado', 'devolutiva', 'implantacao', 'avaliacao-diagnostica'];
+
 interface CalendarEvent {
     id: string;
     projectId: string;
@@ -76,6 +80,7 @@ export default function CalendarioPage() {
   
   const [loading, setLoading] = useState(true);
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
+  const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('geral');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [alinhamento, setAlinhamento] = useState<AlinhamentoTecnico | null>(null);
@@ -85,25 +90,35 @@ export default function CalendarioPage() {
   const [editingRange, setEditingRange] = useState<DateRange | undefined>();
   const [currentEventType, setCurrentEventType] = useState<EventType | ''>('');
   const [currentTooltip, setCurrentTooltip] = useState('');
+  const [createFormation, setCreateFormation] = useState(false);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchProjetos = async () => {
+    const fetchInitialData = async () => {
         setLoading(true);
         const startOfYear = new Date(currentYear, 0, 1);
         const endOfYear = new Date(currentYear, 11, 31);
-        const q = query(
+        const qProjetos = query(
             collection(db, "projetos"),
             where("dataCriacao", ">=", startOfYear),
             where("dataCriacao", "<=", endOfYear)
         );
-        const querySnapshot = await getDocs(q);
-        const projetosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
+        
+        const [projetosSnapshot, formadoresSnapshot] = await Promise.all([
+          getDocs(qProjetos),
+          getDocs(collection(db, 'formadores')),
+        ]);
+
+        const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
         setProjetos(projetosData);
+
+        const formadoresData = formadoresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+        setAllFormadores(formadoresData);
+
         setLoading(false);
     };
-    fetchProjetos();
+    fetchInitialData();
   }, [currentYear]);
 
   const fetchEvents = useCallback(async () => {
@@ -171,14 +186,54 @@ export default function CalendarioPage() {
         setCurrentEventType('');
         setCurrentTooltip('');
     }
+    
+    setCreateFormation(false); // Reset checkbox on new selection
 
     if (range.to) {
         setIsModalOpen(true);
     }
   };
 
+  const handleCreateFormationFromEvent = async (eventData: CalendarEvent, projeto: ProjetoImplatancao) => {
+      const formadoresNomes = allFormadores
+        .filter(f => projeto.formadoresIds?.includes(f.id))
+        .map(f => f.nomeCompleto);
+
+      const newFormationData = {
+        titulo: eventData.tooltip,
+        descricao: `Atividade referente ao projeto de implantação em ${projeto.municipio}.`,
+        status: 'preparacao',
+        municipio: projeto.municipio,
+        uf: projeto.uf,
+        codigo: generateFormationCode(projeto.municipio),
+        formadoresIds: projeto.formadoresIds || [],
+        formadoresNomes: formadoresNomes,
+        dataInicio: eventData.startDate,
+        dataFim: eventData.endDate,
+        materiaisIds: [],
+        avaliacoesAbertas: false,
+        projetoId: projeto.id,
+        etapaCalendario: eventData.type,
+      };
+
+      try {
+        await addDoc(collection(db, "formacoes"), {
+          ...newFormationData,
+          dataCriacao: serverTimestamp(),
+        });
+        toast({ title: 'Sucesso!', description: `Formação "${eventData.tooltip}" criada no Quadro.` });
+      } catch (error) {
+        console.error("Error creating formation from calendar event:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação no Quadro.' });
+      }
+  };
+
+
   const handleSaveEvent = async () => {
-    if (!editingRange?.from || selectedProjectId === 'todos') return;
+    if (!editingRange?.from || !currentEventType || selectedProjectId === 'todos') {
+      toast({ variant: 'destructive', title: 'Dados incompletos', description: 'Selecione um tipo de evento.' });
+      return;
+    };
     
     const startDate = Timestamp.fromDate(editingRange.from);
     const endDate = Timestamp.fromDate(editingRange.to || editingRange.from);
@@ -193,18 +248,31 @@ export default function CalendarioPage() {
     };
 
     setLoading(true);
-    if (editingEventId) {
-        // Update or Delete
-        if (currentEventType === '' && currentTooltip === '') {
-            await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
-        } else {
-            await updateDoc(doc(db, 'calendario_eventos', editingEventId), eventData);
-        }
-    } else {
-        // Create
-        if (currentEventType !== '' || currentTooltip !== '') {
-            await addDoc(collection(db, 'calendario_eventos'), eventData);
-        }
+    try {
+      let eventId = editingEventId;
+      if (editingEventId) {
+          if (currentEventType === '' && currentTooltip === '') {
+              await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
+          } else {
+              await updateDoc(doc(db, 'calendario_eventos', editingEventId), eventData);
+          }
+      } else {
+          if (currentEventType !== '' || currentTooltip !== '') {
+              const docRef = await addDoc(collection(db, 'calendario_eventos'), eventData);
+              eventId = docRef.id;
+          }
+      }
+
+      if (createFormation && eventId) {
+          const projeto = projetos.find(p => p.id === selectedProjectId);
+          if (projeto) {
+            await handleCreateFormationFromEvent({ ...eventData, id: eventId }, projeto);
+          }
+      }
+
+    } catch(e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o evento.' });
     }
     
     await fetchEvents();
@@ -264,7 +332,6 @@ export default function CalendarioPage() {
       if(Object.keys(updateData).length > 0) {
         await updateDoc(projetoRef, updateData);
         toast({ title: 'Sucesso!', description: 'As datas do projeto foram sincronizadas com sucesso.' });
-        fetchProjetos(); // Re-fetch all project data to be up-to-date
       } else {
          toast({ title: 'Nenhuma Ação', description: 'Não há datas aprovadas para sincronizar.' });
       }
@@ -699,6 +766,21 @@ export default function CalendarioPage() {
                               onChange={(e) => setCurrentTooltip(e.target.value)}
                           />
                       </div>
+                      {creatableEventTypes.includes(currentEventType as EventType) && (
+                        <div className="flex items-center space-x-2 pt-2">
+                          <Checkbox
+                            id="create-formation-checkbox"
+                            checked={createFormation}
+                            onCheckedChange={(checked) => setCreateFormation(!!checked)}
+                          />
+                          <label
+                            htmlFor="create-formation-checkbox"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            Criar formação correspondente no Quadro
+                          </label>
+                        </div>
+                      )}
                   </div>
                   <DialogFooter>
                       <Button variant="outline" onClick={() => handleModalOpenChange(false)}>Cancelar</Button>

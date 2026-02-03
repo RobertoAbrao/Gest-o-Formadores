@@ -144,6 +144,9 @@ export interface Formacao {
   avaliacoesAbertas?: boolean;
   logistica?: LogisticaViagem[];
   checklist?: Record<string, ChecklistItem | boolean>;
+  projetoId?: string;
+  etapaCalendario?: string;
+  implantacaoFormacaoId?: string;
 }
 
 export interface Despesa {
