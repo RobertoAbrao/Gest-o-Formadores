@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertCircle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
+import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
@@ -25,7 +25,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
@@ -42,11 +41,12 @@ type LembreteFormValues = z.infer<typeof lembreteSchema>;
 
 type CalendarEvent = {
     date: Date;
-    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento' | 'lembrete';
+    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento' | 'lembrete' | 'demanda';
     title: string;
     details: string;
     relatedId: string;
     concluido?: boolean;
+    prioridade?: 'Normal' | 'Urgente';
 }
 
 export default function DashboardPage() {
@@ -112,7 +112,6 @@ export default function DashboardPage() {
       setActiveFormations(formacoesData);
 
       formacoesData.forEach(formacao => {
-        // Se a formação for uma devolutiva de projeto, não adiciona aqui para evitar duplicidade
         if (formacao.titulo.toLowerCase().includes('devolutiva')) {
             return;
         }
@@ -184,11 +183,12 @@ export default function DashboardPage() {
         if (demanda.prazo) {
           allEvents.push({
             date: demanda.prazo.toDate(),
-            type: 'lembrete',
+            type: 'demanda',
             title: `Prazo: ${demanda.demanda}`,
             details: `Diário de Bordo - ${demanda.municipio} • Resp: ${demanda.responsavelNome}`,
             relatedId: demanda.id,
-            concluido: false, // Since we query for non-completed ones
+            concluido: false,
+            prioridade: demanda.prioridade,
           });
         }
       });
@@ -324,7 +324,7 @@ export default function DashboardPage() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    if (event.details.includes('Diário de Bordo')) {
+    if (event.type === 'demanda') {
       const demanda = demandas.find(d => d.id === event.relatedId);
       if (demanda) {
         setSelectedDemanda(demanda);
@@ -399,6 +399,7 @@ export default function DashboardPage() {
     'projeto-marco': eventDaysByType['projeto-marco'] || [],
     'projeto-acompanhamento': eventDaysByType['projeto-acompanhamento'] || [],
     lembrete: eventDaysByType['lembrete'] || [],
+    demanda: eventDaysByType['demanda'] || [],
   };
 
   const modifiersStyles = {
@@ -406,6 +407,7 @@ export default function DashboardPage() {
     'projeto-marco': { backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))', opacity: 0.8 },
     'projeto-acompanhamento': { backgroundColor: 'hsl(var(--chart-4) / 0.2)', color: 'hsl(var(--chart-4))' },
     lembrete: { backgroundColor: 'hsl(var(--chart-3) / 0.2)', color: 'hsl(var(--chart-3))' },
+    demanda: { backgroundColor: 'hsl(var(--warning) / 0.2)', color: 'hsl(var(--warning))' },
   };
   
   const formatEventDate = (eventDate: Date) => {
@@ -414,13 +416,6 @@ export default function DashboardPage() {
     if (isYesterday(eventDate)) return 'Ontem';
     return format(eventDate, 'dd/MM');
   }
-
-  const { simulados, outrosEventos } = useMemo(() => {
-    const simulados = upcomingEvents.filter(e => e.title.toLowerCase().includes('simulado'));
-    const outrosEventos = upcomingEvents.filter(e => !e.title.toLowerCase().includes('simulado'));
-    return { simulados, outrosEventos };
-  }, [upcomingEvents]);
-
 
   if (!user || user.perfil !== 'administrador' || loading) {
     return (
@@ -433,29 +428,50 @@ export default function DashboardPage() {
   const reportYear = date ? date.getFullYear() : new Date().getFullYear();
   const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
-  const EventList = ({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (event: CalendarEvent) => void }) => (
-    <div className="space-y-4">
-      {events.map((event) => (
-        <div
-          key={event.relatedId + event.title}
-          className="flex items-start gap-4 p-2 -m-2 rounded-lg hover:bg-muted/50 cursor-pointer"
-          onClick={() => onEventClick(event)}
-        >
-          <div className={cn(
-            "flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16",
-            isToday(event.date) && "bg-yellow-100 dark:bg-yellow-900/30"
-          )}>
-            <div className={cn("text-primary", isToday(event.date) && "font-bold text-yellow-800 dark:text-yellow-300")}>{formatEventDate(event.date)}</div>
-            <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
-          </div>
-          <div>
-            <p className="font-semibold">{event.title}</p>
-            <p className="text-sm text-muted-foreground">{event.details}</p>
-          </div>
+  const EventList = ({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (event: CalendarEvent) => void }) => {
+    const today = startOfDay(new Date());
+    return (
+        <div className="space-y-4">
+        {events.map((event) => {
+            const isUrgent = event.type === 'demanda' && event.prioridade === 'Urgente';
+            const isOverdue = event.date < today;
+            return (
+            <div
+                key={event.relatedId + event.title + event.details}
+                className={cn(
+                    "flex items-start gap-4 p-2 -m-2 rounded-lg hover:bg-muted/50 cursor-pointer",
+                    isUrgent && "bg-orange-100 dark:bg-orange-900/30",
+                    isUrgent && isOverdue && "bg-red-100 dark:bg-red-900/40"
+                )}
+                onClick={() => onEventClick(event)}
+            >
+                <div className={cn(
+                "flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16",
+                isToday(event.date) && "bg-yellow-100 dark:bg-yellow-900/30",
+                isUrgent && isOverdue && "bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-200",
+                isUrgent && !isOverdue && "bg-orange-200 text-orange-900 dark:bg-orange-900/50 dark:text-orange-200"
+                )}>
+                <div className={cn(
+                    "font-bold",
+                    isToday(event.date) && "text-yellow-800 dark:text-yellow-300"
+                )}>
+                    {formatEventDate(event.date)}
+                </div>
+                <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
+                </div>
+                <div>
+                    <p className="font-semibold flex items-center gap-2">
+                        {isUrgent && <AlertTriangle className={cn("h-4 w-4", isOverdue ? "text-red-600" : "text-orange-500")} />}
+                        {event.title}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{event.details}</p>
+                </div>
+            </div>
+            )
+        })}
         </div>
-      ))}
-    </div>
-  );
+    );
+  };
 
 
   return (
@@ -629,20 +645,21 @@ export default function DashboardPage() {
                                                     event.type === 'formacao' && 'border-primary text-primary',
                                                     event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
                                                     event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
-                                                    event.type === 'lembrete' && 'border-chart-3 text-chart-3'
+                                                    event.type === 'lembrete' && 'border-chart-3 text-chart-3',
+                                                    event.type === 'demanda' && 'border-warning text-warning'
                                                 )}>
-                                                    {event.type === 'formacao' ? 'Formação' : event.type === 'lembrete' ? 'Lembrete' : 'Projeto'}
+                                                    {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                                                 </Badge>
                                             </div>
                                             <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
                                             <span className='flex items-center gap-1'>
-                                                    {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? (event.details.includes('Diário de Bordo') ? <ClipboardList className="h-3 w-3" /> : <Bell className='h-3 w-3' />) : <Milestone className='h-3 w-3'/>}
+                                                    {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : event.type === 'demanda' ? <ClipboardList className="h-3 w-3" /> : <Milestone className='h-3 w-3'/>}
                                                     {event.details}
                                             </span>
-                                            {event.details === 'Lembrete pessoal' && (
-                                                    <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
-                                                        <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
-                                                    </Button>
+                                            {event.type === 'lembrete' && event.details === 'Lembrete pessoal' && (
+                                                <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
+                                                    <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+                                                </Button>
                                             )}
                                             </p>
                                         </div>
@@ -701,3 +718,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
