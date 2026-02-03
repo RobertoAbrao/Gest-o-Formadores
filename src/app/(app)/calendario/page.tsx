@@ -230,54 +230,60 @@ export default function CalendarioPage() {
 
 
   const handleSaveEvent = async () => {
-    if (!editingRange?.from || !currentEventType || selectedProjectId === 'todos') {
-      toast({ variant: 'destructive', title: 'Dados incompletos', description: 'Selecione um tipo de evento.' });
+    if (!editingRange?.from || selectedProjectId === 'todos') {
+      toast({ variant: 'destructive', title: 'Ação Inválida', description: 'Selecione um projeto para editar o calendário.' });
       return;
-    };
-    
-    const startDate = Timestamp.fromDate(editingRange.from);
-    const endDate = Timestamp.fromDate(editingRange.to || editingRange.from);
-
-    const eventData = {
-        projectId: selectedProjectId,
-        projectName: projetos.find(p => p.id === selectedProjectId)?.municipio || 'Geral',
-        type: currentEventType,
-        tooltip: currentTooltip,
-        startDate,
-        endDate,
-    };
+    }
 
     setLoading(true);
-    try {
-      let eventId = editingEventId;
-      if (editingEventId) {
-          if (currentEventType === '' && currentTooltip === '') {
-              await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
-          } else {
-              await updateDoc(doc(db, 'calendario_eventos', editingEventId), eventData);
-          }
-      } else {
-          if (currentEventType !== '' || currentTooltip !== '') {
-              const docRef = await addDoc(collection(db, 'calendario_eventos'), eventData);
-              eventId = docRef.id;
-          }
-      }
 
-      if (createFormation && eventId) {
-          const projeto = projetos.find(p => p.id === selectedProjectId);
-          if (projeto) {
-            await handleCreateFormationFromEvent({ ...eventData, id: eventId }, projeto);
-          }
+    try {
+      // Case 1: User wants to clear an existing event
+      if (editingEventId && !currentEventType) {
+        await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
+        toast({ title: 'Sucesso', description: 'Evento removido.' });
+      } 
+      // Case 2: User wants to create or update an event
+      else if (currentEventType) {
+        const startDate = Timestamp.fromDate(editingRange.from);
+        const endDate = Timestamp.fromDate(editingRange.to || editingRange.from);
+
+        const eventData = {
+            projectId: selectedProjectId,
+            projectName: projetos.find(p => p.id === selectedProjectId)?.municipio || 'Geral',
+            type: currentEventType,
+            tooltip: currentTooltip,
+            startDate,
+            endDate,
+        };
+        
+        let eventId = editingEventId;
+        if (editingEventId) {
+            await updateDoc(doc(db, 'calendario_eventos', editingEventId), eventData);
+        } else {
+            const docRef = await addDoc(collection(db, 'calendario_eventos'), eventData);
+            eventId = docRef.id;
+        }
+
+        if (createFormation && eventId) {
+            const projeto = projetos.find(p => p.id === selectedProjectId);
+            if (projeto) {
+              await handleCreateFormationFromEvent({ ...eventData, id: eventId }, projeto);
+            }
+        }
       }
+      // Case 3 (implicit): User selected "Normal Day" on an empty day. Do nothing.
 
     } catch(e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o evento.' });
+    } finally {
+        // Always refresh data and close modal
+        await fetchEvents();
+        setIsModalOpen(false);
+        setEditingRange(undefined);
+        // setLoading is handled by fetchEvents()
     }
-    
-    await fetchEvents();
-    setIsModalOpen(false);
-    setEditingRange(undefined);
   };
 
   const handleSyncDates = async () => {
