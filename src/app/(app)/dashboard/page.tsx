@@ -31,6 +31,7 @@ import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormDemanda } from '@/components/diario/form-diario';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { changeFormacaoStatus } from '@/lib/formacao-actions';
 
 
 const lembreteSchema = z.object({
@@ -270,16 +271,15 @@ export default function DashboardPage() {
       }
   }
 
-  const handleUpdateStatus = async (formacaoId: string, newStatus: FormadorStatus) => {
-    setLoadingAction(formacaoId);
+  const handleUpdateStatus = async (formacao: Formacao, newStatus: FormadorStatus) => {
+    setLoadingAction(formacao.id);
     try {
-      const formacaoRef = doc(db, 'formacoes', formacaoId);
-      await updateDoc(formacaoRef, { status: newStatus });
-      toast({ title: "Sucesso", description: `Status da formação alterado.` });
-      fetchData(); // Re-fetch all data to update the UI
-    } catch (error) {
+      await changeFormacaoStatus(formacao, newStatus, user);
+      toast({ title: "Sucesso", description: `Status alterado e ações automáticas criadas no Diário.` });
+      fetchData();
+    } catch (error: any) {
       console.error("Erro ao alterar status:", error);
-      toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+      toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível alterar o status." });
     } finally {
       setLoadingAction(null);
     }
@@ -554,11 +554,11 @@ export default function DashboardPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {formacao.status === 'pos-formacao' ? (
-                                                        <Button size="sm" onClick={() => handleUpdateStatus(formacao.id, 'concluido')} disabled={loadingAction === formacao.id}>
+                                                        <Button size="sm" onClick={() => handleUpdateStatus(formacao, 'concluido')} disabled={loadingAction === formacao.id}>
                                                             {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
                                                         </Button>
                                                     ) : (
-                                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao.id, 'arquivado')} disabled={loadingAction === formacao.id}>
+                                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao, 'arquivado')} disabled={loadingAction === formacao.id}>
                                                             {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
                                                         </Button>
                                                     )}
@@ -718,4 +718,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

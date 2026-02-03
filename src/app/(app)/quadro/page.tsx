@@ -78,6 +78,8 @@ import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
 import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/use-auth';
+import { changeFormacaoStatus } from '@/lib/formacao-actions';
 
 
 type Columns = {
@@ -108,6 +110,7 @@ const initialColumns: Columns = {
 export default function QuadroPage() {
   const [columns, setColumns] = useState<Columns>(initialColumns);
   const [loading, setLoading] = useState(true);
+  const [loadingStatusChange, setLoadingStatusChange] = useState<string | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
@@ -116,6 +119,7 @@ export default function QuadroPage() {
     null
   );
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchAndCategorizeItems = useCallback(async () => {
     setLoading(true);
@@ -219,15 +223,17 @@ export default function QuadroPage() {
     }
   };
 
-  const handleStatusChange = async (formacaoId: string, newStatus: FormadorStatus) => {
+  const handleStatusChange = async (formacao: Formacao, newStatus: FormadorStatus) => {
+    setLoadingStatusChange(formacao.id);
     try {
-      const formacaoRef = doc(db, 'formacoes', formacaoId);
-      await updateDoc(formacaoRef, { status: newStatus });
-      toast({ title: "Sucesso", description: `Status da formação alterado.` });
+      await changeFormacaoStatus(formacao, newStatus, user);
+      toast({ title: "Sucesso", description: `Status alterado e ações automáticas criadas.` });
       fetchAndCategorizeItems();
-    } catch (error) {
+    } catch (error: any) {
        console.error("Erro ao alterar status:", error);
-       toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
+       toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível alterar o status." });
+    } finally {
+      setLoadingStatusChange(null);
     }
   };
 
@@ -364,7 +370,7 @@ export default function QuadroPage() {
                                     variant="ghost"
                                     className="h-7 w-7 p-0 -mr-2 -mt-1"
                                 >
-                                    <MoreHorizontal className="h-4 w-4" />
+                                    {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -395,13 +401,13 @@ export default function QuadroPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {item.status === 'pos-formacao' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'concluido')}}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'concluido')}}>
                                     <CheckCircle className="mr-2 h-4 w-4" />
                                     Marcar como Concluído
                                   </DropdownMenuItem>
                                 )}
                                 {item.status === 'concluido' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item.id, 'arquivado')}}>
+                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'arquivado')}}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Arquivar
                                   </DropdownMenuItem>

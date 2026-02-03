@@ -36,6 +36,9 @@ export interface Demanda {
   validado?: boolean;
   prioridade?: 'Normal' | 'Urgente';
   anexosIds?: string[];
+  origem?: 'manual' | 'automatica';
+  formacaoOrigemId?: string;
+  origemGatilho?: FormadorStatus;
 }
 
 export interface ChecklistItem {
@@ -362,5 +365,3 @@ export interface AlinhamentoTecnico {
   dataEnvio: Timestamp;
   cronograma?: CronogramaAlinhamentoItem[];
 }
-
-    
