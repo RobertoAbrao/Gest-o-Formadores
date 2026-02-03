@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -37,7 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud } from 'lucide-react';
-import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo } from '@/lib/types';
+import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo, HistoricoItem } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -76,6 +77,8 @@ const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
   ok: z.boolean().optional(),
   detalhes: z.string().optional(),
   anexosIds: z.array(z.string()).optional(),
+  responsavelId: z.string().optional(),
+  responsavelNome: z.string().optional(),
 });
 
 
@@ -155,6 +158,11 @@ interface Municipio {
     nome: string;
 }
 
+interface AdminUser {
+    id: string;
+    nome: string;
+}
+
 const toDate = (timestamp: Timestamp | null | undefined): Date | null => {
     if (!timestamp) return null;
     return timestamp.toDate();
@@ -214,6 +222,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [allAnexos, setAllAnexos] = useState<Anexo[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
   const [estados, setEstados] = useState<Estado[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
@@ -286,14 +295,19 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     const fetchInitialData = async () => {
         setLoading(true);
         try {
-            const [formadoresSnap, estadosResponse, anexosSnap] = await Promise.all([
+            const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
+            const [formadoresSnap, estadosResponse, anexosSnap, adminsSnap] = await Promise.all([
                 getDocs(collection(db, 'formadores')),
                 fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'),
-                projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null)
+                projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null),
+                getDocs(adminsQuery)
             ]);
             
             const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
             setAllFormadores(formadoresData);
+            
+            const adminData = adminsSnap.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
+            setAdmins(adminData);
 
             if (anexosSnap) {
                 const anexosData = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
@@ -581,7 +595,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   }
 
   const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
-    const { municipio, devolutivas } = form.getValues();
+    const { municipio, uf, devolutivas } = form.getValues();
     const devolutivaData = devolutivas[`d${devolutivaNumber}`];
     const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
     
@@ -596,6 +610,44 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     if (newFormationId) {
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoId`, newFormationId);
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
+      
+      if (devolutivaData.responsavelId) {
+        const responsavel = admins.find(a => a.id === devolutivaData.responsavelId);
+        if (responsavel) {
+          const demandaText = `Preparar e acompanhar a Devolutiva ${devolutivaNumber} para ${municipio}.`;
+          const historicoInicial: HistoricoItem[] = [{
+            id: doc(collection(db, 'demandas')).id,
+            data: Timestamp.now(),
+            autorId: 'system',
+            autorNome: 'Sistema',
+            tipo: 'criacao',
+            texto: `Demanda criada automaticamente a partir do agendamento da Devolutiva ${devolutivaNumber} no projeto ${municipio}.`
+          }];
+
+          const newDemand = {
+            municipio,
+            uf,
+            demanda: demandaText,
+            status: 'Pendente' as const,
+            responsavelId: responsavel.id,
+            responsavelNome: responsavel.nome,
+            prioridade: 'Normal' as const,
+            prazo: devolutivaData.dataInicio ? Timestamp.fromDate(devolutivaData.dataInicio) : null,
+            dataCriacao: serverTimestamp(),
+            dataAtualizacao: serverTimestamp(),
+            origem: 'automatica' as const,
+            projetoOrigemId: projeto?.id,
+            formacaoOrigemId: newFormationId,
+            historico: historicoInicial,
+          };
+          
+          await addDoc(collection(db, 'demandas'), newDemand);
+          toast({
+            title: 'Demanda Criada!',
+            description: `Uma nova tarefa foi criada no Diário de Bordo para ${responsavel.nome}.`
+          });
+        }
+      }
     }
   };
 
@@ -1228,6 +1280,26 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                                     <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name={`${etapaKey}.responsavelId`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Responsável pela Demanda</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione um responsável" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
+                                                </SelectContent>
+                                                </Select>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <div className='flex justify-between items-center gap-2 pt-2 border-t'>
                                         <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
                                             <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>

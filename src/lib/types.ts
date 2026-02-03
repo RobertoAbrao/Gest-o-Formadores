@@ -38,6 +38,7 @@ export interface Demanda {
   anexosIds?: string[];
   origem?: 'manual' | 'automatica';
   formacaoOrigemId?: string;
+  projetoOrigemId?: string;
   origemGatilho?: FormadorStatus;
 }
 
@@ -246,6 +247,8 @@ export interface DevolutivaLink {
   ok?: boolean;
   detalhes?: string;
   anexosIds?: string[];
+  responsavelId?: string;
+  responsavelNome?: string;
 }
 
 interface LinkReuniao {
