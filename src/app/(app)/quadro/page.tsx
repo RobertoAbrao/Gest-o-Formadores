@@ -31,6 +31,7 @@ import {
   FileSignature,
   QrCode,
   FolderOpen,
+  Calendar,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -429,25 +430,34 @@ export default function QuadroPage() {
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {item.descricao}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-                              <div className="flex items-center gap-3">
-                                 {item.materiaisIds && item.materiaisIds.length > 0 && (
-                                      <div className="flex items-center gap-1">
-                                          <Paperclip className="h-3 w-3" />
-                                          <span>{item.materiaisIds.length}</span>
-                                      </div>
-                                  )}
-                                  {item.participantes && item.participantes > 0 && (
-                                       <div className="flex items-center gap-1">
-                                          <Users className="h-3 w-3" />
-                                          <span>{item.participantes}</span>
-                                      </div>
-                                  )}
-                              </div>
-                              <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5">
-                                  <Hash className="h-2.5 w-2.5 mr-0.5" />
-                                  {item.codigo}
-                              </Badge>
+                           <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 mt-2 border-t">
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
+                                {(item.dataInicio || item.dataFim) && (
+                                <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>
+                                    {item.dataInicio ? item.dataInicio.toDate().toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) : 'N/A'}
+                                    {item.dataFim && item.dataInicio?.toDate().getTime() !== item.dataFim?.toDate().getTime() ? ` - ${item.dataFim.toDate().toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}` : ''}
+                                    </span>
+                                </div>
+                                )}
+                                {item.materiaisIds && item.materiaisIds.length > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        <Paperclip className="h-3 w-3" />
+                                        <span>{item.materiaisIds.length}</span>
+                                    </div>
+                                )}
+                                {item.participantes && item.participantes > 0 && (
+                                    <div className="flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        <span>{item.participantes}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 shrink-0">
+                                <Hash className="h-2.5 w-2.5 mr-0.5" />
+                                {item.codigo}
+                            </Badge>
                           </div>
                         </CardContent>
                       </Card>
