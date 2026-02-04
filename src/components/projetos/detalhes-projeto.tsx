@@ -81,7 +81,7 @@ const DevolutivaCard = ({
                 <div className="mt-3 pt-3 border-t">
                      <p className="text-xs text-muted-foreground mb-1">Anexos:</p>
                     {anexos.map(anexo => (
-                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
+                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 p-1 rounded-md hover:bg-muted/50">
                             <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
                                 <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
                                 <span className="break-words">{anexo.nome}</span>
@@ -362,7 +362,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             </div>
                         </div>
                          {getAnexosForEtapa('implantacao').map(anexo => (
-                             <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-1">
+                             <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 p-1 rounded-md hover:bg-muted/50 mt-1">
                                 <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
                                     <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
                                     <span className="break-words">{anexo.nome}</span>
@@ -448,7 +448,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         </div>
                     </div>
                      {getAnexosForEtapa('diagnostica').map(anexo => (
-                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md">
+                        <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 p-1 rounded-md hover:bg-muted/50">
                             <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
                                 <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
                                 <span className="break-words">{anexo.nome}</span>
@@ -471,7 +471,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                      <p><strong className="text-muted-foreground">Fim:</strong> {formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}</p>
                                 </div>
                                 {getAnexosForEtapa(`simulados.s${i}`).map(anexo => (
-                                    <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 hover:bg-muted/50 p-1 rounded-md mt-2">
+                                    <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 p-1 mt-2 rounded-md hover:bg-muted/50">
                                         <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
                                             <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
                                             <span className="break-words">{anexo.nome}</span>
