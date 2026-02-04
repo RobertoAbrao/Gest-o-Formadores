@@ -124,7 +124,11 @@ export default function ArquivadosPage() {
                 {selectedFormacao && (
                   <>
                     <DialogHeader>
-                        <DialogTitle className="text-2xl">{selectedFormacao.titulo}</DialogTitle>
+                        <DialogTitle className="text-2xl">
+                           {selectedFormacao.titulo.startsWith('Devolutiva') && !selectedFormacao.titulo.includes(':') && selectedFormacao.municipio
+                              ? `${selectedFormacao.titulo}: ${selectedFormacao.municipio}`
+                              : selectedFormacao.titulo}
+                        </DialogTitle>
                         <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
                     </DialogHeader>
                     <DetalhesFormacao 
