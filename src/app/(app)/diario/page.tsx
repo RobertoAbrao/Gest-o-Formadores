@@ -294,10 +294,15 @@ export default function DiarioPage() {
     return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
   }, [filteredDemandas]);
   
-  const formatPrazo = (prazo: Timestamp | undefined | null) => {
+  const formatPrazo = (prazo: Timestamp | undefined | null, status: StatusDemanda, validado?: boolean) => {
     if (!prazo) return null;
     const prazoDate = prazo.toDate();
     const hoje = startOfToday();
+
+    if (status === 'Concluída' || validado) {
+        return <span>{prazoDate.toLocaleDateString('pt-BR')}</span>;
+    }
+
     if (isBefore(prazoDate, hoje)) {
       return <span className="text-red-600 font-semibold">{prazoDate.toLocaleDateString('pt-BR')} (Atrasado)</span>
     }
@@ -496,7 +501,7 @@ export default function DiarioPage() {
                                       </div>
                                       {demanda.prazo && (
                                         <div className="flex items-center gap-2">
-                                          <Hourglass className="h-3 w-3" /> {formatPrazo(demanda.prazo)}
+                                          <Hourglass className="h-3 w-3" /> {formatPrazo(demanda.prazo, demanda.status, demanda.validado)}
                                         </div>
                                       )}
                                     </CardFooter>
