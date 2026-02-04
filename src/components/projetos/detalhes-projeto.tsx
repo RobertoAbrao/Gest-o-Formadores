@@ -48,23 +48,26 @@ const DevolutivaCard = ({
     devolutiva, 
     formacao,
     anexos,
-    onDeleteAnexo
+    onDeleteAnexo,
+    municipio
 }: { 
     numero: number, 
     devolutiva: any, 
     formacao: Formacao | null, 
     anexos: Anexo[],
-    onDeleteAnexo: (anexoId: string) => void
+    onDeleteAnexo: (anexoId: string) => void,
+    municipio: string
 }) => {
     
     const dataInicio = devolutiva?.dataInicio || formacao?.dataInicio;
     const dataFim = devolutiva?.dataFim || formacao?.dataFim;
     const formadores = formacao ? (formacao.formadoresNomes || []) : (devolutiva.formadores || []);
+    const title = formacao?.titulo || devolutiva?.formacaoTitulo || `Devolutiva ${numero}: ${municipio}`;
 
     return (
         <div className="p-3 rounded-md border">
             <div className="flex items-center justify-between">
-                <h4 className="font-semibold">Devolutiva {numero}</h4>
+                <h4 className="font-semibold">{title}</h4>
                 <StatusIcon ok={devolutiva?.ok} />
             </div>
             <Separator className='my-2' />
@@ -503,6 +506,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                 formacao={formacao || null}
                                 anexos={getAnexosForEtapa(`devolutivas.d${i}`)}
                                 onDeleteAnexo={handleDeleteAnexo}
+                                municipio={projeto.municipio}
                             />
                          )
                     })}

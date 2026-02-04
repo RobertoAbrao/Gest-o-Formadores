@@ -290,6 +290,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
   const selectedUf = form.watch('uf');
   const brasaoId = form.watch('brasaoId');
+  const municipio = form.watch('municipio');
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -1197,7 +1198,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                         return (
                             <Card key={etapaKey} className='p-4 bg-muted/40 shadow-sm shadow-primary/5'>
                                 <CardHeader className="p-0 mb-4 flex-row justify-between items-start">
-                                    <CardTitle className="text-base">Devolutiva {i}</CardTitle>
+                                    <CardTitle className="text-base">Devolutiva {i}{ municipio ? `: ${municipio}` : '' }</CardTitle>
                                     <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
                                             <Eraser className="mr-2 h-3 w-3" /> Limpar
                                     </Button>
