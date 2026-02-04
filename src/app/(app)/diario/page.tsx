@@ -2,14 +2,6 @@
 
 'use client';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -38,32 +30,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, where, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, where, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormDemanda } from '@/components/diario/form-diario';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { addDays, isBefore, startOfToday } from 'date-fns';
+import { addDays, isBefore, startOfToday, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
+
+const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Aguardando retorno', 'Concluída'];
 const priorityOptions: Demanda['prioridade'][] = ['Normal', 'Urgente'];
 
 const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
-  'Pendente': { color: 'bg-yellow-500', label: 'Pendente' },
-  'Em andamento': { color: 'bg-blue-500', label: 'Em Andamento' },
-  'Concluída': { color: 'bg-green-500', label: 'Concluída' },
-  'Aguardando retorno': { color: 'bg-orange-500', label: 'Aguardando Retorno' },
+  'Pendente': { color: 'border-yellow-500', label: 'Pendente' },
+  'Em andamento': { color: 'border-blue-500', label: 'Em Andamento' },
+  'Concluída': { color: 'border-green-500', label: 'Concluída' },
+  'Aguardando retorno': { color: 'border-orange-500', label: 'Aguardando Retorno' },
 };
 
-const getRowClass = (demanda: Demanda): string => {
+const getCardClass = (demanda: Demanda): string => {
     if (demanda.validado) {
         return 'bg-teal-50 dark:bg-teal-900/40 opacity-80 hover:opacity-100';
     }
@@ -74,29 +69,28 @@ const getRowClass = (demanda: Demanda): string => {
     const hoje = startOfToday();
     const prazoDate = demanda.prazo?.toDate();
     
-    // Destaque para urgente, com sub-destaque se estiver atrasada
     if (demanda.prioridade === 'Urgente') {
       if (prazoDate && isBefore(prazoDate, hoje)) {
-        return 'bg-red-200 dark:bg-red-900/60 hover:bg-red-200/80 dark:hover:bg-red-900/70 font-semibold'; // Urgente e Atrasada
+        return 'bg-red-100 border-red-200 dark:bg-red-900/40 dark:border-red-800 hover:bg-red-100/80 dark:hover:bg-red-900/50';
       }
-      return 'bg-orange-100 dark:bg-orange-900/40 hover:bg-orange-100/80 dark:hover:bg-orange-900/50'; // Apenas Urgente
+      return 'bg-orange-100 border-orange-200 dark:bg-orange-900/40 dark:border-orange-800 hover:bg-orange-100/80 dark:hover:bg-orange-900/50';
     }
 
     if (!prazoDate) {
-      return ''; // Sem prazo e não urgente, sem cor especial
+      return '';
     }
     
     const limiteAmarelo = addDays(hoje, 3);
 
     if (isBefore(prazoDate, hoje)) {
-      return 'bg-red-100 dark:bg-red-900/40 hover:bg-red-100/80 dark:hover:bg-red-900/50'; // Atrasada (Normal)
+      return 'bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-800/50 hover:bg-red-50/80 dark:hover:bg-red-900/30';
     }
     
     if (isBefore(prazoDate, limiteAmarelo)) {
-      return 'bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/50'; // Vence em breve (Normal)
+      return 'bg-yellow-50 border-yellow-100 dark:bg-yellow-900/20 dark:border-yellow-800/50 hover:bg-yellow-50/80 dark:hover:bg-yellow-900/30';
     }
     
-    return ''; // Com prazo > 3 dias e não urgente, sem cor especial
+    return '';
 };
 
 const validatorEmails = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
@@ -111,10 +105,12 @@ export default function DiarioPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusDemanda | 'all'>('all');
   const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'Normal' | 'Urgente'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+
   const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
   const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
 
@@ -200,44 +196,51 @@ export default function DiarioPage() {
   };
 
   const filteredDemandas = useMemo(() => {
-    const filtered = demandas.filter(d => {
+    return demandas.filter(d => {
       const searchMatch = searchTerm === '' ||
         d.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.demanda.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.responsavelNome.toLowerCase().includes(searchTerm.toLowerCase());
-      const statusMatch = statusFilter === 'all' || d.status === statusFilter;
+      
       const responsavelMatch = responsavelFilter === 'all' || d.responsavelId === responsavelFilter;
       const priorityMatch = priorityFilter === 'all' || d.prioridade === priorityFilter;
-      return searchMatch && statusMatch && responsavelMatch && priorityMatch;
+      const viewMatch = viewMode === 'all' || d.responsavelId === user?.uid;
+
+      return searchMatch && responsavelMatch && priorityMatch && viewMatch;
     });
+  }, [demandas, searchTerm, responsavelFilter, priorityFilter, viewMode, user]);
 
-    return filtered.sort((a, b) => {
-      // Prioridade 'Urgente' tem maior peso
-      const aIsUrgente = a.prioridade === 'Urgente';
-      const bIsUrgente = b.prioridade === 'Urgente';
-      if (aIsUrgente && !bIsUrgente) return -1;
-      if (!aIsUrgente && bIsUrgente) return 1;
+ const groupedDemandas = useMemo(() => {
+    const grouped = statusOptions.reduce((acc, status) => {
+      acc[status] = [];
+      return acc;
+    }, {} as Record<StatusDemanda, Demanda[]>);
 
-      // Status 'Concluída' e 'Validado' vão para o final
-      const aIsFinalizado = a.status === 'Concluída' || a.validado;
-      const bIsFinalizado = b.status === 'Concluída' || b.validado;
-      if (!aIsFinalizado && bIsFinalizado) return -1;
-      if (aIsFinalizado && !bIsFinalizado) return 1;
-
-      // Ordenar por prazo (mais próximo primeiro), nulos por último
-      const aPrazo = a.prazo?.toMillis();
-      const bPrazo = b.prazo?.toMillis();
-
-      if (aPrazo && bPrazo) {
-        return aPrazo - bPrazo;
+    filteredDemandas.forEach(demanda => {
+      if (grouped[demanda.status]) {
+        grouped[demanda.status].push(demanda);
       }
-      if (aPrazo) return -1; // a tem prazo, b não
-      if (bPrazo) return 1;  // b tem prazo, a não
-
-      // Como fallback, ordena por data de criação mais recente
-      return (b.dataCriacao?.toMillis() ?? 0) - (a.dataCriacao?.toMillis() ?? 0);
     });
-  }, [demandas, searchTerm, statusFilter, responsavelFilter, priorityFilter]);
+
+    for (const status in grouped) {
+        grouped[status as StatusDemanda].sort((a, b) => {
+            const aIsUrgente = a.prioridade === 'Urgente';
+            const bIsUrgente = b.prioridade === 'Urgente';
+            if (aIsUrgente !== bIsUrgente) return aIsUrgente ? -1 : 1;
+
+            const aPrazo = a.prazo?.toMillis();
+            const bPrazo = b.prazo?.toMillis();
+            if (aPrazo && bPrazo) return aPrazo - bPrazo;
+            if (aPrazo) return -1;
+            if (bPrazo) return 1;
+
+            return (b.dataCriacao?.toMillis() ?? 0) - (a.dataCriacao?.toMillis() ?? 0);
+        });
+    }
+
+    return grouped;
+  }, [filteredDemandas]);
+  
 
   const summaryStats = useMemo(() => {
     return demandas.reduce((acc, d) => {
@@ -290,6 +293,16 @@ export default function DiarioPage() {
 
     return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
   }, [filteredDemandas]);
+  
+  const formatPrazo = (prazo: Timestamp | undefined | null) => {
+    if (!prazo) return null;
+    const prazoDate = prazo.toDate();
+    const hoje = startOfToday();
+    if (isBefore(prazoDate, hoje)) {
+      return <span className="text-red-600 font-semibold">{prazoDate.toLocaleDateString('pt-BR')} (Atrasado)</span>
+    }
+    return <span>{prazoDate.toLocaleDateString('pt-BR')} ({formatDistanceToNow(prazoDate, { addSuffix: true, locale: ptBR })})</span>;
+  };
 
   if (loading && demandas.length === 0) {
     return (
@@ -365,8 +378,12 @@ export default function DiarioPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-col sm:flex-row flex-wrap items-center gap-4">
-          <div className="relative flex-grow w-full sm:w-auto">
+        <CardContent className="p-4 flex flex-col md:flex-row flex-wrap items-center gap-4">
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value: 'all' | 'mine') => value && setViewMode(value)} className="border rounded-md">
+            <ToggleGroupItem value="all">Todas as Demandas</ToggleGroupItem>
+            <ToggleGroupItem value="mine">Minhas Demandas</ToggleGroupItem>
+          </ToggleGroup>
+          <div className="relative flex-grow w-full md:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por município, demanda ou responsável..."
@@ -375,15 +392,6 @@ export default function DiarioPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Status</SelectItem>
-              {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filtrar por responsável" />
@@ -405,95 +413,101 @@ export default function DiarioPage() {
         </CardContent>
       </Card>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className='w-24'>Status</TableHead>
-              <TableHead>Prioridade</TableHead>
-              <TableHead>Município</TableHead>
-              <TableHead>Demanda</TableHead>
-              <TableHead className="hidden md:table-cell">Responsável</TableHead>
-              <TableHead className="hidden sm:table-cell">Prazo</TableHead>
-              <TableHead className="w-16"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && demandas.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-            ) : filteredDemandas.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Nenhuma demanda encontrada.</TableCell>
-              </TableRow>
-            ) : (
-              filteredDemandas.map((demanda) => (
-                <TableRow key={demanda.id} onClick={() => openEditDialog(demanda)} className={cn("cursor-pointer", getRowClass(demanda))}>
-                  <TableCell>
-                    {demanda.validado ? (
-                      <Badge variant="outline" className="flex items-center gap-2 border-teal-500 bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700 text-teal-800">
-                        <BadgeCheck className={`h-3 w-3`} />
-                        Validada
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${statusConfig[demanda.status]?.color || 'bg-gray-400'}`} />
-                        {demanda.status}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {demanda.prioridade === 'Urgente' ? (
-                      <Badge variant="destructive" className="flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3" /> Urgente
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">Normal</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="font-medium">{demanda.municipio} <span className="text-xs text-muted-foreground">{demanda.uf}</span></TableCell>
-                  <TableCell className="max-w-xs truncate" title={demanda.demanda}>{demanda.demanda}</TableCell>
-                  <TableCell className="hidden md:table-cell">{demanda.responsavelNome}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{demanda.prazo ? demanda.prazo.toDate().toLocaleDateString('pt-BR') : 'N/A'}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {demanda.status === 'Concluída' && !demanda.validado && canValidate && (
-                          <>
-                            <DropdownMenuItem 
-                              onClick={(e) => { e.stopPropagation(); handleValidate(demanda.id); }}
-                              disabled={loadingValidation === demanda.id}
-                            >
-                               {loadingValidation === demanda.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="mr-2 h-4 w-4" />
-                              )}
-                              Validar Demanda
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
+      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 -mx-4 px-4">
+        {statusOptions.map(status => {
+          const demandasDaColuna = groupedDemandas[status] || [];
+          return (
+            <div key={status} className="flex flex-col w-full min-w-[320px] md:w-1/4">
+                <div className="flex items-center justify-between p-2 mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className={cn("w-3 h-3 rounded-full", statusConfig[status].color.replace('border-', 'bg-'))} />
+                        <h2 className="font-semibold text-lg">{statusConfig[status].label}</h2>
+                    </div>
+                    <Badge variant="secondary">{demandasDaColuna.length}</Badge>
+                </div>
+                <ScrollArea className="flex-1 -m-2">
+                    <div className="space-y-4 p-2">
+                        {loading ? (
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin mt-8" />
+                        ) : demandasDaColuna.length === 0 ? (
+                            <div className="text-center text-sm text-muted-foreground p-8">Nenhuma demanda aqui.</div>
+                        ) : (
+                            demandasDaColuna.map(demanda => (
+                                <Card 
+                                    key={demanda.id} 
+                                    onClick={() => openEditDialog(demanda)} 
+                                    className={cn("cursor-pointer hover:shadow-md transition-shadow", getCardClass(demanda))}
+                                >
+                                    <CardHeader className="flex flex-row items-start justify-between p-3">
+                                        <div className="space-y-1">
+                                            {demanda.prioridade === 'Urgente' && (
+                                                <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                                                    <AlertTriangle className="h-3 w-3" /> Urgente
+                                                </Badge>
+                                            )}
+                                            {demanda.validado && (
+                                                <Badge variant="outline" className="flex items-center gap-2 border-teal-500 bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700 text-teal-800">
+                                                    <BadgeCheck className="h-3 w-3" /> Validada
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                <Button variant="ghost" className="h-7 w-7 p-0">
+                                                <span className="sr-only">Abrir menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              {demanda.status === 'Concluída' && !demanda.validado && canValidate && (
+                                                <>
+                                                  <DropdownMenuItem 
+                                                    onClick={(e) => { e.stopPropagation(); handleValidate(demanda.id); }}
+                                                    disabled={loadingValidation === demanda.id}
+                                                  >
+                                                    {loadingValidation === demanda.id ? (
+                                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                                    )}
+                                                    Validar Demanda
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
+                                                </>
+                                              )}
+                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(demanda); }}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                                              </DropdownMenuItem>
+                                              {user?.perfil === 'administrador' && (
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(demanda); }}>
+                                                  <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                                </DropdownMenuItem>
+                                              )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </CardHeader>
+                                    <CardContent className="p-3 pt-0 space-y-2">
+                                        <p className="font-semibold text-sm">{demanda.municipio} - {demanda.uf}</p>
+                                        <p className="text-sm text-muted-foreground line-clamp-3">{demanda.demanda}</p>
+                                    </CardContent>
+                                    <CardFooter className="p-3 pt-0 text-xs text-muted-foreground space-y-2 flex-col items-start">
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-3 w-3" /> {demanda.responsavelNome}
+                                      </div>
+                                      {demanda.prazo && (
+                                        <div className="flex items-center gap-2">
+                                          <Hourglass className="h-3 w-3" /> {formatPrazo(demanda.prazo)}
+                                        </div>
+                                      )}
+                                    </CardFooter>
+                                </Card>
+                            ))
                         )}
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(demanda); }}>
-                          <Pencil className="mr-2 h-4 w-4" /> Editar
-                        </DropdownMenuItem>
-                        {user?.perfil === 'administrador' && (
-                           <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(demanda); }}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    </div>
+                </ScrollArea>
+            </div>
+          )
+        })}
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -510,6 +524,25 @@ export default function DiarioPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) setSelectedDemanda(null);
+      }}>
+        <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+            <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
+            <DialogDescription>
+                {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
+            </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className='max-h-[80vh]'>
+            <div className='p-4'>
+                <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
+            </div>
+            </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
