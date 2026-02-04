@@ -413,20 +413,20 @@ export default function DiarioPage() {
         </CardContent>
       </Card>
 
-      <div className="flex-1 flex gap-6 overflow-x-auto pb-4 -mx-4 px-4">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {statusOptions.map(status => {
           const demandasDaColuna = groupedDemandas[status] || [];
           return (
-            <div key={status} className="flex flex-col w-full min-w-[320px] md:w-1/4">
-                <div className="flex items-center justify-between p-2 mb-4">
+            <div key={status} className="flex flex-col w-full rounded-lg bg-muted/40">
+                <div className="flex items-center justify-between p-4 border-b">
                     <div className="flex items-center gap-2">
                         <div className={cn("w-3 h-3 rounded-full", statusConfig[status].color.replace('border-', 'bg-'))} />
                         <h2 className="font-semibold text-lg">{statusConfig[status].label}</h2>
                     </div>
                     <Badge variant="secondary">{demandasDaColuna.length}</Badge>
                 </div>
-                <ScrollArea className="flex-1 -m-2">
-                    <div className="space-y-4 p-2">
+                <ScrollArea className="flex-1">
+                    <div className="space-y-4 p-4">
                         {loading ? (
                             <Loader2 className="mx-auto h-6 w-6 animate-spin mt-8" />
                         ) : demandasDaColuna.length === 0 ? (
