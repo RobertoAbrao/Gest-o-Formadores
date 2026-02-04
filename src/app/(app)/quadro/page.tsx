@@ -362,7 +362,7 @@ export default function QuadroPage() {
                           <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-sm flex items-center gap-2">
                               {getIconForItem(item)}
-                              {item.titulo}
+                              {item.titulo.startsWith('Devolutiva') && !item.titulo.includes(':') && item.municipio ? `${item.titulo}: ${item.municipio}` : item.titulo}
                             </h3>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
