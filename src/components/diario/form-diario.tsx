@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -454,14 +455,17 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Vincular à Etapa (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                            onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
+                            value={field.value || 'none'}
+                        >
                             <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecione a etapa do projeto" />
                                 </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="">Nenhuma</SelectItem>
+                                <SelectItem value="none">Nenhuma</SelectItem>
                                 {projectStages.map(stage => (
                                     <SelectItem key={stage.value} value={stage.value}>
                                         {stage.label}
