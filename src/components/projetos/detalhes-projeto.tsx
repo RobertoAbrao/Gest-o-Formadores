@@ -2,12 +2,12 @@
 
 'use client';
 
-import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico } from '@/lib/types';
+import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico, Demanda } from '@/lib/types';
 import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteField, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon, ListTodo } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -113,6 +113,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
     const [formacoes, setFormacoes] = useState<Map<string, Formacao>>(new Map());
     const [anexos, setAnexos] = useState<Anexo[]>([]);
     const [alinhamento, setAlinhamento] = useState<AlinhamentoTecnico | null>(null);
+    const [demandas, setDemandas] = useState<Demanda[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const { toast } = useToast();
@@ -150,7 +151,12 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
             const qAlinhamento = doc(db, 'alinhamentos', projeto.id);
             fetchPromises.push(getDoc(qAlinhamento));
 
-            const [formadoresSnap, formacoesSnap, anexosSnap, alinhamentoSnap] = await Promise.all(fetchPromises);
+            // Fetch Demandas
+            const qDemandas = query(collection(db, 'demandas'), where('projetoOrigemId', '==', projeto.id));
+            fetchPromises.push(getDocs(qDemandas));
+
+
+            const [formadoresSnap, formacoesSnap, anexosSnap, alinhamentoSnap, demandasSnap] = await Promise.all(fetchPromises);
 
             if (formadoresSnap) {
                  setFormadores(formadoresSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Formador)));
@@ -170,6 +176,10 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
             
             if (alinhamentoSnap && alinhamentoSnap.exists()) {
                 setAlinhamento(alinhamentoSnap.data() as AlinhamentoTecnico);
+            }
+
+            if (demandasSnap) {
+                setDemandas(demandasSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Demanda)));
             }
 
         } catch (error) {
@@ -431,7 +441,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                     </CardContent>
                 </Card>
             )}
-            
+
             <Card>
                  <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -484,6 +494,41 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             </div>
                         ))}
                     </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <ListTodo className="h-5 w-5 text-muted-foreground" />
+                        Demandas do Diário de Bordo
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {demandas.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Demanda</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Responsável</TableHead>
+                                    <TableHead>Prazo</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {demandas.map(demanda => (
+                                    <TableRow key={demanda.id}>
+                                        <TableCell className="text-xs">{demanda.demanda}</TableCell>
+                                        <TableCell><Badge variant="outline">{demanda.status}</Badge></TableCell>
+                                        <TableCell className="text-xs">{demanda.responsavelNome}</TableCell>
+                                        <TableCell className="text-xs">{formatDate(demanda.prazo)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">Nenhuma demanda vinculada a este projeto.</p>
+                    )}
                 </CardContent>
             </Card>
 
