@@ -10,8 +10,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle } from 'lucide-react';
-import type { ProjetoImplatancao, Formador } from '@/lib/types';
+import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck } from 'lucide-react';
+import type { ProjetoImplatancao, Formador, Demanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -42,6 +42,7 @@ interface Activity {
 
 interface ProjetoComAtividades extends ProjetoImplatancao {
     atividades: Activity[];
+    demandaCount: number;
 }
 
 type GroupedProjetos = {
@@ -55,6 +56,7 @@ export default function PlanilhaPage() {
   const { toast } = useToast();
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
   const [formadores, setFormadores] = useState<Formador[]>([]);
+  const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filter states
@@ -71,9 +73,10 @@ export default function PlanilhaPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [projetosSnapshot, formadoresSnapshot] = await Promise.all([
+      const [projetosSnapshot, formadoresSnapshot, demandasSnapshot] = await Promise.all([
         getDocs(query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'))),
         getDocs(collection(db, 'formadores')),
+        getDocs(collection(db, 'demandas')),
       ]);
 
       const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
@@ -81,6 +84,9 @@ export default function PlanilhaPage() {
       
       const formadoresData = formadoresSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
       setFormadores(formadoresData);
+
+      const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
+      setDemandas(demandasData);
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -99,6 +105,16 @@ export default function PlanilhaPage() {
   }, [user, router, fetchData]);
 
   const projetosComAtividades = useMemo<ProjetoComAtividades[]>(() => {
+    const demandasPorProjeto = demandas.reduce((acc, demanda) => {
+        if (demanda.projetoOrigemId) {
+            if (!acc[demanda.projetoOrigemId]) {
+                acc[demanda.projetoOrigemId] = 0;
+            }
+            acc[demanda.projetoOrigemId]++;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
     return projetos.map(p => {
         const atividades: Activity[] = [];
         
@@ -125,9 +141,13 @@ export default function PlanilhaPage() {
         
         atividades.sort((a,b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0));
         
-        return { ...p, atividades };
+        return { 
+            ...p, 
+            atividades,
+            demandaCount: demandasPorProjeto[p.id] || 0
+        };
     })
-  }, [projetos]);
+  }, [projetos, demandas]);
   
   const formadoresMap = useMemo(() => new Map(formadores.map(f => [f.id, f.nomeCompleto])), [formadores]);
 
@@ -319,10 +339,17 @@ export default function PlanilhaPage() {
                                             ))
                                         )}
                                     </CardContent>
-                                    <CardFooter>
-                                        <p className="text-xs text-muted-foreground">
-                                            {projeto.formadoresIds?.length || 0} formador(es) associado(s)
+                                    <CardFooter className="flex justify-between items-center">
+                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            {projeto.formadoresIds?.length || 0} formador(es)
                                         </p>
+                                        {projeto.demandaCount > 0 && (
+                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <BookOpenCheck className="h-3 w-3" />
+                                                {projeto.demandaCount} demanda(s)
+                                            </p>
+                                        )}
                                     </CardFooter>
                                 </Card>
                             ))}
