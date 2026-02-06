@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -493,6 +493,12 @@ export default function DiarioPage() {
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-2">
                                         <p className="font-semibold text-sm">{demanda.municipio} - {demanda.uf}</p>
+                                        {demanda.projetoOrigemId && (
+                                            <Badge variant="outline" className="flex items-center gap-1 w-fit text-xs">
+                                                <ClipboardList className="h-3 w-3" />
+                                                {demanda.projetoOrigemNome || `Projeto: ${demanda.projetoOrigemId.substring(0,4)}`}
+                                            </Badge>
+                                        )}
                                         <p className="text-sm text-muted-foreground line-clamp-3">{demanda.demanda}</p>
                                     </CardContent>
                                     <CardFooter className="p-3 pt-0 text-xs text-muted-foreground space-y-2 flex-col items-start">

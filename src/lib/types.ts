@@ -39,6 +39,7 @@ export interface Demanda {
   origem?: 'manual' | 'automatica';
   formacaoOrigemId?: string;
   projetoOrigemId?: string;
+  projetoOrigemNome?: string;
   origemGatilho?: FormadorStatus;
 }
 

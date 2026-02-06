@@ -5,7 +5,7 @@
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -24,8 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Demanda, StatusDemanda, HistoricoItem, Anexo } from '@/lib/types';
-import { useState, useEffect, useRef } from 'react';
+import type { Demanda, StatusDemanda, HistoricoItem, Anexo, ProjetoImplatancao } from '@/lib/types';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -54,6 +54,7 @@ const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída'
 const formSchema = z.object({
   municipio: z.string().min(2, { message: 'O município é obrigatório.' }),
   uf: z.string().min(2, { message: 'O estado (UF) é obrigatório.' }),
+  projetoOrigemId: z.string().optional(),
   demanda: z.string().min(10, { message: 'Descreva a demanda com pelo menos 10 caracteres.' }),
   status: z.enum(statusOptions, { required_error: 'Selecione um status.' }),
   responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
@@ -92,6 +93,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
 
   const [comment, setComment] = useState('');
@@ -104,6 +106,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     defaultValues: {
       municipio: demanda?.municipio || '',
       uf: demanda?.uf || '',
+      projetoOrigemId: demanda?.projetoOrigemId || undefined,
       demanda: demanda?.demanda || '',
       status: demanda?.status || 'Pendente',
       responsavelId: demanda?.responsavelId || user?.uid || undefined,
@@ -114,21 +117,38 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   });
 
   const selectedUf = form.watch('uf');
-  
+  const selectedMunicipio = form.watch('municipio');
+
   useEffect(() => {
-    const fetchAdmins = async () => {
+    const fetchAdminsAndProjetos = async () => {
         try {
-            const q = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
-            const querySnapshot = await getDocs(q);
-            const adminData = querySnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
+            const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
+            const projetosQuery = query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'));
+            
+            const [adminsSnapshot, projetosSnapshot] = await Promise.all([
+                getDocs(adminsQuery),
+                getDocs(projetosQuery)
+            ]);
+
+            const adminData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
             setAdmins(adminData);
+            
+            const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
+            setProjetos(projetosData);
+
         } catch (error) {
-            console.error("Failed to fetch admins", error);
-            toast({ variant: 'destructive', title: "Erro", description: "Não foi possível carregar a lista de administradores." });
+            console.error("Failed to fetch data", error);
+            toast({ variant: 'destructive', title: "Erro", description: "Não foi possível carregar os dados de apoio." });
         }
     };
-    fetchAdmins();
+    fetchAdminsAndProjetos();
   }, [toast]);
+  
+  const relevantProjects = useMemo(() => {
+    if (!selectedMunicipio) return [];
+    return projetos.filter(p => p.municipio === selectedMunicipio);
+  }, [projetos, selectedMunicipio]);
+
 
   useEffect(() => {
     const fetchEstados = async () => {
@@ -287,6 +307,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     setLoading(true);
 
     const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+    const selectedProject = projetos.find(p => p.id === values.projetoOrigemId);
 
     try {
         if (isEditMode && demanda) {
@@ -325,6 +346,14 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                     data: Timestamp.now()
                 })));
             }
+
+            if (values.projetoOrigemId && selectedProject) {
+                dataToSave.projetoOrigemId = values.projetoOrigemId;
+                dataToSave.projetoOrigemNome = selectedProject.material ? `${selectedProject.material}${selectedProject.versao ? ` - ${selectedProject.versao}` : ''}` : selectedProject.municipio;
+            } else {
+                dataToSave.projetoOrigemId = deleteField();
+                dataToSave.projetoOrigemNome = deleteField();
+            }
             
             await updateDoc(doc(db, 'demandas', demanda.id), dataToSave);
             toast({ title: 'Sucesso!', description: 'Demanda atualizada com sucesso.' });
@@ -339,7 +368,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 texto: 'Demanda criada.'
             }];
 
-            await setDoc(newDocRef, {
+            const newDemandData: Partial<Demanda> = {
                 id: newDocRef.id,
                 municipio: values.municipio.trim(),
                 uf: values.uf,
@@ -349,11 +378,18 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 responsavelNome: selectedAdmin?.nome || 'N/A',
                 prioridade: values.prioridade,
                 prazo: values.prazo ? Timestamp.fromDate(values.prazo) : null,
-                dataCriacao: serverTimestamp(),
-                dataAtualizacao: serverTimestamp(),
+                dataCriacao: serverTimestamp() as any,
+                dataAtualizacao: serverTimestamp() as any,
                 historico: historicoInicial,
                 anexosIds: values.anexosIds || [],
-            });
+            };
+
+            if (values.projetoOrigemId && selectedProject) {
+                newDemandData.projetoOrigemId = values.projetoOrigemId;
+                newDemandData.projetoOrigemNome = selectedProject.material ? `${selectedProject.material}${selectedProject.versao ? ` - ${selectedProject.versao}` : ''}` : selectedProject.municipio;
+            }
+
+            await setDoc(newDocRef, newDemandData);
             toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
         }
       onSuccess();
@@ -419,6 +455,29 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="projetoOrigemId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Vincular ao Projeto (Opcional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value} disabled={relevantProjects.length === 0}>
+                  <FormControl>
+                      <SelectTrigger>
+                          <SelectValue placeholder={relevantProjects.length > 0 ? "Selecione um projeto para vincular" : "Nenhum projeto encontrado para este município"} />
+                      </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                      {relevantProjects.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.material ? `${p.material}${p.versao ? ` - ${p.versao}` : ''}` : p.municipio}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+              <FormDescription>Associe esta demanda a um projeto de implantação existente.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="demanda"
