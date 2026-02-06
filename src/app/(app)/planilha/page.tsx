@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -35,9 +34,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 interface Activity {
   nome: string;
+  etapaKey: string;
   startDate: Date | null;
   endDate: Date | null;
   ok: boolean;
+  demandas: Demanda[];
 }
 
 interface ProjetoComAtividades extends ProjetoImplatancao {
@@ -108,33 +109,43 @@ export default function PlanilhaPage() {
     const demandasPorProjeto = demandas.reduce((acc, demanda) => {
         if (demanda.projetoOrigemId) {
             if (!acc[demanda.projetoOrigemId]) {
-                acc[demanda.projetoOrigemId] = 0;
+                acc[demanda.projetoOrigemId] = [];
             }
-            acc[demanda.projetoOrigemId]++;
+            acc[demanda.projetoOrigemId].push(demanda);
         }
         return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, Demanda[]>);
 
     return projetos.map(p => {
+        const projetoDemandas = demandasPorProjeto[p.id] || [];
+
+        const getDemandasForEtapa = (etapaKey: string) => {
+            return projetoDemandas.filter(d => d.etapaProjeto === etapaKey);
+        }
+
         const atividades: Activity[] = [];
         
         if (p.dataImplantacao) {
-            atividades.push({ nome: "Implantação", startDate: p.dataImplantacao.toDate(), endDate: p.dataImplantacao.toDate(), ok: true });
+            const etapaKey = 'implantacao';
+            atividades.push({ nome: "Implantação", etapaKey, startDate: p.dataImplantacao.toDate(), endDate: p.dataImplantacao.toDate(), ok: true, demandas: getDemandasForEtapa(etapaKey) });
         }
         if (p.diagnostica?.data) {
-            atividades.push({ nome: "Avaliação Diagnóstica", startDate: p.diagnostica.data.toDate(), endDate: p.diagnostica.data.toDate(), ok: !!p.diagnostica.ok });
+            const etapaKey = 'diagnostica';
+            atividades.push({ nome: "Avaliação Diagnóstica", etapaKey, startDate: p.diagnostica.data.toDate(), endDate: p.diagnostica.data.toDate(), ok: !!p.diagnostica.ok, demandas: getDemandasForEtapa(etapaKey) });
         }
         if (p.simulados) {
             Object.entries(p.simulados).forEach(([key, simulado]) => {
                 if (simulado.dataInicio) {
-                     atividades.push({ nome: `Simulado ${key.replace('s','')}`, startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!simulado.ok });
+                    const etapaKey = `simulado_${key}`;
+                    atividades.push({ nome: `Simulado ${key.replace('s','')}`, etapaKey, startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!simulado.ok, demandas: getDemandasForEtapa(etapaKey) });
                 }
             })
         }
         if (p.devolutivas) {
             Object.entries(p.devolutivas).forEach(([key, devolutiva]) => {
                  if (devolutiva.dataInicio) {
-                    atividades.push({ nome: `Devolutiva ${key.replace('d','')}`, startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!devolutiva.ok });
+                    const etapaKey = `devolutiva_${key}`;
+                    atividades.push({ nome: `Devolutiva ${key.replace('d','')}`, etapaKey, startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!devolutiva.ok, demandas: getDemandasForEtapa(etapaKey) });
                 }
             })
         }
@@ -144,7 +155,7 @@ export default function PlanilhaPage() {
         return { 
             ...p, 
             atividades,
-            demandaCount: demandasPorProjeto[p.id] || 0
+            demandaCount: projetoDemandas.length
         };
     })
   }, [projetos, demandas]);
@@ -327,14 +338,26 @@ export default function PlanilhaPage() {
                                             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade agendada.</p>
                                         ) : (
                                             projeto.atividades.map((atividade, index) => (
-                                                <div key={index} className="flex items-center justify-between text-sm p-2 rounded-md bg-muted/50">
-                                                    <span className="font-medium">{atividade.nome}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
-                                                        </span>
-                                                        {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                <div key={index} className="flex flex-col text-sm p-2 rounded-md bg-muted/50">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium">{atividade.nome}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
+                                                            </span>
+                                                            {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                        </div>
                                                     </div>
+                                                    {atividade.demandas.length > 0 && (
+                                                        <div className="mt-2 pt-2 border-t border-muted-foreground/10 pl-2 space-y-1">
+                                                            {atividade.demandas.map(demanda => (
+                                                                <div key={demanda.id} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                                                                    <BookOpenCheck className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                    <span className="line-clamp-2">{demanda.demanda}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         )}
