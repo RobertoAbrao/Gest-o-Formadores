@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -120,7 +119,17 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     const fetchAdminsAndProjetos = async () => {
         try {
             const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
-            const projetosQuery = query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'));
+            
+            const currentYear = new Date().getFullYear();
+            const startOfYear = new Date(currentYear, 0, 1);
+            const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
+
+            const projetosQuery = query(
+                collection(db, 'projetos'),
+                where('dataCriacao', '>=', startOfYear),
+                where('dataCriacao', '<=', endOfYear),
+                orderBy('dataCriacao', 'desc')
+            );
             
             const [adminsSnapshot, projetosSnapshot] = await Promise.all([
                 getDocs(adminsQuery),
@@ -373,12 +382,18 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {projetos.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{`${p.municipio} - ${p.material || 'Projeto'} ${p.versao || ''}`}</SelectItem>
-                  ))}
+                   {projetos.length > 0 ? (
+                    projetos.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.material ? `${p.material}${p.versao ? ` ${p.versao}` : ''} - ${p.municipio}` : `${p.municipio} - Projeto sem nome`}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className='p-4 text-center text-sm text-muted-foreground'>Nenhum projeto encontrado para o ano atual.</div>
+                  )}
                 </SelectContent>
               </Select>
-              <FormDescription>Selecione o projeto ao qual esta demanda está vinculada.</FormDescription>
+              <FormDescription>Associe esta demanda a um projeto de implantação existente.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
