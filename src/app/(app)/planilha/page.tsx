@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -9,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck } from 'lucide-react';
+import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck, MessageSquare } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Demanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -349,13 +350,28 @@ export default function PlanilhaPage() {
                                                         </div>
                                                     </div>
                                                     {atividade.demandas.length > 0 && (
-                                                        <div className="mt-2 pt-2 border-t border-muted-foreground/10 pl-2 space-y-1">
-                                                            {atividade.demandas.map(demanda => (
-                                                                <div key={demanda.id} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                                                    <BookOpenCheck className="h-3 w-3 mt-0.5 shrink-0" />
-                                                                    <span className="line-clamp-2">{demanda.demanda}</span>
-                                                                </div>
-                                                            ))}
+                                                        <div className="mt-2 pt-2 border-t border-muted-foreground/10 pl-2 space-y-2">
+                                                            {atividade.demandas.map(demanda => {
+                                                                const comentarios = demanda.historico?.filter(h => h.tipo === 'comentario').slice(0, 2) || [];
+                                                                return (
+                                                                    <div key={demanda.id} className="text-xs">
+                                                                        <div className="flex items-start gap-1.5">
+                                                                            <BookOpenCheck className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                                                                            <p className="line-clamp-2 text-foreground">{demanda.demanda}</p>
+                                                                        </div>
+                                                                        {comentarios.length > 0 && (
+                                                                            <div className="pl-5 mt-1 space-y-1">
+                                                                                {comentarios.map(comentario => (
+                                                                                    <div key={comentario.id} className="flex items-start gap-1.5 text-muted-foreground/80">
+                                                                                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                                        <p className="line-clamp-1 italic">"{comentario.texto}"</p>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            })}
                                                         </div>
                                                     )}
                                                 </div>
@@ -411,4 +427,5 @@ export default function PlanilhaPage() {
 
     </div>
   );
-}
+
+    
