@@ -242,6 +242,22 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
         value ? <p><strong>{label}:</strong> {value}</p> : null
     );
 
+    const formatEtapaName = (etapa?: string): string => {
+        if (!etapa) return 'N/A';
+        const parts = etapa.split('_');
+        if (parts.length < 2) {
+            return etapa.charAt(0).toUpperCase() + etapa.slice(1);
+        }
+        const type = parts[0];
+        const identifier = parts[1];
+
+        if (type === 'implantacao') return 'Implantação';
+        if (type === 'diagnostica') return 'Diagnóstica';
+        if (type === 'simulado') return `Simulado ${identifier.replace('s', '')}`;
+        if (type === 'devolutiva') return `Devolutiva ${identifier.replace('d', '')}`;
+        return etapa;
+    };
+
     if (loading) {
         return (
             <div className="flex h-48 items-center justify-center">
@@ -510,6 +526,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Demanda</TableHead>
+                                    <TableHead>Etapa</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Responsável</TableHead>
                                     <TableHead>Prazo</TableHead>
@@ -519,6 +536,15 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                                 {demandas.map(demanda => (
                                     <TableRow key={demanda.id}>
                                         <TableCell className="text-xs">{demanda.demanda}</TableCell>
+                                        <TableCell className="text-xs">
+                                            {demanda.etapaProjeto ? (
+                                                <Badge variant="secondary" className="whitespace-nowrap">
+                                                    {formatEtapaName(demanda.etapaProjeto)}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-muted-foreground">N/A</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell><Badge variant="outline">{demanda.status}</Badge></TableCell>
                                         <TableCell className="text-xs">{demanda.responsavelNome}</TableCell>
                                         <TableCell className="text-xs">{formatDate(demanda.prazo)}</TableCell>
