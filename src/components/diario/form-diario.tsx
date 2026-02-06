@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, deleteDoc, deleteField, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, orderBy, deleteField } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -105,17 +104,6 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const selectedProjectId = form.watch('projetoOrigemId');
 
   useEffect(() => {
-    if (selectedProjectId) {
-        const selectedProject = projetos.find(p => p.id === selectedProjectId);
-        if (selectedProject) {
-            form.setValue('uf', selectedProject.uf, { shouldValidate: true });
-            form.setValue('municipio', selectedProject.municipio, { shouldValidate: true });
-        }
-    }
-  }, [selectedProjectId, projetos, form]);
-
-
-  useEffect(() => {
     const fetchAdminsAndProjetos = async () => {
         try {
             const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
@@ -150,6 +138,16 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     fetchAdminsAndProjetos();
   }, [toast]);
   
+  useEffect(() => {
+    if (selectedProjectId) {
+        const selectedProject = projetos.find(p => p.id === selectedProjectId);
+        if (selectedProject) {
+            form.setValue('uf', selectedProject.uf, { shouldValidate: true });
+            form.setValue('municipio', selectedProject.municipio, { shouldValidate: true });
+        }
+    }
+  }, [selectedProjectId, projetos, form]);
+
   useEffect(() => {
     const fetchAnexos = async () => {
       if (demanda?.anexosIds && demanda.anexosIds.length > 0) {
@@ -307,10 +305,10 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                     data: Timestamp.now()
                 })));
             }
-
+            
             if (values.projetoOrigemId && selectedProject) {
-                dataToSave.projetoOrigemId = values.projetoOrigemId;
-                dataToSave.projetoOrigemNome = selectedProject.material ? `${selectedProject.material}${selectedProject.versao ? ` - ${selectedProject.versao}` : ''}` : selectedProject.municipio;
+              dataToSave.projetoOrigemId = values.projetoOrigemId;
+              dataToSave.projetoOrigemNome = selectedProject.municipio;
             } else {
                 dataToSave.projetoOrigemId = deleteField();
                 dataToSave.projetoOrigemNome = deleteField();
@@ -347,7 +345,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
 
             if (values.projetoOrigemId && selectedProject) {
                 newDemandData.projetoOrigemId = values.projetoOrigemId;
-                newDemandData.projetoOrigemNome = selectedProject.material ? `${selectedProject.material}${selectedProject.versao ? ` - ${selectedProject.versao}` : ''}` : selectedProject.municipio;
+                newDemandData.projetoOrigemNome = selectedProject.municipio;
             }
 
             await setDoc(newDocRef, newDemandData);
@@ -375,25 +373,34 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Projeto</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value);
+                }}
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o projeto" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                   {projetos.length > 0 ? (
-                    projetos.map(p => (
+                  {projetos.length > 0 ? (
+                    projetos.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.material ? `${p.material}${p.versao ? ` ${p.versao}` : ''} - ${p.municipio}` : `${p.municipio} - Projeto sem nome`}
+                        {p.municipio}
                       </SelectItem>
                     ))
                   ) : (
-                    <div className='p-4 text-center text-sm text-muted-foreground'>Nenhum projeto encontrado para o ano atual.</div>
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      Nenhum projeto encontrado para o ano atual.
+                    </div>
                   )}
                 </SelectContent>
               </Select>
-              <FormDescription>Associe esta demanda a um projeto de implantação existente.</FormDescription>
+              <FormDescription>
+                Associe esta demanda a um projeto de implantação existente.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
