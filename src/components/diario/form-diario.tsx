@@ -42,6 +42,7 @@ const formSchema = z.object({
   projetoOrigemId: z.string({ required_error: 'É obrigatório selecionar um projeto.' }),
   municipio: z.string().min(1, { message: 'O município é obrigatório (selecione um projeto).' }),
   uf: z.string().min(2, { message: 'O estado é obrigatório (selecione um projeto).'}),
+  etapaProjeto: z.string().optional(),
   demanda: z.string().min(10, { message: 'Descreva a demanda com pelo menos 10 caracteres.' }),
   status: z.enum(statusOptions, { required_error: 'Selecione um status.' }),
   responsavelId: z.string({ required_error: 'É obrigatório selecionar um responsável.' }),
@@ -92,6 +93,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       projetoOrigemId: demanda?.projetoOrigemId || undefined,
       municipio: demanda?.municipio || '',
       uf: demanda?.uf || '',
+      etapaProjeto: demanda?.etapaProjeto || undefined,
       demanda: demanda?.demanda || '',
       status: demanda?.status || 'Pendente',
       responsavelId: demanda?.responsavelId || user?.uid || undefined,
@@ -165,6 +167,39 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       fetchAnexos();
     }
   }, [demanda, isEditMode]);
+
+    const projectStages = useMemo(() => {
+        if (!selectedProjectId) return [];
+        
+        const projeto = projetos.find(p => p.id === selectedProjectId);
+        if (!projeto) return [];
+
+        const stages: { value: string; label: string }[] = [];
+
+        if (projeto.dataImplantacao) {
+            stages.push({ value: 'implantacao', label: 'Implantação' });
+        }
+        if (projeto.diagnostica?.data) {
+            stages.push({ value: 'diagnostica', label: 'Avaliação Diagnóstica' });
+        }
+        if (projeto.simulados) {
+            Object.keys(projeto.simulados).forEach(key => {
+                const simulado = projeto.simulados[key as keyof typeof projeto.simulados];
+                if (simulado && (simulado.dataInicio || simulado.dataFim)) {
+                    stages.push({ value: `simulado_${key}`, label: `Simulado ${key.replace('s', '')}` });
+                }
+            });
+        }
+        if (projeto.devolutivas) {
+            Object.keys(projeto.devolutivas).forEach(key => {
+                const devolutiva = projeto.devolutivas[key as keyof typeof projeto.devolutivas];
+                if (devolutiva && (devolutiva.dataInicio || devolutiva.dataFim || (devolutiva as any).data)) {
+                    stages.push({ value: `devolutiva_${key}`, label: `Devolutiva ${key.replace('d', '')}` });
+                }
+            });
+        }
+        return stages;
+    }, [selectedProjectId, projetos]);
 
 
   const handleAddComment = async () => {
@@ -291,6 +326,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
 
             const dataToSave: any = {
                 ...values,
+                etapaProjeto: values.etapaProjeto || deleteField(),
                 municipio: values.municipio.trim(),
                 demanda: values.demanda.trim(),
                 responsavelNome: selectedAdmin?.nome || 'N/A',
@@ -347,6 +383,10 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 newDemandData.projetoOrigemId = values.projetoOrigemId;
                 newDemandData.projetoOrigemNome = selectedProject.municipio;
             }
+            
+            if (values.etapaProjeto) {
+                newDemandData.etapaProjeto = values.etapaProjeto;
+            }
 
             await setDoc(newDocRef, newDemandData);
             toast({ title: 'Sucesso!', description: 'Nova demanda registrada.' });
@@ -376,6 +416,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
+                  form.setValue('etapaProjeto', undefined); // Reset etapa on project change
                 }}
                 value={field.value}
               >
@@ -405,6 +446,37 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             </FormItem>
           )}
         />
+        
+        {projectStages.length > 0 && (
+            <FormField
+                control={form.control}
+                name="etapaProjeto"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Vincular à Etapa (Opcional)</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecione a etapa do projeto" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="">Nenhuma</SelectItem>
+                                {projectStages.map(stage => (
+                                    <SelectItem key={stage.value} value={stage.value}>
+                                        {stage.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormDescription>
+                            Associe esta demanda a uma etapa específica do projeto.
+                        </FormDescription>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        )}
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
            <FormField

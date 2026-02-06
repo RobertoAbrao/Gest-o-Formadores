@@ -41,6 +41,7 @@ export interface Demanda {
   projetoOrigemId?: string;
   projetoOrigemNome?: string;
   origemGatilho?: FormadorStatus;
+  etapaProjeto?: string;
 }
 
 export interface ChecklistItem {

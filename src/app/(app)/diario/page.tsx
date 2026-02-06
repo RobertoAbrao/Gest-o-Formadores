@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -309,6 +309,22 @@ export default function DiarioPage() {
     return <span>{prazoDate.toLocaleDateString('pt-BR')} ({formatDistanceToNow(prazoDate, { addSuffix: true, locale: ptBR })})</span>;
   };
 
+    const formatEtapaName = (etapa: string) => {
+        if (!etapa) return '';
+        const parts = etapa.split('_');
+        if (parts.length < 2) {
+            return etapa.charAt(0).toUpperCase() + etapa.slice(1);
+        }
+        const type = parts[0];
+        const identifier = parts[1];
+
+        if (type === 'implantacao') return 'Implantação';
+        if (type === 'diagnostica') return 'Diagnóstica';
+        if (type === 'simulado') return `Simulado ${identifier.replace('s', '')}`;
+        if (type === 'devolutiva') return `Devolutiva ${identifier.replace('d', '')}`;
+        return etapa;
+    };
+
   if (loading && demandas.length === 0) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
@@ -418,7 +434,7 @@ export default function DiarioPage() {
         </CardContent>
       </Card>
 
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {statusOptions.map(status => {
           const demandasDaColuna = groupedDemandas[status] || [];
           return (
@@ -493,12 +509,20 @@ export default function DiarioPage() {
                                     </CardHeader>
                                     <CardContent className="p-3 pt-0 space-y-2">
                                         <p className="font-semibold text-sm">{demanda.municipio} - {demanda.uf}</p>
-                                        {demanda.projetoOrigemId && (
-                                            <Badge variant="outline" className="flex items-center gap-1 w-fit text-xs">
-                                                <ClipboardList className="h-3 w-3" />
-                                                {demanda.projetoOrigemNome || `Projeto: ${demanda.projetoOrigemId.substring(0,4)}`}
-                                            </Badge>
-                                        )}
+                                        <div className="flex flex-wrap items-start gap-1">
+                                            {demanda.projetoOrigemId && (
+                                                <Badge variant="outline" className="flex items-center gap-1 w-fit text-xs">
+                                                    <ClipboardList className="h-3 w-3" />
+                                                    {demanda.projetoOrigemNome || `Projeto: ${demanda.projetoOrigemId.substring(0,4)}`}
+                                                </Badge>
+                                            )}
+                                            {demanda.etapaProjeto && (
+                                                <Badge variant="secondary" className="flex items-center gap-1 w-fit text-xs">
+                                                    <Target className="h-3 w-3" />
+                                                    {formatEtapaName(demanda.etapaProjeto)}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <p className="text-sm text-muted-foreground line-clamp-3">{demanda.demanda}</p>
                                     </CardContent>
                                     <CardFooter className="p-3 pt-0 text-xs text-muted-foreground space-y-2 flex-col items-start">
