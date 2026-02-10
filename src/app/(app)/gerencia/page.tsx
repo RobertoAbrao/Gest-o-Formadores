@@ -126,26 +126,41 @@ export default function GerenciaPage() {
             const demandasUrgentes = demandasDoProjeto.filter(d => d.prioridade === 'Urgente').length;
             const demandasAtrasadas = demandasDoProjeto.filter(d => d.prazo && isBefore(d.prazo.toDate(), startOfToday())).length;
             
-            const atividades: any[] = [];
-            
-            if (projeto.dataImplantacao) {
-                atividades.push({ nome: 'Implantação', ok: true, startDate: projeto.dataImplantacao.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === 'implantacao') });
-            }
-            if (projeto.diagnostica?.data) {
-                atividades.push({ nome: 'Avaliação Diagnóstica', ...projeto.diagnostica, startDate: projeto.diagnostica.data.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === 'diagnostica') });
-            }
-            Object.entries(projeto.simulados || {}).forEach(([key, value]) => {
-                if (value?.dataInicio) {
-                    atividades.push({ nome: `Simulado ${key.replace('s', '')}`, ...value, startDate: value.dataInicio.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `simulado_${key}`) });
-                }
-            });
-            Object.entries(projeto.devolutivas || {}).forEach(([key, value]) => {
-                if (value?.dataInicio) {
-                    atividades.push({ nome: `Devolutiva ${key.replace('d', '')}`, ...value, startDate: value.dataInicio.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `devolutiva_${key}`) });
+            const etapasDoProjeto = new Set<string>();
+            if (projeto.dataImplantacao) etapasDoProjeto.add('implantacao');
+            if (projeto.diagnostica?.data) etapasDoProjeto.add('diagnostica');
+            if (projeto.simulados) Object.keys(projeto.simulados).forEach(key => etapasDoProjeto.add(`simulado_${key}`));
+            if (projeto.devolutivas) Object.keys(projeto.devolutivas).forEach(key => etapasDoProjeto.add(`devolutiva_${key}`));
+
+            const demandasDeMarco: Demanda[] = [];
+            const demandasGerais: Demanda[] = [];
+
+            demandasDoProjeto.forEach(demanda => {
+                if (demanda.etapaProjeto && etapasDoProjeto.has(demanda.etapaProjeto)) {
+                    demandasDeMarco.push(demanda);
+                } else {
+                    demandasGerais.push(demanda);
                 }
             });
 
-            const demandasGerais = demandasDoProjeto.filter(d => !d.etapaProjeto);
+            const atividades: any[] = [];
+            if (projeto.dataImplantacao) {
+                atividades.push({ nome: 'Implantação', ok: true, startDate: projeto.dataImplantacao.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === 'implantacao') });
+            }
+            if (projeto.diagnostica?.data) {
+                atividades.push({ nome: 'Avaliação Diagnóstica', ...projeto.diagnostica, startDate: projeto.diagnostica.data.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === 'diagnostica') });
+            }
+            Object.entries(projeto.simulados || {}).forEach(([key, value]) => {
+                if (value?.dataInicio) {
+                    atividades.push({ nome: `Simulado ${key.replace('s', '')}`, ...value, startDate: value.dataInicio.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === `simulado_${key}`) });
+                }
+            });
+            Object.entries(projeto.devolutivas || {}).forEach(([key, value]) => {
+                const dataInicio = (value as any)?.data?.toDate() || value?.dataInicio?.toDate();
+                if (dataInicio) {
+                    atividades.push({ nome: `Devolutiva ${key.replace('d', '')}`, ...value, startDate: dataInicio, demandas: demandasDeMarco.filter(d => d.etapaProjeto === `devolutiva_${key}`) });
+                }
+            });
 
             return {
                 ...projeto,
