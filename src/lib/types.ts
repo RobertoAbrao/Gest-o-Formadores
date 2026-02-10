@@ -320,6 +320,7 @@ export type AgendasState = {
 };
 
 export type LinkOnline = {
+    id?: string;
     anoArea: string;
     formadorNome: string;
     linkUrl: string;
@@ -335,7 +336,7 @@ export interface FichaDevolutiva {
     agendas: AgendasState;
     agendasGenericas?: AgendasState;
     formadoresGenericos?: { id: string; nome: string }[];
-    links: LinkOnline[];
+    links: Omit<LinkOnline, 'id'>[];
     lastUpdated?: Timestamp;
 }
 

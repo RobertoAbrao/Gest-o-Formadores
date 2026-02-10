@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -100,6 +101,7 @@ export default function FichaDevolutivaPage() {
       setFormadoresGenericos([]);
 
       const initialLinks: LinkOnline[] = formadoresData.map(f => ({
+          id: f.id,
           formadorNome: f.nomeCompleto,
           anoArea: '',
           linkUrl: '',
@@ -140,7 +142,7 @@ export default function FichaDevolutivaPage() {
             setHorario(fichaData.horario);
             setEndereco(fichaData.endereco);
             setAgendas(fichaData.agendas || {});
-            setLinksOnline(fichaData.links || []);
+            setLinksOnline(fichaData.links?.map((l, i) => ({ ...l, id: `loaded_${i}`})) || []);
             setFormadoresGenericos(fichaData.formadoresGenericos || []);
             setAgendasGenericas(fichaData.agendasGenericas || {});
         } else {
@@ -171,7 +173,7 @@ export default function FichaDevolutivaPage() {
         horario,
         endereco,
         agendas,
-        links: linksOnline,
+        links: linksOnline.map(({ id, ...rest }) => rest), // Strip out the id before saving
         agendasGenericas,
         formadoresGenericos,
       };
@@ -218,7 +220,7 @@ export default function FichaDevolutivaPage() {
       });
   };
 
-  const handleLinkChange = (index: number, field: keyof LinkOnline, value: string) => {
+  const handleLinkChange = (index: number, field: keyof Omit<LinkOnline, 'id'>, value: string) => {
       const newLinks = [...linksOnline];
       if (newLinks[index]) {
           (newLinks[index] as any)[field] = value;
@@ -226,12 +228,39 @@ export default function FichaDevolutivaPage() {
       }
   };
   
-  const handleAddGenericFormador = () => {
-    const newId = `generico_${Date.now()}`;
-    const newName = `Formador ${formadoresGenericos.length + 1}`;
-    setFormadoresGenericos(prev => [...prev, { id: newId, nome: newName }]);
-    setAgendasGenericas(prev => ({ ...prev, [newId]: [{ dia: '', horario: '', area: '', participantes: 0 }] }));
-  }
+    const handleAddGenericFormador = () => {
+        const newId = `generico_${Date.now()}`;
+        // Find the highest number used in existing generic formador names
+        const existingNumbers = formadoresGenericos.map(f => {
+            const match = f.nome.match(/Formador (\d+)/);
+            return match ? parseInt(match[1], 10) : 0;
+        });
+        const nextNumber = existingNumbers.length > 0 ? Math.max(0, ...existingNumbers) + 1 : 1;
+        const newName = `Formador ${nextNumber}`;
+
+        setFormadoresGenericos(prev => [...prev, { id: newId, nome: newName }]);
+        setAgendasGenericas(prev => ({ ...prev, [newId]: [{ dia: '', horario: '', area: '', participantes: 0 }] }));
+    }
+
+    const handleAddGenericLink = () => {
+        // Find the highest number used in existing generic formador names
+        const existingGenericNames = linksOnline.filter(l => l.formadorNome.startsWith('Formador '));
+        const existingNumbers = existingGenericNames.map(l => {
+            const match = l.formadorNome.match(/Formador (\d+)/);
+            return match ? parseInt(match[1], 10) : 0;
+        });
+        const nextNumber = existingNumbers.length > 0 ? Math.max(0, ...existingNumbers) + 1 : 1;
+        const newName = `Formador ${nextNumber}`;
+
+        const newLink: LinkOnline = {
+            id: `generico_link_${Date.now()}`,
+            formadorNome: newName,
+            anoArea: '',
+            linkUrl: '',
+        };
+
+        setLinksOnline(prev => [...prev, newLink]);
+    }
   
   const handleRemoveGenericFormador = (idToRemove: string) => {
     setFormadoresGenericos(prev => prev.filter(f => f.id !== idToRemove));
@@ -241,6 +270,11 @@ export default function FichaDevolutivaPage() {
         return newAgendas;
     });
   }
+
+  const handleRemoveGenericLink = (idToRemove: string) => {
+    setLinksOnline(prev => prev.filter(l => l.id !== idToRemove));
+  };
+
 
   const generalSchedule = useMemo(() => {
     const allEntries: (AgendaRow & { formadorNome: string })[] = [];
@@ -468,11 +502,9 @@ export default function FichaDevolutivaPage() {
                              <h3 className="text-lg font-bold">
                                 {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
                             </h3>
-                             {modalidade === 'presencial' && (
-                                <Button size="sm" variant="outline" className="no-print" onClick={handleAddGenericFormador}>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Formador Genérico
-                                </Button>
-                             )}
+                             <Button size="sm" variant="outline" className="no-print" onClick={modalidade === 'online' ? handleAddGenericLink : handleAddGenericFormador}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Formador Genérico
+                            </Button>
                         </div>
                         {modalidade === 'online' ? (
                             <div className="space-y-6">
@@ -483,11 +515,12 @@ export default function FichaDevolutivaPage() {
                                                 <TableHead className="w-[25%]">Ano/Área</TableHead>
                                                 <TableHead className="w-[25%]">Formador(a)</TableHead>
                                                 <TableHead>Link da Videochamada (Google Meet)</TableHead>
+                                                <TableHead className="w-[50px] no-print"></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {linksOnline.map((link, index) => (
-                                                <TableRow key={index}>
+                                                <TableRow key={link.id || index}>
                                                     <TableCell>
                                                       <input
                                                           value={link.anoArea}
@@ -507,6 +540,13 @@ export default function FichaDevolutivaPage() {
                                                         <div className="hidden print-only whitespace-pre-wrap">
                                                             <LinkifiedText text={link.linkUrl} />
                                                         </div>
+                                                    </TableCell>
+                                                    <TableCell className="no-print">
+                                                        {link.formadorNome.startsWith('Formador ') && (
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveGenericLink(link.id!)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
