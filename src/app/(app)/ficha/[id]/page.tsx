@@ -14,7 +14,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, FichaDevolutiva, AgendasState, AgendaRow, LinkOnline } from '@/lib/types';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save, Users } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save, Users, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -77,6 +77,11 @@ export default function FichaDevolutivaPage() {
   const [endereco, setEndereco] = useState('');
   const [agendas, setAgendas] = useState<AgendasState>({});
   const [linksOnline, setLinksOnline] = useState<LinkOnline[]>([]);
+  
+  // Estado para formadores genéricos
+  const [formadoresGenericos, setFormadoresGenericos] = useState<{id: string, nome: string}[]>([]);
+  const [agendasGenericas, setAgendasGenericas] = useState<AgendasState>({});
+
 
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +95,9 @@ export default function FichaDevolutivaPage() {
           initialAgendas[f.id] = [{ dia: '', horario: '', area: '', participantes: 0 }];
       });
       setAgendas(initialAgendas);
+      
+      setAgendasGenericas({});
+      setFormadoresGenericos([]);
 
       const initialLinks: LinkOnline[] = formadoresData.map(f => ({
           formadorNome: f.nomeCompleto,
@@ -133,6 +141,8 @@ export default function FichaDevolutivaPage() {
             setEndereco(fichaData.endereco);
             setAgendas(fichaData.agendas || {});
             setLinksOnline(fichaData.links || []);
+            setFormadoresGenericos(fichaData.formadoresGenericos || []);
+            setAgendasGenericas(fichaData.agendasGenericas || {});
         } else {
             // Se não existir, inicializa com os padrões
             initializeDefaultState(formacaoData, formadoresData);
@@ -154,7 +164,7 @@ export default function FichaDevolutivaPage() {
     if (!formacao) return;
     setSaving(true);
     try {
-      const fichaData: Omit<FichaDevolutiva, 'id' | 'lastUpdated'> = {
+      const fichaData: Partial<FichaDevolutiva> = {
         formacaoId: formacao.id,
         modalidade,
         introducao,
@@ -162,6 +172,8 @@ export default function FichaDevolutivaPage() {
         endereco,
         agendas,
         links: linksOnline,
+        agendasGenericas,
+        formadoresGenericos,
       };
 
       const fichaRef = doc(db, 'fichas_devolutivas', formacao.id);
@@ -178,15 +190,17 @@ export default function FichaDevolutivaPage() {
     }
   };
   
-  const handleAddRow = (formadorId: string) => {
-    setAgendas(prev => ({
+  const handleAddRow = (formadorId: string, isGeneric = false) => {
+    const setState = isGeneric ? setAgendasGenericas : setAgendas;
+    setState(prev => ({
         ...prev,
         [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '', participantes: 0 }]
     }));
   };
   
-  const handleAgendaChange = (formadorId: string, rowIndex: number, field: keyof AgendaRow, value: string) => {
-      setAgendas(prev => {
+  const handleAgendaChange = (formadorId: string, rowIndex: number, field: keyof AgendaRow, value: string, isGeneric = false) => {
+      const setState = isGeneric ? setAgendasGenericas : setAgendas;
+      setState(prev => {
           const newAgendas = { ...prev };
           const formadorAgenda = [...(newAgendas[formadorId] || [])];
           if (formadorAgenda[rowIndex]) {
@@ -211,23 +225,44 @@ export default function FichaDevolutivaPage() {
           setLinksOnline(newLinks);
       }
   };
+  
+  const handleAddGenericFormador = () => {
+    const newId = `generico_${Date.now()}`;
+    const newName = `Formador ${formadoresGenericos.length + 1}`;
+    setFormadoresGenericos(prev => [...prev, { id: newId, nome: newName }]);
+    setAgendasGenericas(prev => ({ ...prev, [newId]: [{ dia: '', horario: '', area: '', participantes: 0 }] }));
+  }
+  
+  const handleRemoveGenericFormador = (idToRemove: string) => {
+    setFormadoresGenericos(prev => prev.filter(f => f.id !== idToRemove));
+    setAgendasGenericas(prev => {
+        const newAgendas = { ...prev };
+        delete newAgendas[idToRemove];
+        return newAgendas;
+    });
+  }
 
   const generalSchedule = useMemo(() => {
     const allEntries: (AgendaRow & { formadorNome: string })[] = [];
 
-    for (const formadorId in agendas) {
-      const formador = formadores.find(f => f.id === formadorId);
-      if (formador) {
-        agendas[formadorId].forEach(row => {
-          if (row.dia && row.horario) { // Only include filled rows
-            allEntries.push({
-              ...row,
-              formadorNome: formador.nomeCompleto,
-            });
-          }
-        });
-      }
-    }
+    const processAgendas = (agendaState: AgendasState, formadorList: { id: string, nomeCompleto: string }[] | { id: string, nome: string }[]) => {
+        for (const formadorId in agendaState) {
+            const formador = formadorList.find(f => f.id === formadorId);
+            if (formador) {
+                agendaState[formadorId].forEach(row => {
+                    if (row.dia && row.horario) {
+                        allEntries.push({
+                            ...row,
+                            formadorNome: (formador as any).nomeCompleto || (formador as any).nome,
+                        });
+                    }
+                });
+            }
+        }
+    };
+    
+    processAgendas(agendas, formadores);
+    processAgendas(agendasGenericas, formadoresGenericos);
 
     const groupedByDay = allEntries.reduce((acc, entry) => {
         if (!acc[entry.dia]) {
@@ -244,7 +279,7 @@ export default function FichaDevolutivaPage() {
         entries: groupedByDay[day].sort((a,b) => a.horario.localeCompare(b.horario))
     }));
 
-  }, [agendas, formadores]);
+  }, [agendas, agendasGenericas, formadores, formadoresGenericos]);
 
 
   if (loading) {
@@ -429,9 +464,16 @@ export default function FichaDevolutivaPage() {
                     )}
 
                     <section>
-                        <h3 className="text-lg font-bold mb-2">
-                            {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
-                        </h3>
+                        <div className="flex justify-between items-center mb-2">
+                             <h3 className="text-lg font-bold">
+                                {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
+                            </h3>
+                             {modalidade === 'presencial' && (
+                                <Button size="sm" variant="outline" className="no-print" onClick={handleAddGenericFormador}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Formador Genérico
+                                </Button>
+                             )}
+                        </div>
                         {modalidade === 'online' ? (
                             <div className="space-y-6">
                                 <div className="border rounded-lg overflow-hidden">
@@ -561,6 +603,75 @@ export default function FichaDevolutivaPage() {
                                             </Table>
                                             <div className="pt-4 text-right no-print">
                                                 <Button size="sm" variant="outline" onClick={() => handleAddRow(formador.id)}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                {formadoresGenericos.map(formador => (
+                                    <Card key={formador.id} className="border-dashed">
+                                        <CardHeader>
+                                            <div className='flex justify-between items-center'>
+                                                <CardTitle>{formador.nome}</CardTitle>
+                                                <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0" onClick={() => handleRemoveGenericFormador(formador.id)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <Table className="print-table">
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className='w-[25%]'>Dia da Semana</TableHead>
+                                                        <TableHead className='w-[20%]'>Horário</TableHead>
+                                                        <TableHead>Ano/Área</TableHead>
+                                                        <TableHead className='w-[20%]'>Participantes</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {(agendasGenericas[formador.id] || []).map((agendaRow, rowIndex) => (
+                                                        <TableRow key={`agenda-row-${formador.id}-${rowIndex}`}>
+                                                            <TableCell>
+                                                                <Select
+                                                                    value={agendaRow.dia || ''}
+                                                                    onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value, true)}
+                                                                >
+                                                                    <SelectTrigger className="w-full no-print">
+                                                                        <SelectValue placeholder="Selecione..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {DIAS_DA_SEMANA.map(dia => (
+                                                                            <SelectItem key={dia} value={dia}>{dia}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <span className="hidden print-only">{agendaRow.dia}</span>
+                                                            </TableCell>
+                                                            <TableCell 
+                                                                className="editable-field" 
+                                                                contentEditable 
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.currentTarget.textContent || '', true)}
+                                                            >{agendaRow.horario}</TableCell>
+                                                            <TableCell 
+                                                                className="editable-field" 
+                                                                contentEditable 
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '', true)}
+                                                            >{agendaRow.area}</TableCell>
+                                                            <TableCell 
+                                                                className="editable-field"
+                                                                contentEditable
+                                                                suppressContentEditableWarning
+                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.currentTarget.textContent || '0', true)}
+                                                            >{agendaRow.participantes || ''}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                            <div className="pt-4 text-right no-print">
+                                                <Button size="sm" variant="outline" onClick={() => handleAddRow(formador.id, true)}>
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
                                                 </Button>
                                             </div>

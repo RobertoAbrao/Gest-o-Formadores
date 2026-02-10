@@ -333,6 +333,8 @@ export interface FichaDevolutiva {
     horario: string;
     endereco: string;
     agendas: AgendasState;
+    agendasGenericas?: AgendasState;
+    formadoresGenericos?: { id: string; nome: string }[];
     links: LinkOnline[];
     lastUpdated?: Timestamp;
 }
