@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ProjetoImplatancao, Demanda, Formador } from '@/lib/types';
@@ -11,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 
 // This will receive a single enriched project object
 interface DetalhesProjetoModalProps {
-  projeto: (ProjetoImplatancao & { progress: number; nextMilestone: { nome: string; data: Date } | null; demandasCount: number; demandasUrgentes: number; demandasAtrasadas: number; atividades: any[] });
+  projeto: (ProjetoImplatancao & { progress: number; nextMilestone: { nome: string; data: Date } | null; demandasCount: number; demandasUrgentes: number; demandasAtrasadas: number; atividades: any[]; demandasGerais: Demanda[]; });
   demandas: Demanda[];
   formadores: Formador[];
 }
@@ -88,6 +89,27 @@ export function DetalhesProjetoModal({ projeto, demandas, formadores }: Detalhes
           )}
         </CardContent>
       </Card>
+
+      {projeto.demandasGerais && projeto.demandasGerais.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Demandas Gerais do Projeto</CardTitle>
+            <CardDescription>Tarefas que não estão vinculadas a uma etapa específica do cronograma.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {projeto.demandasGerais.map((demanda: Demanda) => (
+              <div key={demanda.id} className="text-sm p-2 rounded-md bg-muted/30">
+                <p className="font-medium flex items-center gap-2">
+                  {demanda.prioridade === 'Urgente' && <AlertTriangle className="h-4 w-4 text-orange-500" />}
+                  {demanda.prazo && isBefore(demanda.prazo.toDate(), startOfToday()) && <Clock className="h-4 w-4 text-red-500" />}
+                  {demanda.demanda}
+                </p>
+                <p className="text-xs text-muted-foreground">Responsável: {demanda.responsavelNome} • Status: {demanda.status}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

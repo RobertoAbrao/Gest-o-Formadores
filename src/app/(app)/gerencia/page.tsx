@@ -145,6 +145,8 @@ export default function GerenciaPage() {
                 }
             });
 
+            const demandasGerais = demandasDoProjeto.filter(d => !d.etapaProjeto);
+
             return {
                 ...projeto,
                 progress: calculateProgress(projeto),
@@ -152,7 +154,8 @@ export default function GerenciaPage() {
                 demandasCount: demandasDoProjeto.length,
                 demandasUrgentes,
                 demandasAtrasadas,
-                atividades: atividades.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()),
+                atividades: atividades.sort((a, b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0)),
+                demandasGerais
             };
         }).sort((a,b) => (b.demandasUrgentes + b.demandasAtrasadas) - (a.demandasUrgentes + a.demandasAtrasadas));
     }, [projetos, demandas]);
