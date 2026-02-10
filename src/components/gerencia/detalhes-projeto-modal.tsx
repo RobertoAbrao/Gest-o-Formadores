@@ -53,8 +53,8 @@ export function DetalhesProjetoModal({ projeto, demandas, formadores }: Detalhes
 
       <Card>
         <CardHeader>
-          <CardTitle>Marcos e Pendências</CardTitle>
-          <CardDescription>O que falta fazer em cada etapa do projeto.</CardDescription>
+          <CardTitle>Cronograma de Atividades e Demandas</CardTitle>
+          <CardDescription>Acompanhe o status de cada etapa e as tarefas do Diário de Bordo vinculadas.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {projeto.atividades.length === 0 ? (
