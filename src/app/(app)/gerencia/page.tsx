@@ -59,7 +59,15 @@ export default function GerenciaPage() {
     const [formacoes, setFormacoes] = useState<Formacao[]>([]);
 
     useEffect(() => {
-        const qProjetos = query(collection(db, 'projetos'));
+        const currentYear = new Date().getFullYear();
+        const startOfYear = new Date(currentYear, 0, 1);
+        const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59);
+
+        const qProjetos = query(
+            collection(db, "projetos"),
+            where("dataCriacao", ">=", startOfYear),
+            where("dataCriacao", "<=", endOfYear)
+        );
         const qDemandas = query(collection(db, 'demandas'), where('status', '!=', 'Concluída'));
         const qFormacoes = query(collection(db, 'formacoes'));
 
@@ -89,7 +97,7 @@ export default function GerenciaPage() {
     const stats = useMemo(() => ({
         demandasPendentes: demandas.length,
         formacoesAtivas: formacoes.filter(f => f.status === 'em-formacao').length,
-        projetosAtivos: projetos.length, // Assuming all fetched projects are active
+        projetosAtivos: projetos.length,
     }), [demandas, formacoes, projetos]);
     
     const projetosComDados = useMemo(() => {
@@ -186,7 +194,7 @@ export default function GerenciaPage() {
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Projetos em Andamento</CardTitle>
+                        <CardTitle className="text-sm font-medium">Projetos em Andamento ({new Date().getFullYear()})</CardTitle>
                         <ClipboardList className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent><div className="text-2xl font-bold">{stats.projetosAtivos}</div></CardContent>
@@ -195,7 +203,7 @@ export default function GerenciaPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
-                    <h2 className="text-xl font-semibold">Status dos Projetos</h2>
+                    <h2 className="text-xl font-semibold">Status dos Projetos ({new Date().getFullYear()})</h2>
                     {projetosComDados.length === 0 ? (
                         <p className="text-muted-foreground text-sm">Nenhum projeto para exibir.</p>
                     ) : (
@@ -315,4 +323,4 @@ export default function GerenciaPage() {
             </div>
         </div>
     );
-}
+    
