@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -34,6 +35,9 @@ const getNextMilestone = (projeto: ProjetoImplatancao): { nome: string; data: Da
     const today = startOfToday();
     const milestones: { nome: string; data: Date }[] = [];
 
+    if (projeto.dataImplantacao) {
+        milestones.push({ nome: 'Implantação', data: projeto.dataImplantacao.toDate() });
+    }
     if (projeto.diagnostica?.data && !projeto.diagnostica.ok) {
         milestones.push({ nome: 'Avaliação Diagnóstica', data: projeto.diagnostica.data.toDate() });
     }
@@ -122,11 +126,24 @@ export default function GerenciaPage() {
             const demandasUrgentes = demandasDoProjeto.filter(d => d.prioridade === 'Urgente').length;
             const demandasAtrasadas = demandasDoProjeto.filter(d => d.prazo && isBefore(d.prazo.toDate(), startOfToday())).length;
             
-            const atividades = [
-                { nome: 'Avaliação Diagnóstica', ...projeto.diagnostica, startDate: projeto.diagnostica?.data?.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === 'diagnostica') },
-                ...Object.entries(projeto.simulados || {}).map(([key, value]) => ({ nome: `Simulado ${key.replace('s','')}`, ...value, startDate: value.dataInicio?.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `simulado_${key}`) })),
-                ...Object.entries(projeto.devolutivas || {}).map(([key, value]) => ({ nome: `Devolutiva ${key.replace('d','')}`, ...value, startDate: value.dataInicio?.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `devolutiva_${key}`) }))
-            ].filter(a => a.startDate);
+            const atividades: any[] = [];
+            
+            if (projeto.dataImplantacao) {
+                atividades.push({ nome: 'Implantação', ok: true, startDate: projeto.dataImplantacao.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === 'implantacao') });
+            }
+            if (projeto.diagnostica?.data) {
+                atividades.push({ nome: 'Avaliação Diagnóstica', ...projeto.diagnostica, startDate: projeto.diagnostica.data.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === 'diagnostica') });
+            }
+            Object.entries(projeto.simulados || {}).forEach(([key, value]) => {
+                if (value?.dataInicio) {
+                    atividades.push({ nome: `Simulado ${key.replace('s', '')}`, ...value, startDate: value.dataInicio.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `simulado_${key}`) });
+                }
+            });
+            Object.entries(projeto.devolutivas || {}).forEach(([key, value]) => {
+                if (value?.dataInicio) {
+                    atividades.push({ nome: `Devolutiva ${key.replace('d', '')}`, ...value, startDate: value.dataInicio.toDate(), demandas: demandasDoProjeto.filter(d => d.etapaProjeto === `devolutiva_${key}`) });
+                }
+            });
 
             return {
                 ...projeto,
@@ -135,7 +152,7 @@ export default function GerenciaPage() {
                 demandasCount: demandasDoProjeto.length,
                 demandasUrgentes,
                 demandasAtrasadas,
-                atividades,
+                atividades: atividades.sort((a, b) => a.startDate.getTime() - b.startDate.getTime()),
             };
         }).sort((a,b) => (b.demandasUrgentes + b.demandasAtrasadas) - (a.demandasUrgentes + a.demandasAtrasadas));
     }, [projetos, demandas]);
