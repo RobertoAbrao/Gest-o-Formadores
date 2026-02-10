@@ -22,6 +22,7 @@ import {
   GanttChartSquare,
   GalleryHorizontal,
   BookOpenCheck,
+  AreaChart,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -71,6 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     user.perfil === 'administrador'
       ? [
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/gerencia', label: 'Visão Gerencial', icon: AreaChart },
           { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
           { href: '/formadores', label: 'Formadores', icon: Users },
           { href: '/assessores', label: 'Assessores', icon: Briefcase },
