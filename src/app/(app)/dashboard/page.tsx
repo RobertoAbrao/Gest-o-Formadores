@@ -430,11 +430,19 @@ export default function DashboardPage() {
         return `${year}${month}${day}`;
     };
 
+    const guests = [
+        "alessandra@editoralt.com.br",
+        "amaranta@editoralt.com.br",
+        "assessoria@editoralt.com.br",
+        "irene@editoralt.com.br"
+    ].join(',');
+
     const params = new URLSearchParams({
         action: 'TEMPLATE',
         text: event.title,
         dates: `${formatAllDayDate(startDate)}/${formatAllDayDate(endDate)}`,
         details: event.details,
+        add: guests
     });
 
     return `https://www.google.com/calendar/render?${params.toString()}`;
@@ -768,3 +776,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
