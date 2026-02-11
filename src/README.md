@@ -1,6 +1,6 @@
 # Portal de Apoio Pedagógico - Gestão Pedagógica
 
-Este é um projeto Next.js que serve como um portal de apoio pedagógico, projetado para gerenciar formadores, assessores, formações, projetos de implantação, materiais de apoio, despesas e avaliações. O sistema possui dois perfis de usuário principais: Administrador e Formador, cada um com seu próprio conjunto de permissões e funcionalidades.
+Este é um projeto Next.js que serve como um portal de apoio pedagógico, projetado para gerenciar formadores, assessores, formações, projetos de implantação, materiais de apoio, despesas e avaliações. O sistema possui dois perfis de usuário principais: Administrador e Formador, cada um com seu próprio conjunto de permissões e funcionalidades, além de páginas públicas para coleta de feedback e alinhamento.
 
 ## Tecnologias Utilizadas
 
@@ -9,6 +9,7 @@ Este é um projeto Next.js que serve como um portal de apoio pedagógico, projet
 - **Estilização:** Tailwind CSS
 - **Componentes UI:** shadcn/ui
 - **Backend & Banco de Dados:** Firebase (Firestore, Authentication)
+- **Geração de IA:** Genkit
 - **Gráficos e Visualização:** Recharts
 - **Validação de Formulários:** Zod e React Hook Form
 
@@ -16,67 +17,59 @@ Este é um projeto Next.js que serve como um portal de apoio pedagógico, projet
 
 ## Funcionalidades Principais
 
-### 1. Autenticação e Perfis de Usuário
-
-- **Tela de Login Segura:** Acesso com email e senha utilizando Firebase Authentication.
-- **Dois Tipos de Perfil:**
-  - **Administrador:** Possui controle total sobre o sistema, gerenciando todos os dados e usuários.
-  - **Formador:** Acesso focado em suas atividades de formação, despesas e materiais.
-- **Redirecionamento Automático:** Após o login, os usuários são direcionados para o painel correspondente ao seu perfil.
-
-### 2. Painel do Administrador
+### 1. Painel do Administrador
 
 O administrador tem acesso a um conjunto completo de ferramentas para gerenciar todas as operações do portal.
 
 - **Dashboard Centralizado:**
-  - **Visão Geral:** Cards com estatísticas chave, como o número de formadores ativos, materiais disponíveis e formações ativas.
-  - **Agenda de Eventos Interativa:** Um calendário que exibe todas as datas importantes, com um sistema de cores para diferenciar eventos:
-    - **Formações:** Datas de início e fim.
-    - **Marcos de Projeto:** Datas de migração e implantação.
-    - **Acompanhamentos de Projeto:** Prazos para simulados e devolutivas.
+  - Visão geral com estatísticas chave (demandas, materiais, formações) e uma agenda interativa de eventos.
 
-- **Gerenciamento de Formadores e Assessores:**
-  - CRUD completo (Criar, Ler, Atualizar, Excluir) para os perfis dos formadores e assessores.
-  - Os perfis são agrupados por estado (UF) em uma interface com acordeão para melhor organização.
-  - Visualização detalhada de cada perfil, incluindo informações pessoais, de contato, currículo e dados bancários.
+- **Visão Gerencial:**
+  - Um painel em tempo real para a liderança, mostrando o progresso dos projetos de implantação, status das etapas, e demandas críticas (urgentes ou atrasadas).
 
-- **Gerenciamento de Materiais de Apoio:**
-  - Adição, edição e exclusão de materiais (PDFs, vídeos, links) que ficam disponíveis para todos os formadores.
+- **Diário de Bordo:**
+  - Um sistema de gestão de tarefas (demandas) com filtros por responsável, prioridade e status, permitindo acompanhar de perto todas as pendências.
 
-- **Quadro de Acompanhamento (Kanban):**
-  - Visualização do ciclo de vida de todas as formações ativas em um quadro no estilo Kanban, com colunas como "Preparação", "Em Formação", "Pós Formação" e "Concluído".
-  - Permite criar e editar formações, associando formadores, materiais e detalhes logísticos (passagens, hospedagem).
+- **Gestão de Usuários:**
+  - CRUD completo para os perfis dos **Formadores** e **Assessores**, organizados por estado (UF).
 
-- **Gerenciamento de Projetos de Implantação:**
-  - Uma seção dedicada para criar e acompanhar projetos de implantação em municípios.
-  - Registro de datas cruciais como migração de dados e implantação do sistema.
-  - Acompanhamento de status (OK/Pendente) para avaliações diagnósticas e simulados.
-  - Cronograma detalhado para as devolutivas, associando formadores e prazos.
+- **Gestão de Conteúdo:**
+  - **Materiais de Apoio:** Biblioteca centralizada de PDFs, vídeos e links para os formadores.
+  - **Cards de Divulgação:** Ferramenta para criar cards dinâmicos para eventos e formações.
 
-- **Relatórios Detalhados e Impressão:**
-  - Geração de relatórios completos por formação, incluindo um resumo de informações, linha do tempo de anexos, despesas detalhadas e resultados agregados das avaliações.
-  - Funcionalidade para impressão do relatório formatado.
+- **Acompanhamento de Formações (Quadro Kanban):**
+  - Visualização do ciclo de vida de todas as formações ativas em um quadro Kanban ("Preparação", "Em Formação", etc.), com criação e edição de atividades.
 
-- **Formações Arquivadas:**
-  - Consulta a um histórico de todas as formações que já foram concluídas e arquivadas.
+- **Projetos de Implantação:**
+  - Seção dedicada para criar e acompanhar projetos de implantação em municípios, registrando datas cruciais, status de marcos (diagnóstica, simulados, devolutivas) e cronogramas.
 
-### 3. Painel do Formador
+- **Calendário de Planejamento:**
+  - Ferramenta estratégica para planejar e visualizar o cronograma de múltiplos projetos, com a capacidade de sincronizar datas e compartilhar links de alinhamento com os municípios.
+
+- **Relatórios e Fichas:**
+  - Geração de relatórios detalhados e imprimíveis por formação, incluindo despesas e resultados de avaliações.
+  - Geração de "Fichas de Devolutiva" com o cronograma e detalhes do evento para envio ao cliente.
+
+- **Funcionalidades de IA:**
+  - Geração automática de **Mapas Mentais** em Markdown a partir dos dados consolidados nos relatórios de avaliação.
+
+- **Integrações:**
+  - Visualização de dashboards interativos incorporados do **Power BI**.
+
+### 2. Painel do Formador
 
 O painel do formador é projetado para ser uma ferramenta de trabalho focada e eficiente.
 
-- **Visualização de Materiais:** Acesso direto à biblioteca de materiais de apoio cadastrados pelo administrador, com opção para download ou acesso ao link.
-- **Relatório de Despesas:**
-  - Lançamento de despesas (alimentação, transporte, etc.) associadas a uma formação em andamento.
-  - Upload de comprovantes de imagem para cada despesa.
-  - Visualização organizada das despesas por tipo, com totais calculados automaticamente.
-- **Meu Perfil:** Visualização dos seus dados cadastrais, como municípios de responsabilidade, disciplina e currículo.
+- **Visualização de Materiais:** Acesso direto à biblioteca de materiais de apoio.
+- **Relatório de Despesas:** Lançamento de despesas (alimentação, transporte, etc.) associadas a uma formação, com upload de comprovantes.
+- **Diário de Bordo:** Acesso para visualizar e atualizar as demandas que lhe foram atribuídas.
+- **Meu Perfil:** Visualização de seus dados cadastrais.
 
-### 4. Avaliação de Formações
+### 3. Páginas Públicas
 
-- **Formulário Público e Acessível:** Um formulário de avaliação detalhado que pode ser acessado por qualquer participante através de um link público, sem necessidade de login.
-- **Validação de Dados em Tempo Real:** O formulário inclui validações para garantir a qualidade dos dados, como a confirmação de e-mail.
-- **Feedback Visual:** Exibe uma mensagem de sucesso clara após o envio e destaca os campos com erro em caso de falha na validação.
-- **Resultados Centralizados e Privados:** As respostas são salvas de forma segura no Firestore. Apenas administradores podem visualizar os resultados, que são exibidos de forma agregada (gráficos e médias) e individual no relatório da formação.
+- **Formulário de Avaliação:** Link público por formação para que os participantes avaliem o evento e o formador. Os resultados são privados e consolidados nos relatórios.
+- **Formulário de Avaliação da Secretaria:** Um formulário dedicado para o feedback da Secretaria de Educação sobre a formação.
+- **Formulário de Alinhamento Técnico:** Página para que os municípios validem ou sugiram novas datas para o cronograma de um projeto de implantação.
 
 ---
 
@@ -84,11 +77,15 @@ O painel do formador é projetado para ser uma ferramenta de trabalho focada e e
 
 A estrutura de pastas segue as convenções do Next.js App Router:
 
-- `src/app/(app)`: Contém as páginas principais da aplicação que exigem autenticação (Dashboard, Quadro, Projetos, etc.).
+- `src/app/(app)`: Contém as páginas principais da aplicação que exigem autenticação.
 - `src/app/(auth)`: Rotas de autenticação (página de login).
-- `src/app/avaliacao/[id]`: Página pública do formulário de avaliação.
+- `src/app/avaliacao/[id]`: Página pública do formulário de avaliação dos participantes.
+- `src/app/avaliacao-secretaria/[id]`: Página pública do formulário de avaliação da secretaria.
+- `src/app/alinhamento/[id]`: Página pública para alinhamento de cronograma com o município.
 - `src/app/relatorio/[id]`: Página de visualização e impressão do relatório de formação.
-- `src/components`: Componentes React reutilizáveis, incluindo componentes de UI (shadcn/ui), formulários e componentes de layout.
-- `src/hooks`: Hooks customizados, como `useAuth` para o gerenciamento de autenticação.
-- `src/lib`: Funções utilitárias, configuração do Firebase (`firebase.ts`) e definições de tipos TypeScript (`types.ts`).
+- `src/app/ficha/[id]`: Página de geração da ficha de curso/devolutiva.
+- `src/components`: Componentes React reutilizáveis.
+- `src/hooks`: Hooks customizados (`useAuth`, etc.).
+- `src/lib`: Funções utilitárias, configuração do Firebase e definições de tipos.
+- `src/ai`: Fluxos e configurações do Genkit para funcionalidades de IA.
 - `firestore.rules`: Arquivo de regras de segurança para o Cloud Firestore.

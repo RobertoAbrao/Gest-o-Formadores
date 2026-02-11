@@ -1,6 +1,6 @@
 # Portal de Apoio Pedagógico - Gestão Pedagógica
 
-Este é um projeto Next.js que serve como um portal de apoio pedagógico, projetado para gerenciar formadores, formações, materiais de apoio, despesas e avaliações. O sistema possui dois perfis de usuário principais: Administrador e Formador, cada um com seu próprio conjunto de permissões e funcionalidades.
+Este é um projeto Next.js que serve como um portal de apoio pedagógico, projetado para gerenciar formadores, assessores, formações, projetos de implantação, materiais de apoio, despesas e avaliações. O sistema possui dois perfis de usuário principais: Administrador e Formador, cada um com seu próprio conjunto de permissões e funcionalidades, além de páginas públicas para coleta de feedback e alinhamento.
 
 ## Tecnologias Utilizadas
 
@@ -9,58 +9,67 @@ Este é um projeto Next.js que serve como um portal de apoio pedagógico, projet
 - **Estilização:** Tailwind CSS
 - **Componentes UI:** shadcn/ui
 - **Backend & Banco de Dados:** Firebase (Firestore, Authentication)
+- **Geração de IA:** Genkit
 - **Gráficos e Visualização:** Recharts
-- **Validação de Formulários:** Zod e React Hook Form 
+- **Validação de Formulários:** Zod e React Hook Form
 
 ---
 
 ## Funcionalidades Principais
 
-### 1. Autenticação e Perfis de Usuário
+### 1. Painel do Administrador
 
-- **Tela de Login:** Acesso seguro com email e senha.
-- **Dois Tipos de Perfil:**
-  - **Administrador:** Possui controle total sobre o sistema.
-  - **Formador:** Acesso focado em suas atividades de formação e despesas.
-- **Redirecionamento Automático:** Após o login, os usuários são direcionados para o painel correspondente ao seu perfil.
+O administrador tem acesso a um conjunto completo de ferramentas para gerenciar todas as operações do portal.
 
-### 2. Painel do Administrador
+- **Dashboard Centralizado:**
+  - Visão geral com estatísticas chave (demandas, materiais, formações) e uma agenda interativa de eventos.
 
-- **Dashboard:** Uma visão geral com estatísticas chave, como o número de formadores ativos, materiais disponíveis e municípios cobertos.
-- **Gerenciamento de Formadores:**
-  - CRUD completo (Criar, Ler, Atualizar, Excluir) para os perfis dos formadores.
-  - Os formadores são agrupados por estado (UF) para melhor organização.
-- **Gerenciamento de Assessores:**
-  - CRUD completo para os perfis dos assessores, similar ao de formadores.
-- **Gerenciamento de Materiais de Apoio:**
-  - Adição, edição e exclusão de materiais (PDFs, vídeos, links) que ficam disponíveis para todos os formadores.
-- **Quadro de Acompanhamento (Kanban):**
-  - Visualização do ciclo de vida de todas as formações em um quadro no estilo Kanban, com colunas como "Preparação", "Em Formação", "Pós Formação" e "Concluído".
-  - Permite criar e editar formações, associando formadores e materiais.
-- **Formulário de Avaliação:**
-  - Um link de formulário de avaliação público pode ser compartilhado para cada formação.
-- **Relatórios de Formação:**
-  - Geração de relatórios detalhados por formação, incluindo um resumo completo dos resultados das avaliações e despesas.
-  - Funcionalidade para impressão do relatório.
-- **Formações Arquivadas:**
-  - Consulta a um histórico de todas as formações que já foram concluídas e arquivadas.
+- **Visão Gerencial:**
+  - Um painel em tempo real para a liderança, mostrando o progresso dos projetos de implantação, status das etapas, e demandas críticas (urgentes ou atrasadas).
 
-### 3. Painel do Formador
+- **Diário de Bordo:**
+  - Um sistema de gestão de tarefas (demandas) com filtros por responsável, prioridade e status, permitindo acompanhar de perto todas as pendências.
 
-- **Visualização de Materiais:** Acesso à biblioteca de materiais de apoio cadastrados pelo administrador.
-- **Relatório de Despesas:**
-  - Lançamento de despesas (alimentação, transporte, etc.) associadas a uma formação ativa.
-  - Upload de comprovantes para cada despesa.
-  - Visualização organizada das despesas por tipo.
-- **Meu Perfil:** Visualização dos seus dados cadastrais, como municípios de responsabilidade e currículo.
+- **Gestão de Usuários:**
+  - CRUD completo para os perfis dos **Formadores** e **Assessores**, organizados por estado (UF).
 
-### 4. Avaliação de Formações
+- **Gestão de Conteúdo:**
+  - **Materiais de Apoio:** Biblioteca centralizada de PDFs, vídeos e links para os formadores.
+  - **Cards de Divulgação:** Ferramenta para criar cards dinâmicos para eventos e formações.
 
-- **Formulário Público:** Um formulário de avaliação detalhado que pode ser acessado por qualquer participante através de um link.
-- **Validação de Dados:** O formulário inclui validações para garantir a qualidade dos dados, como a confirmação de e-mail.
-- **Feedback Visual:** Exibe uma mensagem de sucesso clara após o envio, sem redirecionar o usuário, e destaca os campos com erro em caso de falha na validação.
-- **Centralização dos Resultados:** As respostas são salvas no Firestore e exibidas de forma agregada e detalhada no relatório da formação, acessível apenas pelo administrador.
-- **Segurança:** As regras do Firestore garantem que qualquer pessoa possa enviar uma avaliação, mas apenas administradores autenticados possam ler os resultados.
+- **Acompanhamento de Formações (Quadro Kanban):**
+  - Visualização do ciclo de vida de todas as formações ativas em um quadro Kanban ("Preparação", "Em Formação", etc.), com criação e edição de atividades.
+
+- **Projetos de Implantação:**
+  - Seção dedicada para criar e acompanhar projetos de implantação em municípios, registrando datas cruciais, status de marcos (diagnóstica, simulados, devolutivas) e cronogramas.
+
+- **Calendário de Planejamento:**
+  - Ferramenta estratégica para planejar e visualizar o cronograma de múltiplos projetos, com a capacidade de sincronizar datas e compartilhar links de alinhamento com os municípios.
+
+- **Relatórios e Fichas:**
+  - Geração de relatórios detalhados e imprimíveis por formação, incluindo despesas e resultados de avaliações.
+  - Geração de "Fichas de Devolutiva" com o cronograma e detalhes do evento para envio ao cliente.
+
+- **Funcionalidades de IA:**
+  - Geração automática de **Mapas Mentais** em Markdown a partir dos dados consolidados nos relatórios de avaliação.
+
+- **Integrações:**
+  - Visualização de dashboards interativos incorporados do **Power BI**.
+
+### 2. Painel do Formador
+
+O painel do formador é projetado para ser uma ferramenta de trabalho focada e eficiente.
+
+- **Visualização de Materiais:** Acesso direto à biblioteca de materiais de apoio.
+- **Relatório de Despesas:** Lançamento de despesas (alimentação, transporte, etc.) associadas a uma formação, com upload de comprovantes.
+- **Diário de Bordo:** Acesso para visualizar e atualizar as demandas que lhe foram atribuídas.
+- **Meu Perfil:** Visualização de seus dados cadastrais.
+
+### 3. Páginas Públicas
+
+- **Formulário de Avaliação:** Link público por formação para que os participantes avaliem o evento e o formador. Os resultados são privados e consolidados nos relatórios.
+- **Formulário de Avaliação da Secretaria:** Um formulário dedicado para o feedback da Secretaria de Educação sobre a formação.
+- **Formulário de Alinhamento Técnico:** Página para que os municípios validem ou sugiram novas datas para o cronograma de um projeto de implantação.
 
 ---
 
@@ -68,9 +77,15 @@ Este é um projeto Next.js que serve como um portal de apoio pedagógico, projet
 
 A estrutura de pastas segue as convenções do Next.js App Router:
 
-- `src/app/(app)`: Contém as páginas principais da aplicação que exigem autenticação (Dashboard, Quadro, Materiais, etc.).
+- `src/app/(app)`: Contém as páginas principais da aplicação que exigem autenticação.
 - `src/app/(auth)`: Rotas de autenticação (página de login).
-- `src/app/avaliacao/[id]`: Página pública do formulário de avaliação.
-- `src/components`: Componentes React reutilizáveis, incluindo componentes da UI (shadcn/ui), formulários e componentes de layout.
-- `src/hooks`: Hooks customizados, como `useAuth` para o gerenciamento de autenticação.
-- `src/lib`: Funções utilitárias, configuração do Firebase (`firebase.ts`) e definições de tipos TypeScript (`types.ts`).  
+- `src/app/avaliacao/[id]`: Página pública do formulário de avaliação dos participantes.
+- `src/app/avaliacao-secretaria/[id]`: Página pública do formulário de avaliação da secretaria.
+- `src/app/alinhamento/[id]`: Página pública para alinhamento de cronograma com o município.
+- `src/app/relatorio/[id]`: Página de visualização e impressão do relatório de formação.
+- `src/app/ficha/[id]`: Página de geração da ficha de curso/devolutiva.
+- `src/components`: Componentes React reutilizáveis.
+- `src/hooks`: Hooks customizados (`useAuth`, etc.).
+- `src/lib`: Funções utilitárias, configuração do Firebase e definições de tipos.
+- `src/ai`: Fluxos e configurações do Genkit para funcionalidades de IA.
+- `firestore.rules`: Arquivo de regras de segurança para o Cloud Firestore.
