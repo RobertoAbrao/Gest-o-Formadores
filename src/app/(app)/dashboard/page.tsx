@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList } from 'lucide-react';
+import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList, CalendarPlus } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
@@ -417,6 +417,29 @@ export default function DashboardPage() {
     return format(eventDate, 'dd/MM');
   }
 
+  const generateGoogleCalendarLink = (event: CalendarEvent) => {
+    const startDate = event.date;
+    // For all-day events, Google Calendar API expects the end date to be the next day.
+    const endDate = addDays(startDate, 1);
+
+    // Format for all-day events is YYYYMMDD
+    const formatAllDayDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}${month}${day}`;
+    };
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: event.title,
+        dates: `${formatAllDayDate(startDate)}/${formatAllDayDate(endDate)}`,
+        details: event.details,
+    });
+
+    return `https://www.google.com/calendar/render?${params.toString()}`;
+  }
+
   if (!user || user.perfil !== 'administrador' || loading) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
@@ -459,13 +482,25 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
                 </div>
-                <div>
+                <div className="flex-grow">
                     <p className="font-semibold flex items-center gap-2">
                         {isUrgent && <AlertTriangle className={cn("h-4 w-4", isOverdue ? "text-red-600" : "text-orange-500")} />}
                         {event.title}
                     </p>
                     <p className="text-sm text-muted-foreground">{event.details}</p>
                 </div>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className='h-8 w-8 self-center shrink-0'
+                    title="Adicionar ao Google Agenda"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(generateGoogleCalendarLink(event), '_blank');
+                    }}
+                >
+                    <CalendarPlus className='h-4 w-4 text-blue-500 hover:text-blue-600' />
+                </Button>
             </div>
             )
         })}
@@ -651,17 +686,28 @@ export default function DashboardPage() {
                                                     {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
                                                 </Badge>
                                             </div>
-                                            <p className="text-sm text-muted-foreground flex items-center justify-between gap-1">
+                                            <div className="text-sm text-muted-foreground flex items-center justify-between gap-1">
                                             <span className='flex items-center gap-1'>
                                                     {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : event.type === 'demanda' ? <ClipboardList className="h-3 w-3" /> : <Milestone className='h-3 w-3'/>}
                                                     {event.details}
                                             </span>
-                                            {event.type === 'lembrete' && event.details === 'Lembrete pessoal' && (
-                                                <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
-                                                    <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+                                            <span className="flex items-center">
+                                                {event.type === 'lembrete' && event.details === 'Lembrete pessoal' && (
+                                                    <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
+                                                        <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
+                                                    </Button>
+                                                )}
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className='h-6 w-6'
+                                                    title="Adicionar ao Google Agenda"
+                                                    onClick={() => window.open(generateGoogleCalendarLink(event), '_blank')}
+                                                >
+                                                    <CalendarPlus className='h-4 w-4 text-blue-500 hover:text-blue-600' />
                                                 </Button>
-                                            )}
-                                            </p>
+                                            </span>
+                                            </div>
                                         </div>
                                         {index < selectedDayEvents.length - 1 && <Separator />}
                                     </div>
