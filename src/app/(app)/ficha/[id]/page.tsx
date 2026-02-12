@@ -433,8 +433,7 @@ export default function FichaDevolutivaPage() {
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
                         <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
                          <p className="flex items-center gap-2">
-                            • <strong>Quando:</strong> <span className="print-only">{formattedPeriod}</span>
-                            <span className="no-print">{formattedPeriod}</span>
+                            • <strong>Quando:</strong> {formattedPeriod}
                         </p>
                         <p className="flex items-center gap-2">
                             • <strong>Horário:</strong> 
