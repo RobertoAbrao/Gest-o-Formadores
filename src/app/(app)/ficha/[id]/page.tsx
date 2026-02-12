@@ -358,7 +358,7 @@ export default function FichaDevolutivaPage() {
     ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
     : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.';
   
-  const editableFieldClass = "bg-yellow-100/50 dark:bg-yellow-900/20 focus:bg-background transition-colors duration-200";
+  const editableFieldClass = "bg-yellow-100/50 dark:bg-yellow-900/20 border-yellow-400/80 dark:border-yellow-700/60 shadow-md shadow-yellow-400/40 focus:bg-background focus:border-input focus:shadow-none focus:ring-2 focus:ring-ring transition-all duration-200";
 
   return (
     <>
@@ -529,7 +529,7 @@ export default function FichaDevolutivaPage() {
                                                       <Input
                                                           value={link.anoArea}
                                                           onChange={(e) => handleLinkChange(index, 'anoArea', e.target.value)}
-                                                          className={`w-full text-sm no-print ${editableFieldClass}`}
+                                                          className={`w-full text-sm no-print h-9 ${editableFieldClass}`}
                                                       />
                                                       <span className="hidden print-only">{link.anoArea}</span>
                                                     </TableCell>
