@@ -26,6 +26,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { format, isValid, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 
 const DIAS_DA_SEMANA = [
@@ -372,7 +374,6 @@ export default function FichaDevolutivaPage() {
           .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; }
           .no-print { display: none !important; }
           .print-only { visibility: visible !important; display: inline !important; }
-          .editable-field { padding: 2px; }
           .editable-textarea {
              padding: 8px;
              width: 100%;
@@ -418,29 +419,29 @@ export default function FichaDevolutivaPage() {
                     </header>
                     
                     <section>
-                         <textarea
+                         <Textarea
                            value={introducao}
                            onChange={(e) => setIntroducao(e.target.value)}
-                           className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px] no-print"
+                           className="w-full text-sm no-print"
+                           rows={3}
                          />
                          <div className="hidden print-only editable-textarea">{introducao}</div>
                     </section>
 
                     <section className='bg-gray-100 p-4 rounded-md text-sm'>
                         <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
-                         <p>
-                            • <strong>Quando:</strong> <span className="editable-field" contentEditable suppressContentEditableWarning onBlur={e => e.currentTarget.textContent}>{formattedPeriod}</span>
+                         <p className="flex items-center gap-2">
+                            • <strong>Quando:</strong> <span className="print-only">{formattedPeriod}</span>
+                            <span className="no-print">{formattedPeriod}</span>
                         </p>
-                        <p>
+                        <p className="flex items-center gap-2">
                             • <strong>Horário:</strong> 
-                            <span 
-                                className="editable-field" 
-                                contentEditable 
-                                suppressContentEditableWarning
-                                onBlur={e => setHorario(e.currentTarget.textContent || '')}
-                            >
-                                {horario}
-                            </span>
+                            <Input
+                                value={horario}
+                                onChange={e => setHorario(e.target.value)}
+                                className="w-48 text-sm p-1 h-8 no-print"
+                            />
+                            <span className="hidden print-only">{horario}</span>
                         </p>
                         <p className="mt-2 text-xs">
                           {dynamicFooter}
@@ -450,10 +451,11 @@ export default function FichaDevolutivaPage() {
                      {modalidade === 'presencial' && (
                         <section>
                              <h3 className="text-lg font-bold mb-2">Endereço do Evento</h3>
-                              <textarea
+                              <Textarea
                                 value={endereco}
                                 onChange={(e) => setEndereco(e.target.value)}
-                                className="w-full text-sm p-2 border border-dashed rounded-md min-h-[80px] no-print"
+                                className="w-full text-sm no-print"
+                                rows={4}
                               />
                                <div className="hidden print-only editable-textarea">{endereco}</div>
                         </section>
@@ -522,20 +524,20 @@ export default function FichaDevolutivaPage() {
                                             {linksOnline.map((link, index) => (
                                                 <TableRow key={link.id || index}>
                                                     <TableCell>
-                                                      <input
+                                                      <Input
                                                           value={link.anoArea}
                                                           onChange={(e) => handleLinkChange(index, 'anoArea', e.target.value)}
-                                                          className="w-full text-sm p-1 border-b border-dashed no-print"
+                                                          className="w-full text-sm no-print"
                                                       />
                                                       <span className="hidden print-only">{link.anoArea}</span>
                                                     </TableCell>
                                                     <TableCell>{link.formadorNome}</TableCell>
                                                     <TableCell>
-                                                        <textarea
+                                                        <Textarea
                                                             value={link.linkUrl}
                                                             onChange={(e) => handleLinkChange(index, 'linkUrl', e.target.value)}
-                                                            className="w-full text-sm p-1 border-b border-dashed no-print min-h-[60px]"
-                                                            style={{ whiteSpace: 'pre-wrap' }}
+                                                            className="w-full text-sm no-print min-h-[60px]"
+                                                            rows={2}
                                                         />
                                                         <div className="hidden print-only whitespace-pre-wrap">
                                                             <LinkifiedText text={link.linkUrl} />
@@ -619,24 +621,18 @@ export default function FichaDevolutivaPage() {
                                                                 </Select>
                                                                 <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
-                                                            <TableCell 
-                                                                className="editable-field" 
-                                                                contentEditable 
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.currentTarget.textContent || '')}
-                                                            >{agendaRow.horario}</TableCell>
-                                                            <TableCell 
-                                                                className="editable-field" 
-                                                                contentEditable 
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '')}
-                                                            >{agendaRow.area}</TableCell>
-                                                            <TableCell 
-                                                                className="editable-field"
-                                                                contentEditable
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.currentTarget.textContent || '0')}
-                                                            >{agendaRow.participantes || ''}</TableCell>
+                                                            <TableCell>
+                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value)} className="w-full text-sm no-print h-9" placeholder="08h00-12h00" />
+                                                                <span className="hidden print-only">{agendaRow.horario}</span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value)} className="w-full text-sm no-print h-9" placeholder="Anos Iniciais" />
+                                                                <span className="hidden print-only">{agendaRow.area}</span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value)} className="w-full text-sm no-print h-9" placeholder="0"/>
+                                                                <span className="hidden print-only">{agendaRow.participantes || ''}</span>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -688,24 +684,18 @@ export default function FichaDevolutivaPage() {
                                                                 </Select>
                                                                 <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
-                                                            <TableCell 
-                                                                className="editable-field" 
-                                                                contentEditable 
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.currentTarget.textContent || '', true)}
-                                                            >{agendaRow.horario}</TableCell>
-                                                            <TableCell 
-                                                                className="editable-field" 
-                                                                contentEditable 
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.currentTarget.textContent || '', true)}
-                                                            >{agendaRow.area}</TableCell>
-                                                            <TableCell 
-                                                                className="editable-field"
-                                                                contentEditable
-                                                                suppressContentEditableWarning
-                                                                onBlur={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.currentTarget.textContent || '0', true)}
-                                                            >{agendaRow.participantes || ''}</TableCell>
+                                                            <TableCell>
+                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="08h00-12h00" />
+                                                                <span className="hidden print-only">{agendaRow.horario}</span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="Anos Finais" />
+                                                                <span className="hidden print-only">{agendaRow.area}</span>
+                                                            </TableCell>
+                                                             <TableCell>
+                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="0"/>
+                                                                <span className="hidden print-only">{agendaRow.participantes || ''}</span>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
