@@ -357,6 +357,8 @@ export default function FichaDevolutivaPage() {
   const dynamicFooter = modalidade === 'online'
     ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
     : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.';
+  
+  const editableFieldClass = "bg-yellow-100/50 dark:bg-yellow-900/20 focus:bg-background transition-colors duration-200";
 
   return (
     <>
@@ -422,7 +424,7 @@ export default function FichaDevolutivaPage() {
                          <Textarea
                            value={introducao}
                            onChange={(e) => setIntroducao(e.target.value)}
-                           className="w-full text-sm no-print"
+                           className={`w-full text-sm no-print ${editableFieldClass}`}
                            rows={3}
                          />
                          <div className="hidden print-only editable-textarea">{introducao}</div>
@@ -439,7 +441,7 @@ export default function FichaDevolutivaPage() {
                             <Input
                                 value={horario}
                                 onChange={e => setHorario(e.target.value)}
-                                className="w-48 text-sm p-1 h-8 no-print"
+                                className={`w-48 text-sm p-1 h-8 no-print ${editableFieldClass}`}
                             />
                             <span className="hidden print-only">{horario}</span>
                         </p>
@@ -454,7 +456,7 @@ export default function FichaDevolutivaPage() {
                               <Textarea
                                 value={endereco}
                                 onChange={(e) => setEndereco(e.target.value)}
-                                className="w-full text-sm no-print"
+                                className={`w-full text-sm no-print ${editableFieldClass}`}
                                 rows={4}
                               />
                                <div className="hidden print-only editable-textarea">{endereco}</div>
@@ -527,7 +529,7 @@ export default function FichaDevolutivaPage() {
                                                       <Input
                                                           value={link.anoArea}
                                                           onChange={(e) => handleLinkChange(index, 'anoArea', e.target.value)}
-                                                          className="w-full text-sm no-print"
+                                                          className={`w-full text-sm no-print ${editableFieldClass}`}
                                                       />
                                                       <span className="hidden print-only">{link.anoArea}</span>
                                                     </TableCell>
@@ -536,7 +538,7 @@ export default function FichaDevolutivaPage() {
                                                         <Textarea
                                                             value={link.linkUrl}
                                                             onChange={(e) => handleLinkChange(index, 'linkUrl', e.target.value)}
-                                                            className="w-full text-sm no-print min-h-[60px]"
+                                                            className={`w-full text-sm no-print min-h-[60px] ${editableFieldClass}`}
                                                             rows={2}
                                                         />
                                                         <div className="hidden print-only whitespace-pre-wrap">
@@ -610,7 +612,7 @@ export default function FichaDevolutivaPage() {
                                                                     value={agendaRow.dia || ''}
                                                                     onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value)}
                                                                 >
-                                                                    <SelectTrigger className="w-full no-print">
+                                                                    <SelectTrigger className={`w-full no-print ${editableFieldClass}`}>
                                                                         <SelectValue placeholder="Selecione..." />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
@@ -622,15 +624,15 @@ export default function FichaDevolutivaPage() {
                                                                 <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value)} className="w-full text-sm no-print h-9" placeholder="08h00-12h00" />
+                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="08h00-12h00" />
                                                                 <span className="hidden print-only">{agendaRow.horario}</span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value)} className="w-full text-sm no-print h-9" placeholder="Anos Iniciais" />
+                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="Anos Iniciais" />
                                                                 <span className="hidden print-only">{agendaRow.area}</span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value)} className="w-full text-sm no-print h-9" placeholder="0"/>
+                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
                                                                 <span className="hidden print-only">{agendaRow.participantes || ''}</span>
                                                             </TableCell>
                                                         </TableRow>
@@ -673,7 +675,7 @@ export default function FichaDevolutivaPage() {
                                                                     value={agendaRow.dia || ''}
                                                                     onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value, true)}
                                                                 >
-                                                                    <SelectTrigger className="w-full no-print">
+                                                                    <SelectTrigger className={`w-full no-print ${editableFieldClass}`}>
                                                                         <SelectValue placeholder="Selecione..." />
                                                                     </SelectTrigger>
                                                                     <SelectContent>
@@ -685,15 +687,15 @@ export default function FichaDevolutivaPage() {
                                                                 <span className="hidden print-only">{agendaRow.dia}</span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="08h00-12h00" />
+                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="08h00-12h00" />
                                                                 <span className="hidden print-only">{agendaRow.horario}</span>
                                                             </TableCell>
                                                             <TableCell>
-                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="Anos Finais" />
+                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="Anos Finais" />
                                                                 <span className="hidden print-only">{agendaRow.area}</span>
                                                             </TableCell>
                                                              <TableCell>
-                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value, true)} className="w-full text-sm no-print h-9" placeholder="0"/>
+                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
                                                                 <span className="hidden print-only">{agendaRow.participantes || ''}</span>
                                                             </TableCell>
                                                         </TableRow>
