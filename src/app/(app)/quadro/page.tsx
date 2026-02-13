@@ -88,6 +88,7 @@ import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { changeFormacaoStatus } from '@/lib/formacao-actions';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 type Columns = {
@@ -377,64 +378,88 @@ export default function QuadroPage() {
                         onClick={() => openDetailDialog(item)}
                       >
                         <CardContent className="p-3 space-y-2 flex-grow">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-semibold text-sm flex items-center gap-2">
-                              {getIconForItem(item)}
-                              {item.titulo.startsWith('Devolutiva') && !item.titulo.includes(':') && item.municipio ? `${item.titulo}: ${item.municipio}` : item.titulo}
-                            </h3>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                    variant="ghost"
-                                    className="h-7 w-7 p-0 -mr-2 -mt-1"
-                                >
-                                    {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                    <DropdownMenuItem onClick={() => openDetailDialog(item)}>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        Ver Detalhes
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => openEditDialog(item)}>
-                                        <Pencil className="mr-2 h-4 w-4" />
-                                        Editar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                        <Link href={`/ficha/${item.id}`} target="_blank" className="flex items-center w-full">
-                                            <FileSignature className="mr-2 h-4 w-4" />
-                                            Gerar Ficha
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>
-                                            <Share className="mr-2 h-4 w-4" />
-                                            Compartilhar Avaliação
-                                        </DropdownMenuSubTrigger>
-                                        <DropdownMenuPortal>
-                                            <DropdownMenuSubContent>
-                                                <DropdownMenuItem onClick={() => handleCopyLink(item.id)}>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    Copiar Link do Formulário
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => openQRCodeDialog(item)}>
-                                                    <QrCode className="mr-2 h-4 w-4" />
-                                                    Gerar QR Code
-                                                </DropdownMenuItem>
-                                            </DropdownMenuSubContent>
-                                        </DropdownMenuPortal>
-                                    </DropdownMenuSub>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                        onClick={() => openDeleteDialog(item)}
-                                    >
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Excluir
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="flex items-start justify-between">
+                                <h3 className="font-semibold text-sm flex items-center gap-2">
+                                  {getIconForItem(item)}
+                                  {item.titulo.startsWith('Devolutiva') && !item.titulo.includes(':') && item.municipio ? `${item.titulo}: ${item.municipio}` : item.titulo}
+                                </h3>
+                                
+                                <div className="flex items-center -mr-2 -mt-1">
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 p-0"
+                                                    onClick={(e) => { e.stopPropagation(); openEditDialog(item); }}
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Editar</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 p-0" asChild onClick={(e) => { e.stopPropagation(); }}>
+                                                    <Link href={`/ficha/${item.id}`} target="_blank">
+                                                        <FileSignature className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Gerar Ficha</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                        <Button
+                                            variant="ghost"
+                                            className="h-7 w-7 p-0"
+                                        >
+                                            {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+                                        </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenuItem onClick={() => openDetailDialog(item)}>
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                Ver Detalhes
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuSub>
+                                                <DropdownMenuSubTrigger>
+                                                    <Share className="mr-2 h-4 w-4" />
+                                                    Compartilhar Avaliação
+                                                </DropdownMenuSubTrigger>
+                                                <DropdownMenuPortal>
+                                                    <DropdownMenuSubContent>
+                                                        <DropdownMenuItem onClick={() => handleCopyLink(item.id)}>
+                                                            <Copy className="mr-2 h-4 w-4" />
+                                                            Copiar Link do Formulário
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => openQRCodeDialog(item)}>
+                                                            <QrCode className="mr-2 h-4 w-4" />
+                                                            Gerar QR Code
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuSubContent>
+                                                </DropdownMenuPortal>
+                                            </DropdownMenuSub>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                onClick={() => openDeleteDialog(item)}
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Excluir
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                           </div>
                           <p className="text-xs text-muted-foreground line-clamp-2">
                             {item.descricao}
