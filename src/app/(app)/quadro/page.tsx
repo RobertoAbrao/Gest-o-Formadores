@@ -32,6 +32,8 @@ import {
   QrCode,
   FolderOpen,
   Calendar,
+  Share,
+  Copy,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -52,6 +54,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -67,7 +70,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -200,6 +207,12 @@ export default function QuadroPage() {
   const openQRCodeDialog = (formacao: Formacao) => {
     setSelectedFormacao(formacao);
     setIsQRCodeDialogOpen(true);
+  }
+  
+  const handleCopyLink = (formacaoId: string) => {
+    const url = `${window.location.origin}/avaliacao/${formacaoId}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: 'Link copiado!', description: 'O link do formulário de avaliação foi copiado para a área de transferência.' });
   }
 
   const handleDeleteConfirm = async () => {
@@ -360,10 +373,10 @@ export default function QuadroPage() {
                     column.items.map((item) => (
                       <Card
                         key={item.id}
-                        className={cn('bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4', column.colorClass.replace('bg-', 'border-'))}
+                        className={cn('bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col', column.colorClass.replace('bg-', 'border-l-4 '))}
                         onClick={() => openDetailDialog(item)}
                       >
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-3 space-y-2 flex-grow">
                           <div className="flex items-start justify-between">
                             <h3 className="font-semibold text-sm flex items-center gap-2">
                               {getIconForItem(item)}
@@ -378,52 +391,48 @@ export default function QuadroPage() {
                                     {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                                 </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openDetailDialog(item)}}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    Ver Detalhes
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => {e.stopPropagation(); openEditDialog(item)}}>
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    Editar
-                                </DropdownMenuItem>
-                                 <DropdownMenuItem asChild>
-                                    <Link href={`/ficha/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                        <FileSignature className="mr-2 h-4 w-4" />
-                                        Gerar Ficha
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/avaliacao/${item.id}`} onClick={(e) => e.stopPropagation()} target="_blank" className="flex items-center w-full">
-                                    <ClipboardCheck className="mr-2 h-4 w-4" />
-                                    Formulário de Avaliação
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openQRCodeDialog(item); }}>
-                                  <QrCode className="mr-2 h-4 w-4" />
-                                  Gerar QR Code
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {item.status === 'pos-formacao' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'concluido')}}>
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Marcar como Concluído
-                                  </DropdownMenuItem>
-                                )}
-                                {item.status === 'concluido' && (
-                                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'arquivado')}}>
-                                    <Archive className="mr-2 h-4 w-4" />
-                                    Arquivar
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                    onClick={(e) => {e.stopPropagation(); openDeleteDialog(item)}}
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir
-                                </DropdownMenuItem>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuItem onClick={() => openDetailDialog(item)}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        Ver Detalhes
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/ficha/${item.id}`} target="_blank" className="flex items-center w-full">
+                                            <FileSignature className="mr-2 h-4 w-4" />
+                                            Gerar Ficha
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                            <Share className="mr-2 h-4 w-4" />
+                                            Compartilhar Avaliação
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                <DropdownMenuItem onClick={() => handleCopyLink(item.id)}>
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    Copiar Link do Formulário
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => openQRCodeDialog(item)}>
+                                                    <QrCode className="mr-2 h-4 w-4" />
+                                                    Gerar QR Code
+                                                </DropdownMenuItem>
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                        onClick={() => openDeleteDialog(item)}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Excluir
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -460,6 +469,20 @@ export default function QuadroPage() {
                             </Badge>
                           </div>
                         </CardContent>
+                        {(item.status === 'pos-formacao' || item.status === 'concluido') && (
+                          <CardFooter className="p-3 pt-0">
+                            {item.status === 'pos-formacao' && (
+                              <Button size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'concluido'); }} disabled={loadingStatusChange === item.id}>
+                                {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />} Concluir
+                              </Button>
+                            )}
+                            {item.status === 'concluido' && (
+                              <Button size="sm" variant="secondary" className="w-full" onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'arquivado'); }} disabled={loadingStatusChange === item.id}>
+                                {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
+                              </Button>
+                            )}
+                          </CardFooter>
+                        )}
                       </Card>
                     ))
                   ) : (
