@@ -88,4 +88,4 @@ A estrutura de pastas segue as convenções do Next.js App Router:
 - `src/hooks`: Hooks customizados (`useAuth`, etc.).
 - `src/lib`: Funções utilitárias, configuração do Firebase e definições de tipos.
 - `src/ai`: Fluxos e configurações do Genkit para funcionalidades de IA.
-- `firestore.rules`: Arquivo de regras de segurança para o Cloud Firestore.
+- `firestore.rules`: Arquivo de regras de segurança para o Cloud Firestore.  
