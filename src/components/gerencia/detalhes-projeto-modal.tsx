@@ -79,7 +79,10 @@ export function DetalhesProjetoModal({ projeto, demandas, formadores }: Detalhes
                           {demanda.prazo && isBefore(demanda.prazo.toDate(), startOfToday()) && <Clock className="h-4 w-4 text-red-500" />}
                           {demanda.demanda}
                         </p>
-                        <p className="text-xs text-muted-foreground">Responsável: {demanda.responsavelNome} • Status: {demanda.status}</p>
+                        <p className="text-xs text-muted-foreground">
+                            Responsável: {demanda.responsavelNome} • Status: {demanda.status}
+                            {demanda.prazo && ` • Prazo: ${format(demanda.prazo.toDate(), 'dd/MM/yyyy')}`}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -104,7 +107,10 @@ export function DetalhesProjetoModal({ projeto, demandas, formadores }: Detalhes
                   {demanda.prazo && isBefore(demanda.prazo.toDate(), startOfToday()) && <Clock className="h-4 w-4 text-red-500" />}
                   {demanda.demanda}
                 </p>
-                <p className="text-xs text-muted-foreground">Responsável: {demanda.responsavelNome} • Status: {demanda.status}</p>
+                <p className="text-xs text-muted-foreground">
+                    Responsável: {demanda.responsavelNome} • Status: {demanda.status}
+                    {demanda.prazo && ` • Prazo: ${format(demanda.prazo.toDate(), 'dd/MM/yyyy')}`}
+                </p>
               </div>
             ))}
           </CardContent>

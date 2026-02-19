@@ -328,7 +328,10 @@ export default function GerenciaPage() {
                                             {demandasCriticas.urgentes.map(d => (
                                                 <li key={d.id} className="text-sm">
                                                     <p className="font-medium truncate">{d.demanda}</p>
-                                                    <p className="text-xs text-muted-foreground">{d.municipio} • Resp: {d.responsavelNome}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {d.municipio} • Resp: {d.responsavelNome}
+                                                        {d.prazo && ` • Prazo: ${format(d.prazo.toDate(), 'dd/MM/yyyy')}`}
+                                                    </p>
                                                 </li>
                                             ))}
                                         </ul>
