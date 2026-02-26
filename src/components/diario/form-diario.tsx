@@ -37,12 +37,23 @@ interface AdminUser {
     nome: string;
 }
 
+interface Estado {
+    id: number;
+    sigla: string;
+    nome: string;
+}
+
+interface Municipio {
+    id: number;
+    nome: string;
+}
+
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
 
 const formSchema = z.object({
-  projetoOrigemId: z.string({ required_error: 'É obrigatório selecionar um projeto.' }),
-  municipio: z.string().min(1, { message: 'O município é obrigatório (selecione um projeto).' }),
-  uf: z.string().min(2, { message: 'O estado é obrigatório (selecione um projeto).'}),
+  projetoOrigemId: z.string().optional().nullable(),
+  municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
+  uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
   etapaProjeto: z.string().optional(),
   demanda: z.string().min(10, { message: 'Descreva a demanda com pelo menos 10 caracteres.' }),
   status: z.enum(statusOptions, { required_error: 'Selecione um status.' }),
@@ -81,6 +92,9 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
 
   const [comment, setComment] = useState('');
@@ -91,7 +105,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      projetoOrigemId: demanda?.projetoOrigemId || undefined,
+      projetoOrigemId: demanda?.projetoOrigemId || 'none',
       municipio: demanda?.municipio || '',
       uf: demanda?.uf || '',
       etapaProjeto: demanda?.etapaProjeto || undefined,
@@ -105,9 +119,10 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   });
 
   const selectedProjectId = form.watch('projetoOrigemId');
+  const selectedUf = form.watch('uf');
 
   useEffect(() => {
-    const fetchAdminsAndProjetos = async () => {
+    const fetchInitialData = async () => {
         try {
             const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
             
@@ -122,9 +137,10 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 orderBy('dataCriacao', 'desc')
             );
             
-            const [adminsSnapshot, projetosSnapshot] = await Promise.all([
+            const [adminsSnapshot, projetosSnapshot, estadosResponse] = await Promise.all([
                 getDocs(adminsQuery),
-                getDocs(projetosQuery)
+                getDocs(projetosQuery),
+                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
             ]);
 
             const adminData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
@@ -133,16 +149,18 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
             setProjetos(projetosData);
 
+            const estadosData = await estadosResponse.json();
+            setEstados(estadosData);
+
         } catch (error) {
-            console.error("Failed to fetch data", error);
-            toast({ variant: 'destructive', title: "Erro", description: "Não foi possível carregar os dados de apoio." });
+            console.error("Failed to fetch support data", error);
         }
     };
-    fetchAdminsAndProjetos();
-  }, [toast]);
+    fetchInitialData();
+  }, []);
   
   useEffect(() => {
-    if (selectedProjectId) {
+    if (selectedProjectId && selectedProjectId !== 'none') {
         const selectedProject = projetos.find(p => p.id === selectedProjectId);
         if (selectedProject) {
             form.setValue('uf', selectedProject.uf, { shouldValidate: true });
@@ -150,6 +168,28 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
         }
     }
   }, [selectedProjectId, projetos, form]);
+
+  useEffect(() => {
+    if (!selectedUf || (selectedProjectId && selectedProjectId !== 'none')) {
+      setMunicipios([]);
+      return;
+    }
+    const fetchMunicipios = async () => {
+        setLoadingMunicipios(true);
+        try {
+            const response = await fetch(`/api/municipios/${selectedUf}`);
+            const data = await response.json();
+            if (response.ok) {
+                setMunicipios(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch municipios', error);
+        } finally {
+            setLoadingMunicipios(false);
+        }
+    };
+    fetchMunicipios();
+  }, [selectedUf, selectedProjectId]);
 
   useEffect(() => {
     const fetchAnexos = async () => {
@@ -170,7 +210,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   }, [demanda, isEditMode]);
 
     const projectStages = useMemo(() => {
-        if (!selectedProjectId) return [];
+        if (!selectedProjectId || selectedProjectId === 'none') return [];
         
         const projeto = projetos.find(p => p.id === selectedProjectId);
         if (!projeto) return [];
@@ -287,7 +327,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       toast({ title: "Sucesso", description: "Anexo excluído." });
     } catch (error) {
       console.error("Erro ao excluir anexo:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir o anexo.' });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir the anexo.' });
     } finally {
       setUploading(false);
     }
@@ -343,7 +383,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 })));
             }
             
-            if (values.projetoOrigemId && selectedProject) {
+            if (values.projetoOrigemId && values.projetoOrigemId !== 'none' && selectedProject) {
               dataToSave.projetoOrigemId = values.projetoOrigemId;
               dataToSave.projetoOrigemNome = selectedProject.municipio;
             } else {
@@ -380,7 +420,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 anexosIds: values.anexosIds || [],
             };
 
-            if (values.projetoOrigemId && selectedProject) {
+            if (values.projetoOrigemId && values.projetoOrigemId !== 'none' && selectedProject) {
                 newDemandData.projetoOrigemId = values.projetoOrigemId;
                 newDemandData.projetoOrigemNome = selectedProject.municipio;
             }
@@ -413,13 +453,17 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
           name="projetoOrigemId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Projeto</FormLabel>
+              <FormLabel>Projeto Vinculado</FormLabel>
               <Select
                 onValueChange={(value) => {
                   field.onChange(value);
-                  form.setValue('etapaProjeto', undefined); // Reset etapa on project change
+                  form.setValue('etapaProjeto', undefined);
+                  if (value === 'none') {
+                      form.setValue('uf', '');
+                      form.setValue('municipio', '');
+                  }
                 }}
-                value={field.value}
+                value={field.value || 'none'}
               >
                 <FormControl>
                   <SelectTrigger>
@@ -427,21 +471,17 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {projetos.length > 0 ? (
-                    projetos.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.municipio}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Nenhum projeto encontrado para o ano atual.
-                    </div>
-                  )}
+                  <SelectItem value="none">Nenhum (Demanda Avulsa)</SelectItem>
+                  <Separator className="my-2" />
+                  {projetos.length > 0 && projetos.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.municipio} - {p.uf}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <FormDescription>
-                Associe esta demanda a um projeto de implantação existente.
+                Selecione um projeto ativo ou escolha "Nenhum" para uma demanda espontânea.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -473,9 +513,6 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <FormDescription>
-                            Associe esta demanda a uma etapa específica do projeto.
-                        </FormDescription>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -489,7 +526,20 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>UF</FormLabel>
-                <FormControl><Input {...field} disabled /></FormControl>
+                {selectedProjectId && selectedProjectId !== 'none' ? (
+                    <FormControl><Input {...field} disabled /></FormControl>
+                ) : (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {estados.map(uf => (<SelectItem key={uf.id} value={uf.sigla}>{uf.nome}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -500,7 +550,20 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Município</FormLabel>
-                <FormControl><Input {...field} disabled /></FormControl>
+                {selectedProjectId && selectedProjectId !== 'none' ? (
+                    <FormControl><Input {...field} disabled /></FormControl>
+                ) : (
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione"} />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                )}
                 <FormMessage />
               </FormItem>
             )}
