@@ -464,12 +464,12 @@ export default function DashboardPage() {
     
     const getSourceConfig = (type: string) => {
         switch (type) {
-            case 'demanda': return { label: 'Diário de Bordo', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' };
-            case 'formacao': return { label: 'Formação', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' };
-            case 'projeto-marco': return { label: 'Projeto (Marco)', color: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800' };
-            case 'projeto-acompanhamento': return { label: 'Projeto (Acomp.)', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' };
-            case 'lembrete': return { label: 'Lembrete Pessoal', color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' };
-            default: return { label: 'Evento', color: 'bg-muted text-muted-foreground' };
+            case 'demanda': return { icon: BookOpenCheck, label: 'Diário de Bordo', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' };
+            case 'formacao': return { icon: KanbanSquare, label: 'Formação', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' };
+            case 'projeto-marco': return { icon: Milestone, label: 'Projeto (Marco)', color: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800' };
+            case 'projeto-acompanhamento': return { icon: Milestone, label: 'Projeto (Acomp.)', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' };
+            case 'lembrete': return { icon: Bell, label: 'Lembrete Pessoal', color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' };
+            default: return { icon: CalendarIcon, label: 'Evento', color: 'bg-muted text-muted-foreground' };
         }
     }
 
@@ -506,7 +506,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-grow">
                     <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 uppercase tracking-wider font-bold", source.color)}>
+                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-bold flex items-center gap-1.5", source.color)}>
+                            <source.icon className="h-3 w-3" />
                             {source.label}
                         </Badge>
                         {isUrgent && (
