@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList, CalendarPlus } from 'lucide-react';
 import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday } from 'date-fns';
+import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday, startOfToday } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -460,19 +460,33 @@ export default function DashboardPage() {
   const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
 
   const EventList = ({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (event: CalendarEvent) => void }) => {
-    const today = startOfDay(new Date());
+    const today = startOfToday();
+    
+    const getSourceConfig = (type: string) => {
+        switch (type) {
+            case 'demanda': return { label: 'Diário de Bordo', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' };
+            case 'formacao': return { label: 'Formação', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' };
+            case 'projeto-marco': return { label: 'Projeto (Marco)', color: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800' };
+            case 'projeto-acompanhamento': return { label: 'Projeto (Acomp.)', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' };
+            case 'lembrete': return { label: 'Lembrete Pessoal', color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' };
+            default: return { label: 'Evento', color: 'bg-muted text-muted-foreground' };
+        }
+    }
+
     return (
         <div className="space-y-4">
         {events.map((event) => {
             const isUrgent = event.type === 'demanda' && event.prioridade === 'Urgente';
             const isOverdue = event.date < today;
+            const source = getSourceConfig(event.type);
+
             return (
             <div
                 key={event.relatedId + event.title + event.details}
                 className={cn(
-                    "flex items-start gap-4 p-2 -m-2 rounded-lg hover:bg-muted/50 cursor-pointer",
-                    isUrgent && "bg-orange-100 dark:bg-orange-900/30",
-                    isUrgent && isOverdue && "bg-red-100 dark:bg-red-900/40"
+                    "flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer border border-transparent transition-colors",
+                    isUrgent && "bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900/30",
+                    isUrgent && isOverdue && "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30"
                 )}
                 onClick={() => onEventClick(event)}
             >
@@ -491,8 +505,17 @@ export default function DashboardPage() {
                 <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
                 </div>
                 <div className="flex-grow">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 uppercase tracking-wider font-bold", source.color)}>
+                            {source.label}
+                        </Badge>
+                        {isUrgent && (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 uppercase tracking-wider font-bold">
+                                Urgente
+                            </Badge>
+                        )}
+                    </div>
                     <p className="font-semibold flex items-center gap-2">
-                        {isUrgent && <AlertTriangle className={cn("h-4 w-4", isOverdue ? "text-red-600" : "text-orange-500")} />}
                         {event.title}
                     </p>
                     <p className="text-sm text-muted-foreground">{event.details}</p>
@@ -723,7 +746,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <p className="text-sm text-muted-foreground text-center py-8">
-                                Nenhum evento para o dia selecionado.
+                                Nenhum evento para the dia selecionado.
                             </p>
                         )}
                     </div>
@@ -776,5 +799,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
