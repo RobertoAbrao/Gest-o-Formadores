@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  getDoc,
   query,
   where,
   Timestamp,
@@ -80,8 +81,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import type { Formacao, FormadorStatus } from '@/lib/types';
+import type { Formacao, FormadorStatus, ProjetoImplatancao } from '@/lib/types';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
+import { FormProjeto } from '@/components/projetos/form-projeto';
 import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { Badge } from '@/components/ui/badge';
 import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
@@ -121,12 +123,12 @@ export default function QuadroPage() {
   const [loading, setLoading] = useState(true);
   const [loadingStatusChange, setLoadingStatusChange] = useState<string | null>(null);
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
+  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isQRCodeDialogOpen, setIsQRCodeDialogOpen] = useState(false);
-  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(
-    null
-  );
+  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
+  const [selectedProjetoParaEditar, setSelectedProjetoParaEditar] = useState<ProjetoImplatancao | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -187,7 +189,9 @@ export default function QuadroPage() {
   const handleSuccess = () => {
     fetchAndCategorizeItems();
     setIsFormDialogOpen(false);
+    setIsProjectFormOpen(false);
     setSelectedFormacao(null);
+    setSelectedProjetoParaEditar(null);
   };
   
   const openDeleteDialog = (formacao: Formacao) => {
@@ -195,10 +199,31 @@ export default function QuadroPage() {
     setIsDeleteDialogOpen(true);
   };
 
-  const openEditDialog = (formacao: Formacao) => {
-    setSelectedFormacao(formacao);
-    setIsFormDialogOpen(true);
-  }
+  const openEditDialog = async (formacao: Formacao) => {
+    if (formacao.projetoId) {
+      setLoading(true);
+      try {
+        const projetoRef = doc(db, 'projetos', formacao.projetoId);
+        const projetoSnap = await getDoc(projetoRef);
+        if (projetoSnap.exists()) {
+          setSelectedProjetoParaEditar({ id: projetoSnap.id, ...projetoSnap.data() } as ProjetoImplatancao);
+          setIsProjectFormOpen(true);
+        } else {
+          toast({ variant: 'destructive', title: 'Erro', description: 'Projeto vinculado não encontrado.' });
+          setSelectedFormacao(formacao);
+          setIsFormDialogOpen(true);
+        }
+      } catch (error) {
+        console.error("Error fetching project:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Falha ao carregar dados do projeto.' });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setSelectedFormacao(formacao);
+      setIsFormDialogOpen(true);
+    }
+  };
   
   const openDetailDialog = (formacao: Formacao) => {
     setSelectedFormacao(formacao);
@@ -260,7 +285,7 @@ export default function QuadroPage() {
     }
   };
 
-  if (loading) {
+  if (loading && !isProjectFormOpen && !isFormDialogOpen) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -309,6 +334,28 @@ export default function QuadroPage() {
             <ScrollArea className="max-h-[80vh]">
               <div className="p-4">
                 <FormFormacao formacao={selectedFormacao} onSuccess={handleSuccess} />
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={isProjectFormOpen}
+          onOpenChange={(open) => {
+            setIsProjectFormOpen(open);
+            if (!open) setSelectedProjetoParaEditar(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Editar Projeto</DialogTitle>
+              <DialogDescription>
+                Altere os dados do projeto vinculado a esta formação.
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[80vh]">
+              <div className="p-4">
+                <FormProjeto projeto={selectedProjetoParaEditar} onSuccess={handleSuccess} />
               </div>
             </ScrollArea>
           </DialogContent>
