@@ -693,7 +693,7 @@ export default function CalendarioPage() {
                             <SelectItem value="todos">Visão Geral (Todos os Projetos)</SelectItem>
                         </SelectGroup>
                         <SelectGroup>
-                            <SelectLabel>Projetos (${currentYear})</SelectLabel>
+                            <SelectLabel>Projetos ({currentYear})</SelectLabel>
                             {projetos.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.municipio} - {p.uf}</SelectItem>
                             ))}
@@ -790,29 +790,71 @@ export default function CalendarioPage() {
                 const monthDate = new Date(currentYear, month);
                 const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
 
+                // Filter and sort events for the month summary
+                const monthEvents = events.filter(event => {
+                    const start = event.startDate.toDate();
+                    const end = event.endDate.toDate();
+                    const monthStart = new Date(currentYear, month, 1);
+                    const monthEnd = new Date(currentYear, month + 1, 0);
+                    return start <= monthEnd && end >= monthStart;
+                }).sort((a, b) => a.startDate.toMillis() - b.startDate.toMillis());
+
                 return (
-                  <Card key={month}>
+                  <Card key={month} className="flex flex-col">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg text-center capitalize">{monthName}</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex justify-center">
-                      <Calendar
-                        month={monthDate}
-                        mode="range"
-                        selected={editingRange}
-                        onSelect={isViewOnly ? undefined : handleDateSelect}
-                        className="p-0"
-                        classNames={{
-                          day: cn("h-8 w-8 rounded-full", isViewOnly && "cursor-not-allowed"),
-                          head_cell: "w-8",
-                          cell: "h-8 w-8",
-                          day_today: "",
-                        }}
-                        locale={ptBR}
-                        modifiers={modifiers}
-                        modifiersStyles={modifierStyles}
-                        components={{ DayContent: DayContent }}
-                      />
+                    <CardContent className="flex-1 flex flex-col gap-4">
+                      <div className="flex justify-center">
+                        <Calendar
+                          month={monthDate}
+                          mode="range"
+                          selected={editingRange}
+                          onSelect={isViewOnly ? undefined : handleDateSelect}
+                          className="p-0"
+                          classNames={{
+                            day: cn("h-8 w-8 rounded-full", isViewOnly && "cursor-not-allowed"),
+                            head_cell: "w-8",
+                            cell: "h-8 w-8",
+                            day_today: "",
+                          }}
+                          locale={ptBR}
+                          modifiers={modifiers}
+                          modifiersStyles={modifierStyles}
+                          components={{ DayContent: DayContent }}
+                        />
+                      </div>
+
+                      {/* Month Events Summary */}
+                      <div className="mt-4 border-t pt-2 flex-1">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Eventos do Mês</h4>
+                        <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                          {monthEvents.length > 0 ? (
+                            monthEvents.map((ev, idx) => {
+                              const dotColor = (modifierStyles as any)[ev.type]?.backgroundColor || '#ccc';
+                              return (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <div className="w-2 h-2 rounded-full mt-1 shrink-0 border border-black/5" style={{ backgroundColor: dotColor }}></div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] leading-tight">
+                                      <span className="font-bold mr-1">
+                                        {format(ev.startDate.toDate(), 'dd')}
+                                        {ev.startDate.toMillis() !== ev.endDate.toMillis() ? `-${format(ev.endDate.toDate(), 'dd')}` : ''}
+                                      </span>
+                                      {selectedProjectId === 'todos' && ev.projectName && (
+                                        <span className="text-primary font-medium">[{ev.projectName}] </span>
+                                      )}
+                                      <span className="text-foreground/90">{ev.tooltip}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground italic text-center py-2">Nenhum evento</p>
+                          )}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 )
@@ -934,7 +976,3 @@ export default function CalendarioPage() {
     </>
   );
 }
-
-    
-
-    
