@@ -854,7 +854,7 @@ export default function CalendarioPage() {
                                         {format(ev.startDate.toDate(), 'dd')}
                                         {ev.startDate.toMillis() !== ev.endDate.toMillis() ? `-${format(ev.endDate.toDate(), 'dd')}` : ''}
                                       </span>
-                                      {selectedProjectId === 'todos' && ev.projectName && (
+                                      {ev.projectName && ev.projectName !== 'Geral' && (
                                         <span className="text-primary font-medium">[{ev.projectName}] </span>
                                       )}
                                       <span className="text-foreground/90">{ev.tooltip}</span>
@@ -964,7 +964,14 @@ export default function CalendarioPage() {
                                     <div key={idx} className="flex items-start gap-1 text-[8px] leading-tight">
                                         <div className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: (modifierStyles as any)[ev.type]?.backgroundColor || '#ccc' }}></div>
                                         <p className='truncate'>
-                                            <span className='font-bold'>{format(ev.startDate.toDate(), 'dd')}</span> {ev.tooltip}
+                                            <span className='font-bold'>
+                                              {format(ev.startDate.toDate(), 'dd')}
+                                              {ev.startDate.toMillis() !== ev.endDate.toMillis() ? `-${format(ev.endDate.toDate(), 'dd')}` : ''}
+                                            </span>
+                                            {ev.projectName && ev.projectName !== 'Geral' && (
+                                              <span className="font-medium"> [{ev.projectName}]</span>
+                                            )}
+                                            {` ${ev.tooltip}`}
                                         </p>
                                     </div>
                                 ))}
