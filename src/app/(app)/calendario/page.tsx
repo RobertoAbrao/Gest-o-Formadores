@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format, isWithinInterval, startOfDay } from 'date-fns';
-import { Loader2, Printer, Copy, RefreshCw, PlusCircle } from 'lucide-react';
+import { Loader2, Printer, Copy, RefreshCw, PlusCircle, CalendarDays } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
@@ -344,7 +344,7 @@ export default function CalendarioPage() {
         if (eventToDelete) {
             const projectUpdateData = getProjectUpdateData(eventToDelete.type, eventToDelete.tooltip, null, null);
             if (Object.keys(projectUpdateData).length > 0 && eventToDelete.projectId !== 'geral') {
-                const projetoRef = doc(db, 'projetos', eventToDelete.projectId);
+                const projetoRef = doc(db, 'projects', eventToDelete.projectId);
                 await updateDoc(projetoRef, projectUpdateData);
             }
         }
@@ -561,7 +561,6 @@ export default function CalendarioPage() {
       });
     }
 
-    const relevantEventNames = ['Migração de Dados', 'Implantação', 'Simulado 1', 'Devolutiva 1', 'Simulado 2', 'Devolutiva 2', 'Simulado 3', 'Devolutiva 3', 'Simulado 4', 'Devolutiva 4'];
     const data: CronogramaItem[] = [];
 
     events.forEach(event => {
@@ -574,17 +573,6 @@ export default function CalendarioPage() {
         dataSugerida = `${format(startDate, 'dd/MM/yyyy')} a ${format(endDate, 'dd/MM/yyyy')}`;
       }
       data.push({ evento: event.tooltip, dataSugerida: dataSugerida });
-    });
-
-    relevantEventNames.forEach(eventName => {
-      if (!data.some(item => item.evento.includes(eventName.split(' ')[0]))) {
-        if (
-            (eventName.includes('Simulado') && !data.some(d => d.evento.includes('Simulado'))) ||
-            (eventName.includes('Devolutiva') && !data.some(d => d.evento.includes('Devolutiva'))) ||
-            (!eventName.includes('Simulado') && !eventName.includes('Devolutiva'))
-        ) {
-        }
-      }
     });
 
     return data.sort((a,b) => {
@@ -660,6 +648,35 @@ export default function CalendarioPage() {
     return 'Cronograma de Ações - Proposta de Datas';
   }, [selectedProjectId, projetos]);
 
+  const [printVisual, setPrintVisual] = useState(false);
+
+  const handlePrintVisual = () => {
+    setPrintVisual(true);
+    setTimeout(() => {
+        window.print();
+        setPrintVisual(false);
+    }, 100);
+  }
+
+  const LegendContent = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['avaliacao-diagnostica']}></div>Avaliação Diagnóstica</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
+        <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.migracao}></div>Migração de Dados</div>
+    </div>
+  );
+
   return (
     <>
       <style jsx global>{`
@@ -667,9 +684,16 @@ export default function CalendarioPage() {
           body { visibility: hidden; background-color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .printable-area, .printable-area * { visibility: visible; }
           .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 2rem; margin: 0; }
+          
+          .printable-visual, .printable-visual * { visibility: visible; }
+          .printable-visual { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; background: white; }
+          
           .no-print { display: none !important; }
           .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; font-size: 10px; }
           .print-table { border-collapse: collapse; width: 100%; }
+          .print-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+          .print-month-card { break-inside: avoid; border: 1px solid #eee; padding: 0.5rem; border-radius: 8px; }
+          .print-legend { margin-bottom: 2rem; border: 1px solid #eee; padding: 1rem; border-radius: 8px; }
         }
       `}</style>
       <div className="flex flex-col gap-4 py-6 h-full">
@@ -714,9 +738,13 @@ export default function CalendarioPage() {
                         Sincronizar Datas
                     </Button>
                 )}
+                <Button onClick={handlePrintVisual} variant="outline" disabled={loading}>
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    Imprimir Calendário
+                </Button>
                 <Button onClick={() => window.print()} variant="outline" disabled={loading || cronogramaData.length === 0}>
                     <Printer className="mr-2 h-4 w-4" />
-                    Imprimir
+                    Imprimir Cronograma
                 </Button>
               </div>
             </div>
@@ -726,22 +754,7 @@ export default function CalendarioPage() {
                       <CardTitle className='text-lg'>Legenda</CardTitle>
                   </CardHeader>
                   <CardContent className='p-2'>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-3 text-sm">
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['continuidade-ferias']}></div>Continuidade das férias 2025</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-aulas']}></div>Início e término das aulas</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-termino-trimestre']}></div>Início e término de trimestre</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['estudo-planejamento']}></div>Estudo e Planejamento</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.feriado}></div>Feriado</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.recesso}></div>Recesso escolar</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.conselho}></div>Conselho de Classe/Fechamento</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['inicio-ferias-2026']}></div>Início das férias 2026</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.avaliacao}></div>Avaliação Trimestral</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles['avaliacao-diagnostica']}></div>Avaliação Diagnóstica</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.simulado}></div>Simulado</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.devolutiva}></div>Devolutiva</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.implantacao}></div>Implantação</div>
-                          <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={modifierStyles.migracao}></div>Migração de Dados</div>
-                      </div>
+                      <LegendContent />
                   </CardContent>
             </Card>
 
@@ -862,7 +875,8 @@ export default function CalendarioPage() {
             </div>
         </div>
 
-        <div className="printable-area">
+        {/* Impressão do Cronograma (Tabela) */}
+        <div className={cn("printable-area", printVisual && "hidden")}>
           <div className="space-y-12">
             <header className="flex justify-between items-center pb-4 border-b-2">
                 <AppLogo />
@@ -898,6 +912,72 @@ export default function CalendarioPage() {
                 </div>
             </footer>
           </div>
+        </div>
+
+        {/* Impressão do Calendário Visual (Grade de Meses) */}
+        <div className={cn("printable-visual hidden", printVisual && "block")}>
+            <header className="flex justify-between items-center pb-4 border-b-2 mb-6">
+                <AppLogo />
+                <div className='text-right'>
+                    <h2 className="text-xl font-bold">Planejamento Anual {currentYear}</h2>
+                    <p className='text-sm font-medium text-primary'>{printTitle}</p>
+                </div>
+            </header>
+
+            <div className="print-legend bg-gray-50 border rounded-lg p-4 mb-8">
+                <h3 className='font-bold text-sm mb-3'>Legenda de Cores</h3>
+                <LegendContent />
+            </div>
+
+            <div className="print-grid">
+                {months.map(month => {
+                    const monthDate = new Date(currentYear, month);
+                    const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
+                    const monthEvents = events.filter(event => {
+                        const start = event.startDate.toDate();
+                        const end = event.endDate.toDate();
+                        const monthStart = new Date(currentYear, month, 1);
+                        const monthEnd = new Date(currentYear, month + 1, 0);
+                        return start <= monthEnd && end >= monthStart;
+                    }).sort((a, b) => a.startDate.toMillis() - b.startDate.toMillis());
+
+                    return (
+                        <div key={month} className="print-month-card">
+                            <h4 className="text-sm font-bold text-center capitalize mb-2 border-b pb-1">{monthName}</h4>
+                            <div className="flex justify-center scale-90 origin-top">
+                                <Calendar
+                                    month={monthDate}
+                                    mode="single"
+                                    className="p-0 pointer-events-none"
+                                    classNames={{
+                                        day: "h-7 w-7 rounded-full text-[10px]",
+                                        head_cell: "w-7 text-[10px]",
+                                        cell: "h-7 w-7",
+                                    }}
+                                    locale={ptBR}
+                                    modifiers={modifiers}
+                                    modifiersStyles={modifierStyles}
+                                />
+                            </div>
+                            <div className="mt-2 space-y-1">
+                                {monthEvents.slice(0, 6).map((ev, idx) => (
+                                    <div key={idx} className="flex items-start gap-1 text-[8px] leading-tight">
+                                        <div className="w-1.5 h-1.5 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: (modifierStyles as any)[ev.type]?.backgroundColor || '#ccc' }}></div>
+                                        <p className='truncate'>
+                                            <span className='font-bold'>{format(ev.startDate.toDate(), 'dd')}</span> {ev.tooltip}
+                                        </p>
+                                    </div>
+                                ))}
+                                {monthEvents.length > 6 && <p className='text-[7px] text-muted-foreground italic'>+ {monthEvents.length - 6} eventos...</p>}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            <footer className="text-[10px] text-center text-gray-400 mt-12 pt-4 border-t">
+                Documento gerado automaticamente pelo Portal de Gestão Pedagógica - Editora LT
+            </footer>
         </div>
 
         <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange} modal={false}>
