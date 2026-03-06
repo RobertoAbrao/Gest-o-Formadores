@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico, Demanda } from '@/lib/types';
@@ -7,7 +6,7 @@ import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, d
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon, ListTodo } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon, ListTodo, ClipboardCheck, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -176,6 +175,8 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
             
             if (alinhamentoSnap && alinhamentoSnap.exists()) {
                 setAlinhamento(alinhamentoSnap.data() as AlinhamentoTecnico);
+            } else {
+                setAlinhamento(null);
             }
 
             if (demandasSnap) {
@@ -228,7 +229,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
             toast({ title: 'Sucesso', description: 'Anexo excluído com sucesso.' });
         } catch (error) {
             console.error("Erro ao excluir anexo:", error);
-            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir o anexo.' });
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir the anexo.' });
         } finally {
             setIsDeleting(null);
         }
@@ -268,6 +269,16 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
 
     return (
         <div className="space-y-6">
+            {!alinhamento && (
+                <Alert variant="destructive" className="bg-red-50 border-red-200">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Alinhamento Técnico Pendente</AlertTitle>
+                    <AlertDescription>
+                        O formulário de alinhamento técnico para este município ainda não foi preenchido.
+                    </AlertDescription>
+                </Alert>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-primary">
@@ -291,6 +302,17 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         <div>
                             <p className="font-medium">Alunos</p>
                             <p className="text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                            <p className="font-medium">Alinhamento Técnico</p>
+                            {alinhamento ? (
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Preenchido</Badge>
+                            ) : (
+                                <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Vazio / Pendente</Badge>
+                            )}
                         </div>
                     </div>
                      <div className="flex items-start gap-3 col-span-full">
