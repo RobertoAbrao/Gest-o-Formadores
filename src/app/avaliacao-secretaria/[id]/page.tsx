@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import type { Formacao, AvaliacaoSecretaria } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ufs = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
@@ -71,6 +72,8 @@ export default function AvaliacaoSecretariaPage() {
         nomeCompleto: '',
         email: '',
         confirmarEmail: '',
+        uf: '',
+        cidade: '',
         sugestoesMaterial: '',
         principaisBeneficios: '',
         comentariosFinais: '',
@@ -96,8 +99,8 @@ export default function AvaliacaoSecretariaPage() {
         
         form.reset({
             ...form.getValues(),
-            cidade: formacaoData.municipio,
-            uf: formacaoData.uf,
+            cidade: formacaoData.municipio || '',
+            uf: formacaoData.uf || '',
         });
 
     } catch (error: any) {
@@ -246,10 +249,23 @@ export default function AvaliacaoSecretariaPage() {
                                         <FormItem><FormLabel>Confirmar Email</FormLabel><FormControl><Input type="email" placeholder="Confirme seu e-mail" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                      <FormField control={form.control} name="cidade" render={({ field }) => (
-                                        <FormItem><FormLabel>Cidade</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Cidade</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={form.control} name="uf" render={({ field }) => (
-                                        <FormItem><FormLabel>Estado (UF)</FormLabel><FormControl><Input {...field} disabled /></FormControl><FormMessage /></FormItem>
+                                        <FormItem>
+                                            <FormLabel>Estado (UF)</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecione" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
                                     )} />
                                 </div>
                             </div>

@@ -168,8 +168,8 @@ export default function AvaliacaoPage() {
 
         form.reset({
             ...form.getValues(),
-            uf: formacaoData.uf,
-            cidade: formacaoData.municipio,
+            uf: formacaoData.uf || '',
+            cidade: formacaoData.municipio || '',
         });
 
 
@@ -297,8 +297,12 @@ export default function AvaliacaoPage() {
                                     <FormField control={form.control} name="uf" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>UF</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value} disabled>
-                                                <FormControl><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger></FormControl>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecione" />
+                                                    </SelectTrigger>
+                                                </FormControl>
                                                 <SelectContent>
                                                     {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
                                                 </SelectContent>
@@ -309,7 +313,7 @@ export default function AvaliacaoPage() {
                                     <FormField control={form.control} name="cidade" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Cidade</FormLabel>
-                                            <FormControl><Input placeholder="Sua cidade" {...field} disabled /></FormControl>
+                                            <FormControl><Input placeholder="Sua cidade" {...field} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )} />
