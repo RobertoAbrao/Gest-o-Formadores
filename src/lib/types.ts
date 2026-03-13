@@ -1,5 +1,3 @@
-
-
 import { Timestamp } from 'firebase/firestore';
 
 export type MaterialType = 'PDF' | 'Vídeo' | 'Link Externo' | 'Documento Word' | 'Apresentação' | 'Pasta';
@@ -287,6 +285,7 @@ export interface ProjetoImplatancao {
   implantacaoAnexosIds?: string[];
   implantacaoDetalhes?: string;
   implantacaoFormacaoId?: string;
+  implantacaoFormadores?: string[];
   
   diagnostica: EtapaStatus;
   simulados: {
