@@ -544,6 +544,11 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       return null;
     }
 
+    if (!projeto?.id) {
+      toast({ variant: 'destructive', title: 'Ação necessária', description: 'Por favor, salve o projeto antes de criar formações vinculadas.' });
+      return null;
+    }
+
     setLoading(true);
     try {
       let finalFormadoresIds: string[] = [];
@@ -567,6 +572,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         avaliacoesAbertas: false,
         dataInicio: dataInicio ? Timestamp.fromDate(dataInicio) : null,
         dataFim: dataFim ? Timestamp.fromDate(dataFim) : null,
+        projetoId: projeto.id, // VINCULAÇÃO COM O PROJETO MÃE
       };
       
       const docRef = await addDoc(collection(db, "formacoes"), {
@@ -985,7 +991,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     </div>
                                 </div>
                             ) : (
-                                <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao')}>
+                                <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao') || !isEditMode}>
                                     <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
                                 </Button>
                             )}
@@ -1249,7 +1255,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
                                     <Popover><PopoverTrigger asChild><FormControl>
                                         <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>
                                     </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
@@ -1261,7 +1267,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
                                     <Popover><PopoverTrigger asChild><FormControl>
                                         <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>
                                     </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
@@ -1458,7 +1464,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                         type="button" 
                                         variant="secondary" 
                                         onClick={() => handleCreateDevolutivaFormation(i)}
-                                        disabled={loading}
+                                        disabled={loading || !isEditMode}
+                                        title={!isEditMode ? "Salve o projeto primeiro para criar a formação" : ""}
                                         >
                                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                                         Criar Formação para Devolutiva
