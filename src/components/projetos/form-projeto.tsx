@@ -36,8 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud, UserCog } from 'lucide-react';
-import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo, HistoricoItem } from '@/lib/types';
+import type { Formacao, Formador, DevolutivaLink, Anexo, HistoricoItem, ProjetoImplatancao } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
@@ -501,11 +502,16 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   };
 
   async function onSubmit(values: FormValues) {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Erro de autenticação' });
+      return;
+    }
     setLoading(true);
+
+    const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+
     try {
       
-      const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
-
       const dataToSave = {
           ...values,
           responsavelNome: selectedAdmin?.nome || '',
@@ -543,7 +549,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
 
       if (isEditMode && projeto) {
-         const projetoRef = doc(db, 'projetos', projeto.id);
+         const projetoRef = doc(db, 'projects', projeto.id);
          updateDoc(projetoRef, cleanedData)
            .catch(async (serverError) => {
              const permissionError = new FirestorePermissionError({
@@ -817,7 +823,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   const getAnexosForEtapa = (etapa: FileUploadKey): Anexo[] => {
     if (etapa === 'brasao') {
       const id = form.getValues('brasaoId');
-      return allAnexos.filter(anexo => anexo.id === id);
+      return id ? allAnexos.filter(anexo => anexo.id === id) : [];
     }
     const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
     const ids = form.getValues(anexoPath as any) || [];
