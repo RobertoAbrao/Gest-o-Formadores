@@ -51,6 +51,7 @@ import { generateFormationCode } from '@/lib/utils';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useAuth } from '@/hooks/use-auth';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -216,6 +217,7 @@ type FileUploadKey =
   | `eventosAdicionais.${number}`;
 
 export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoProps) {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState<FileUploadKey | null>(null);
