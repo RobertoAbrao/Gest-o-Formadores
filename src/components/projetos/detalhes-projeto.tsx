@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico, Demanda } from '@/lib/types';
@@ -6,7 +5,7 @@ import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, d
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon, ListTodo, ClipboardCheck, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle2, ClipboardList, BookOpen, Users, UserCheck, Milestone, Target, Flag, XCircle, Link as LinkIcon, Users2, Loader2, FileText, Trash2, Image as ImageIcon, ListTodo, ClipboardCheck, AlertCircle, UserCog } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -302,6 +301,13 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         <div>
                             <p className="font-medium">Alunos</p>
                             <p className="text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <UserCog className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                            <p className="font-medium">Responsável Geral</p>
+                            <p className="text-muted-foreground font-semibold">{projeto.responsavelNome || 'Pendente'}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">

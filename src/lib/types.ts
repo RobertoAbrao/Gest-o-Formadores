@@ -287,6 +287,9 @@ export interface ProjetoImplatancao {
   implantacaoFormacaoId?: string;
   implantacaoFormadores?: string[];
   
+  responsavelId?: string;
+  responsavelNome?: string;
+
   diagnostica: EtapaStatus;
   simulados: {
     s1: PeriodoStatus;

@@ -35,11 +35,11 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud } from 'lucide-react';
+import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud, UserCog } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Formacao, DevolutivaLink, Anexo, HistoricoItem } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
 import { Separator } from '../ui/separator';
 import { Checkbox } from '../ui/checkbox';
@@ -112,6 +112,7 @@ const formSchema = z.object({
   implantacaoDetalhes: z.string().optional(),
   implantacaoFormacaoId: z.string().optional(),
   implantacaoFormadores: z.array(z.string()).optional(),
+  responsavelId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
@@ -245,6 +246,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       implantacaoDetalhes: projeto?.implantacaoDetalhes || '',
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
       implantacaoFormadores: projeto?.implantacaoFormadores || [],
+      responsavelId: projeto?.responsavelId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
@@ -477,8 +479,11 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     setLoading(true);
     try {
       
+      const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+
       const dataToSave = {
           ...values,
+          responsavelNome: selectedAdmin?.nome || '',
           dataMigracao: timestampOrNull(values.dataMigracao),
           dataImplantacao: timestampOrNull(values.dataImplantacao),
           diagnostica: {
@@ -513,10 +518,10 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
 
       if (isEditMode && projeto) {
-         await updateDoc(doc(db, 'projetos', projeto.id), cleanedData);
+         await updateDoc(doc(db, 'projects', projeto.id), cleanedData);
          toast({ title: 'Sucesso!', description: 'Projeto atualizado com sucesso.' });
       } else {
-        const newDocRef = doc(collection(db, 'projetos'));
+        const newDocRef = doc(collection(db, 'projects'));
         await setDoc(newDocRef, {
             ...cleanedData,
             id: newDocRef.id,
@@ -820,6 +825,27 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                     <FormField control={form.control} name="material" render={({ field }) => (
                         <FormItem><FormLabel>Material</FormLabel><FormControl><Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
+                    <FormField control={form.control} name="responsavelId" render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                            <FormLabel className="flex items-center gap-2">
+                                <UserCog className="h-4 w-4 text-primary"/> Responsável Geral pelo Projeto
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione a responsável (Irene, Ana ou Amaranta)" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {admins.map(admin => (
+                                        <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormDescription>Esta pessoa será a responsável principal pela gestão das demandas deste projeto.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                    )}/>
                     <FormField control={form.control} name="dossieUrl" render={({ field }) => (
                         <FormItem className="sm:col-span-2">
                             <FormLabel>Link do Dossiê Final (Google Drive)</FormLabel>
@@ -1014,7 +1040,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                         render={({ field }) => (
                             <FormItem className="flex flex-col sm:col-span-2">
                                 <FormLabel>Formadores Responsáveis pelo Projeto</FormLabel>
-                                <Popover open={formadorPopoverOpen} onOpenChange={setFormadorPopoverOpen}>
+                                <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="outline" role="combobox" className="w-full justify-between" disabled={!selectedUf}>
                                             <span className="truncate">
