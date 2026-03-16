@@ -50,7 +50,7 @@ import { Textarea } from '../ui/textarea';
 import { generateFormationCode } from '@/lib/utils';
 import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useAuth } from '@/hooks/use-auth';
 
 const etapaStatusSchema = z.object({
@@ -551,7 +551,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
 
       if (isEditMode && projeto) {
-         const projetoRef = doc(db, 'projects', projeto.id);
+         const projetoRef = doc(db, 'projetos', projeto.id);
          updateDoc(projetoRef, cleanedData)
            .catch(async (serverError) => {
              const permissionError = new FirestorePermissionError({

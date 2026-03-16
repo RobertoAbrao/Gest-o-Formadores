@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Calendar } from '@/components/ui/calendar';
@@ -19,10 +18,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc, serverTimestamp } from 'firebase/firestore';
-import type { ProjetoImplatancao, AlinhamentoTecnico, Formador, Demanda, HistoricoItem } from '@/lib/types';
+import type { ProjetoImplatancao, AlinhamentoTecnico, Formador, Demanda, HistoricoItem, Formacao } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateFormationCode } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 type EventType = 
     | 'continuidade-ferias' 
@@ -206,7 +207,7 @@ export default function CalendarioPage() {
         .filter(f => projeto.formadoresIds?.includes(f.id))
         .map(f => f.nomeCompleto);
 
-      const newFormationData = {
+      const newFormationData: Omit<Formacao, 'id'> = {
         titulo: eventData.tooltip,
         descricao: `Atividade referente ao projeto de implantação em ${projeto.municipio}.`,
         status: 'preparacao' as const,
@@ -223,72 +224,79 @@ export default function CalendarioPage() {
         etapaCalendario: eventData.type,
       };
 
-      try {
-        const docRef = await addDoc(collection(db, "formacoes"), {
-          ...newFormationData,
-          dataCriacao: serverTimestamp(),
+      const docRef = doc(collection(db, "formacoes"));
+      setDoc(docRef, {
+        ...newFormationData,
+        dataCriacao: serverTimestamp(),
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: newFormationData,
         });
-        toast({ title: 'Sucesso!', description: `Formação "${eventData.tooltip}" criada no Quadro.` });
-        
-        // Link formation to devolutiva if applicable
-        const match = eventData.tooltip.match(/Devolutiva (\d)/);
-        if (match && projeto.id) {
-            const num = match[1];
-            const devolutivaKey = `devolutivas.d${num}.formacaoId`;
-            const devolutivaTitleKey = `devolutivas.d${num}.formacaoTitulo`;
-            await updateDoc(doc(db, 'projetos', projeto.id), {
-                [devolutivaKey]: docRef.id,
-                [devolutivaTitleKey]: eventData.tooltip,
-            });
-        }
-        if(eventData.type === 'implantacao' && projeto.id){
-            await updateDoc(doc(db, 'projetos', projeto.id), {
-                implantacaoFormacaoId: docRef.id,
-            });
-        }
-        
-        // Create a demand in Diário de Bordo if a responsible person is selected
-        if (responsavelId) {
-            const responsavel = admins.find(a => a.id === responsavelId);
-            if (responsavel) {
-                const demandaText = `Preparar e acompanhar: ${eventData.tooltip}`;
-                
-                const historicoInicial: HistoricoItem[] = [{
-                  id: doc(collection(db, 'demandas')).id,
-                  data: Timestamp.now(),
-                  autorId: 'system',
-                  autorNome: 'Sistema',
-                  tipo: 'criacao',
-                  texto: `Demanda criada automaticamente a partir do Calendário para a formação "${eventData.tooltip}".`
-                }];
+        errorEmitter.emit('permission-error', permissionError);
+      });
 
-                const newDemand = {
-                    municipio: projeto.municipio,
-                    uf: projeto.uf,
-                    demanda: demandaText,
-                    status: 'Pendente' as const,
-                    responsavelId: responsavel.id,
-                    responsavelNome: responsavel.nome,
-                    prioridade: 'Normal' as const,
-                    prazo: eventData.startDate, // Use the event start date as prazo
-                    dataCriacao: serverTimestamp(),
-                    dataAtualizacao: serverTimestamp(),
-                    origem: 'automatica' as const,
-                    projetoOrigemId: projeto.id,
-                    formacaoOrigemId: docRef.id,
-                    historico: historicoInicial,
-                };
-                await addDoc(collection(db, 'demandas'), newDemand);
-                toast({
-                    title: 'Demanda Criada!',
-                    description: `Uma nova tarefa foi criada no Diário de Bordo para ${responsavel.nome}.`
-                });
-            }
-        }
+      // Link formation to devolutiva if applicable
+      const match = eventData.tooltip.match(/Devolutiva (\d)/);
+      const projetoRef = doc(db, 'projetos', projeto.id);
+      
+      if (match && projeto.id) {
+          const num = match[1];
+          const updateObj = {
+              [`devolutivas.d${num}.formacaoId`]: docRef.id,
+              [`devolutivas.d${num}.formacaoTitulo`]: eventData.tooltip,
+          };
+          updateDoc(projetoRef, updateObj).catch(async () => {});
+      }
+      
+      if(eventData.type === 'implantacao' && projeto.id){
+          updateDoc(projetoRef, { implantacaoFormacaoId: docRef.id }).catch(async () => {});
+      }
+      
+      // Create a demand in Diário de Bordo if a responsible person is selected
+      if (responsavelId) {
+          const responsavel = admins.find(a => a.id === responsavelId);
+          if (responsavel) {
+              const demandaText = `Preparar e acompanhar: ${eventData.tooltip}`;
+              
+              const historicoInicial: HistoricoItem[] = [{
+                id: doc(collection(db, 'demandas')).id,
+                data: Timestamp.now(),
+                autorId: 'system',
+                autorNome: 'Sistema',
+                tipo: 'criacao',
+                texto: `Demanda criada automaticamente a partir do Calendário para a formação "${eventData.tooltip}".`
+              }];
 
-      } catch (error) {
-        console.error("Error creating formation or demand from calendar event:", error);
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar a formação ou a demanda correspondente.' });
+              const newDemand = {
+                  municipio: projeto.municipio,
+                  uf: projeto.uf,
+                  demanda: demandaText,
+                  status: 'Pendente' as const,
+                  responsavelId: responsavel.id,
+                  responsavelNome: responsavel.nome,
+                  prioridade: 'Normal' as const,
+                  prazo: eventData.startDate,
+                  dataCriacao: serverTimestamp(),
+                  dataAtualizacao: serverTimestamp(),
+                  origem: 'automatica' as const,
+                  projetoOrigemId: projeto.id,
+                  formacaoOrigemId: docRef.id,
+                  historico: historicoInicial,
+              };
+              
+              const demandRef = doc(collection(db, 'demandas'));
+              setDoc(demandRef, newDemand).catch(async () => {
+                  const permissionError = new FirestorePermissionError({
+                    path: demandRef.path,
+                    operation: 'create',
+                    requestResourceData: newDemand,
+                  });
+                  errorEmitter.emit('permission-error', permissionError);
+              });
+          }
       }
   };
 
@@ -344,11 +352,18 @@ export default function CalendarioPage() {
         if (eventToDelete) {
             const projectUpdateData = getProjectUpdateData(eventToDelete.type, eventToDelete.tooltip, null, null);
             if (Object.keys(projectUpdateData).length > 0 && eventToDelete.projectId !== 'geral') {
-                const projetoRef = doc(db, 'projects', eventToDelete.projectId);
-                await updateDoc(projetoRef, projectUpdateData);
+                const projetoRef = doc(db, 'projetos', eventToDelete.projectId);
+                updateDoc(projetoRef, projectUpdateData).catch(async () => {});
             }
         }
-        await deleteDoc(doc(db, 'calendario_eventos', editingEventId));
+        const eventRef = doc(db, 'calendario_eventos', editingEventId);
+        deleteDoc(eventRef).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+              path: eventRef.path,
+              operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
         toast({ title: 'Sucesso', description: 'Evento removido e projeto atualizado.' });
       } 
       // Case 2: User wants to create or update an event
@@ -367,16 +382,33 @@ export default function CalendarioPage() {
         
         let eventId = editingEventId;
         if (editingEventId) {
-            await updateDoc(doc(db, 'calendario_eventos', editingEventId), eventData);
+            const eventRef = doc(db, 'calendario_eventos', editingEventId);
+            updateDoc(eventRef, eventData).catch(async () => {
+                const permissionError = new FirestorePermissionError({
+                  path: eventRef.path,
+                  operation: 'update',
+                  requestResourceData: eventData,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            });
         } else {
-            const docRef = await addDoc(collection(db, 'calendario_eventos'), eventData);
+            const eventsCol = collection(db, 'calendario_eventos');
+            const docRef = doc(eventsCol);
             eventId = docRef.id;
+            setDoc(docRef, eventData).catch(async () => {
+                const permissionError = new FirestorePermissionError({
+                  path: docRef.path,
+                  operation: 'create',
+                  requestResourceData: eventData,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            });
         }
 
         const projectUpdateData = getProjectUpdateData(currentEventType, currentTooltip, startDate, endDate);
         if (Object.keys(projectUpdateData).length > 0 && selectedProjectId !== 'geral' && selectedProjectId !== 'todos') {
             const projetoRef = doc(db, 'projetos', selectedProjectId);
-            await updateDoc(projetoRef, projectUpdateData);
+            updateDoc(projetoRef, projectUpdateData).catch(async () => {});
             toast({ title: 'Sucesso!', description: 'Calendário e projeto atualizados.' });
         } else {
             toast({ title: 'Sucesso!', description: 'Evento do calendário salvo.' });
@@ -389,17 +421,14 @@ export default function CalendarioPage() {
             }
         }
       }
-      // Case 3 (implicit): User selected "Normal Day" on an empty day. Do nothing.
 
     } catch(e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível salvar o evento.' });
     } finally {
-        // Always refresh data and close modal
         await fetchEvents();
         setIsModalOpen(false);
         setEditingRange(undefined);
-        // setLoading is handled by fetchEvents()
     }
   };
 
@@ -453,7 +482,14 @@ export default function CalendarioPage() {
       }
       
       if(Object.keys(updateData).length > 0) {
-        await updateDoc(projetoRef, updateData);
+        updateDoc(projetoRef, updateData).catch(async () => {
+            const permissionError = new FirestorePermissionError({
+              path: projetoRef.path,
+              operation: 'update',
+              requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
         toast({ title: 'Sucesso!', description: 'As datas do projeto foram sincronizadas com sucesso.' });
       } else {
          toast({ title: 'Nenhuma Ação', description: 'Não há datas aprovadas para sincronizar.' });
