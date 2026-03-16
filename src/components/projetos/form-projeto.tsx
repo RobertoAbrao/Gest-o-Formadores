@@ -41,15 +41,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
-import { Separator } from '../ui/separator';
-import { Checkbox } from '../ui/checkbox';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { generateFormationCode } from '@/lib/utils';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -223,7 +223,6 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [allAnexos, setAllAnexos] = useState<Anexo[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [formadorPopoverOpen, setFormadorPopoverOpen] = useState(false);
   const [impFormadorPopoverOpen, setImpFormadorPopoverOpen] = useState(false);
   const [estados, setEstados] = useState<Estado[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
@@ -293,7 +292,6 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
   const selectedUf = form.watch('uf');
   const brasaoId = form.watch('brasaoId');
-  const municipio = form.watch('municipio');
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -398,7 +396,17 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         projetoId: projetoId,
         etapa: etapa,
       };
-      const anexoDocRef = await addDoc(collection(db, 'anexos'), novoAnexo);
+      
+      const anexoDocRef = doc(collection(db, 'anexos'));
+      setDoc(anexoDocRef, novoAnexo)
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: anexoDocRef.path,
+            operation: 'create',
+            requestResourceData: novoAnexo,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
   
       if (etapa === 'brasao') {
         form.setValue('brasaoId', anexoDocRef.id);
@@ -427,7 +435,15 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
     if (etapa) setUploading(etapa);
     try {
-        await deleteDoc(doc(db, 'anexos', anexoIdToDelete));
+        const anexoRef = doc(db, 'anexos', anexoIdToDelete);
+        deleteDoc(anexoRef)
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: anexoRef.path,
+              operation: 'delete',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          });
         
         if (etapa) {
           const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : etapa === 'brasao' ? 'brasaoId' : `${etapa}.anexosIds`;
@@ -462,8 +478,17 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     if (!projeto || !window.confirm("Tem certeza que deseja excluir este anexo legado?")) return;
     setLoading(true);
     try {
-        await updateDoc(doc(db, 'projetos', projeto.id), {
+        const projetoRef = doc(db, 'projetos', projeto.id);
+        updateDoc(projetoRef, {
             anexo: deleteField()
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: projetoRef.path,
+            operation: 'update',
+            requestResourceData: { anexo: deleteField() },
+          });
+          errorEmitter.emit('permission-error', permissionError);
         });
         form.setValue('anexo', null);
         toast({ title: "Sucesso", description: "Anexo legado excluído." });
@@ -518,14 +543,31 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
 
       if (isEditMode && projeto) {
-         await updateDoc(doc(db, 'projects', projeto.id), cleanedData);
+         const projetoRef = doc(db, 'projetos', projeto.id);
+         updateDoc(projetoRef, cleanedData)
+           .catch(async (serverError) => {
+             const permissionError = new FirestorePermissionError({
+               path: projetoRef.path,
+               operation: 'update',
+               requestResourceData: cleanedData,
+             });
+             errorEmitter.emit('permission-error', permissionError);
+           });
          toast({ title: 'Sucesso!', description: 'Projeto atualizado com sucesso.' });
       } else {
-        const newDocRef = doc(collection(db, 'projects'));
-        await setDoc(newDocRef, {
+        const newDocRef = doc(collection(db, 'projetos'));
+        setDoc(newDocRef, {
             ...cleanedData,
             id: newDocRef.id,
             dataCriacao: serverTimestamp(),
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: newDocRef.path,
+            operation: 'create',
+            requestResourceData: { ...cleanedData, id: newDocRef.id, dataCriacao: 'serverTimestamp' },
+          });
+          errorEmitter.emit('permission-error', permissionError);
         });
         toast({ title: 'Sucesso!', description: 'Projeto criado com sucesso.' });
       }
@@ -580,9 +622,18 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         projetoId: projeto.id, // VINCULAÇÃO COM O PROJETO MÃE
       };
       
-      const docRef = await addDoc(collection(db, "formacoes"), {
+      const docRef = doc(collection(db, "formacoes"));
+      setDoc(docRef, {
           ...newFormationData,
           dataCriacao: serverTimestamp(),
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: newFormationData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
       
       toast({ title: 'Sucesso!', description: `Formação "${title}" criada.` });
@@ -635,7 +686,15 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         };
 
         const formacaoRef = doc(db, 'formacoes', implantacaoFormacaoId);
-        await updateDoc(formacaoRef, updateData);
+        updateDoc(formacaoRef, updateData)
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: formacaoRef.path,
+              operation: 'update',
+              requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          });
 
         toast({ title: 'Sucesso!', description: 'Formação de implantação atualizada.' });
     } catch (error) {
@@ -693,7 +752,17 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             historico: historicoInicial,
           };
           
-          await addDoc(collection(db, 'demandas'), newDemand);
+          const demandRef = doc(collection(db, 'demandas'));
+          setDoc(demandRef, newDemand)
+            .catch(async (serverError) => {
+              const permissionError = new FirestorePermissionError({
+                path: demandRef.path,
+                operation: 'create',
+                requestResourceData: newDemand,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+            });
+
           toast({
             title: 'Demanda Criada!',
             description: `Uma nova tarefa foi criada no Diário de Bordo para ${responsavel.nome}.`
@@ -726,7 +795,15 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         };
 
         const formacaoRef = doc(db, 'formacoes', formacaoId);
-        await updateDoc(formacaoRef, updateData);
+        updateDoc(formacaoRef, updateData)
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: formacaoRef.path,
+              operation: 'update',
+              requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          });
 
         toast({ title: 'Sucesso!', description: 'Formação no quadro foi atualizada com os dados do projeto.' });
     } catch (error) {
@@ -1343,7 +1420,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                         return (
                             <Card key={etapaKey} className='p-4 bg-muted/40 shadow-sm shadow-primary/5'>
                                 <CardHeader className="p-0 mb-4 flex-row justify-between items-start">
-                                    <CardTitle className="text-base">Devolutiva {i}{ municipio ? `: ${municipio}` : '' }</CardTitle>
+                                    <CardTitle className="text-base">Devolutiva {i}{ form.watch('municipio') ? `: ${form.watch('municipio')}` : '' }</CardTitle>
                                     <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearDevolutiva(i)}>
                                             <Eraser className="mr-2 h-3 w-3" /> Limpar
                                     </Button>
@@ -1353,7 +1430,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
                                         <Popover><PopoverTrigger asChild><FormControl>
                                         <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>
                                         </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
@@ -1365,7 +1442,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
                                         <Popover><PopoverTrigger asChild><FormControl>
                                         <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
+                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                         </Button>
                                         </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
