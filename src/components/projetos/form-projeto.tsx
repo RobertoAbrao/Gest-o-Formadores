@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -18,7 +19,7 @@ import {
   deleteField,
 } from 'firebase/firestore';
 import * as React from 'react';
-import { format } from "date-fns"
+import { format, subDays } from "date-fns"
 import { ptBR } from 'date-fns/locale';
 
 import { Button } from '@/components/ui/button';
@@ -593,7 +594,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   }
   
   const handleCreateFormation = async (title: string, dataInicio: Date | null | undefined, dataFim: Date | null | undefined, details: string | undefined, formadorNomes: string[]) => {
-    const { municipio, uf } = form.getValues();
+    const { municipio, uf, responsavelId } = form.getValues();
     if (!municipio || !uf) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Selecione um município e UF para o projeto primeiro.' });
       return null;
@@ -631,20 +632,46 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       };
       
       const docRef = doc(collection(db, "formacoes"));
-      setDoc(docRef, {
+      await setDoc(docRef, {
           ...newFormationData,
           dataCriacao: serverTimestamp(),
-      })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'create',
-          requestResourceData: newFormationData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
       });
+
+      // --- CRIAÇÃO AUTOMÁTICA DE DEMANDA ---
+      const selectedAdmin = admins.find(a => a.id === responsavelId);
+      if (responsavelId && selectedAdmin) {
+          const demandDeadline = dataInicio ? subDays(dataInicio, 7) : null;
+          const demandRef = doc(collection(db, 'demandas'));
+          const newDemand = {
+              municipio,
+              uf,
+              demanda: `Acompanhar o desenvolvimento para ${title}`,
+              status: 'Pendente',
+              responsavelId,
+              responsavelNome: selectedAdmin.nome,
+              prioridade: 'Normal',
+              prazo: demandDeadline ? Timestamp.fromDate(demandDeadline) : null,
+              dataCriacao: serverTimestamp(),
+              dataAtualizacao: serverTimestamp(),
+              origem: 'automatica',
+              projetoOrigemId: projeto.id,
+              projetoOrigemNome: municipio,
+              formacaoOrigemId: docRef.id,
+              historico: [{
+                  id: docRef.id + '_auto_hist',
+                  data: Timestamp.now(),
+                  autorId: 'system',
+                  autorNome: 'Sistema',
+                  tipo: 'criacao',
+                  texto: `Demanda criada automaticamente para acompanhar o desenvolvimento da formação "${title}".`
+              }]
+          };
+          
+          await setDoc(demandRef, newDemand);
+      }
+      // -------------------------------------
       
-      toast({ title: 'Sucesso!', description: `Formação "${title}" criada.` });
+      toast({ title: 'Sucesso!', description: `Formação "${title}" criada e demanda vinculada ao responsável.` });
       return docRef.id;
 
     } catch (error) {
@@ -714,7 +741,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   };
 
   const handleCreateDevolutivaFormation = async (devolutivaNumber: 1 | 2 | 3 | 4) => {
-    const { municipio, uf, devolutivas } = form.getValues();
+    const { municipio, devolutivas } = form.getValues();
     const devolutivaData = devolutivas[`d${devolutivaNumber}`];
     const title = `Devolutiva ${devolutivaNumber}: ${municipio}`;
     
@@ -729,54 +756,6 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     if (newFormationId) {
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoId`, newFormationId);
       form.setValue(`devolutivas.d${devolutivaNumber}.formacaoTitulo`, title);
-      
-      if (devolutivaData.responsavelId) {
-        const responsavel = admins.find(a => a.id === devolutivaData.responsavelId);
-        if (responsavel) {
-          const demandaText = `Preparar e acompanhar a Devolutiva ${devolutivaNumber} para ${municipio}.`;
-          const historicoInicial: HistoricoItem[] = [{
-            id: doc(collection(db, 'demandas')).id,
-            data: Timestamp.now(),
-            autorId: 'system',
-            autorNome: 'Sistema',
-            tipo: 'criacao',
-            texto: `Demanda criada automaticamente a partir do agendamento da Devolutiva ${devolutivaNumber} no projeto ${municipio}.`
-          }];
-
-          const newDemand = {
-            municipio,
-            uf,
-            demanda: demandaText,
-            status: 'Pendente' as const,
-            responsavelId: responsavel.id,
-            responsavelNome: responsavel.nome,
-            prioridade: 'Normal' as const,
-            prazo: devolutivaData.dataInicio ? Timestamp.fromDate(devolutivaData.dataInicio) : null,
-            dataCriacao: serverTimestamp(),
-            dataAtualizacao: serverTimestamp(),
-            origem: 'automatica' as const,
-            projetoOrigemId: projeto?.id,
-            formacaoOrigemId: newFormationId,
-            historico: historicoInicial,
-          };
-          
-          const demandRef = doc(collection(db, 'demandas'));
-          setDoc(demandRef, newDemand)
-            .catch(async (serverError) => {
-              const permissionError = new FirestorePermissionError({
-                path: demandRef.path,
-                operation: 'create',
-                requestResourceData: newDemand,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-            });
-
-          toast({
-            title: 'Demanda Criada!',
-            description: `Uma nova tarefa foi criada no Diário de Bordo para ${responsavel.nome}.`
-          });
-        }
-      }
     }
   };
 
@@ -1511,26 +1490,6 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     <FormField control={form.control} name={`${etapaKey}.detalhes`} render={({ field }) => (
                                     <FormItem><FormLabel>Detalhes</FormLabel><FormControl><Textarea placeholder="Detalhes sobre a devolutiva..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                                     )}/>
-                                    <FormField
-                                        control={form.control}
-                                        name={`${etapaKey}.responsavelId`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Responsável pela Demanda</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione um responsável" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
-                                                </SelectContent>
-                                                </Select>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
                                     <div className='flex justify-between items-center gap-2 pt-2 border-t'>
                                         <FormField control={form.control} name={`${etapaKey}.ok`} render={({ field }) => (
                                             <FormItem className="flex flex-row items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>OK?</FormLabel></FormItem>
