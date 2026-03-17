@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import type { ProjetoImplatancao, Demanda, Formacao, Formador } from '@/lib/type
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, Clock, ListTodo, KanbanSquare, ClipboardList, Calendar, Users, Target, Flag, Milestone } from 'lucide-react';
+import { Loader2, AlertTriangle, Clock, ListTodo, KanbanSquare, ClipboardList, Calendar, Users, Target, Flag, Milestone, UserCog } from 'lucide-react';
 import { format, isBefore, startOfToday, addDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -236,74 +235,98 @@ export default function GerenciaPage() {
         <>
             <div className="flex flex-col gap-8 py-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight font-headline">Visão Gerencial</h1>
-                    <p className="text-muted-foreground">Um panorama em tempo real das operações pedagógicas.</p>
+                    <h1 className="text-3xl font-bold tracking-tight font-headline text-slate-900">Visão Gerencial</h1>
+                    <p className="text-slate-500">Um panorama em tempo real das operações pedagógicas.</p>
                 </div>
                 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    <Card>
+                    <Card className="border-none shadow-sm bg-white">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Demandas em Aberto</CardTitle>
-                            <ListTodo className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Demandas em Aberto</CardTitle>
+                            <ListTodo className="h-5 w-5 text-rose-500" />
                         </CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{stats.demandasPendentes}</div></CardContent>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-slate-900">{stats.demandasPendentes}</div>
+                            <p className="text-xs text-slate-400 mt-1">Total acumulado no diário</p>
+                        </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="border-none shadow-sm bg-white">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Formações Ativas</CardTitle>
-                            <KanbanSquare className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Formações Ativas</CardTitle>
+                            <KanbanSquare className="h-5 w-5 text-indigo-500" />
                         </CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{stats.formacoesAtivas}</div></CardContent>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-slate-900">{stats.formacoesAtivas}</div>
+                            <p className="text-xs text-slate-400 mt-1">Atividades em curso no quadro</p>
+                        </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="border-none shadow-sm bg-white">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Projetos em Andamento ({new Date().getFullYear()})</CardTitle>
-                            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                            <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Projetos Ativos</CardTitle>
+                            <ClipboardList className="h-5 w-5 text-emerald-500" />
                         </CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{stats.projetosAtivos}</div></CardContent>
+                        <CardContent>
+                            <div className="text-3xl font-bold text-slate-900">{stats.projetosAtivos}</div>
+                            <p className="text-xs text-slate-400 mt-1">Hospedados no ciclo {new Date().getFullYear()}</p>
+                        </CardContent>
                     </Card>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-6">
-                        <h2 className="text-xl font-semibold">Status dos Projetos ({new Date().getFullYear()})</h2>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <Flag className="h-5 w-5 text-primary" />
+                            Status dos Projetos
+                        </h2>
                         {projetosComDados.length === 0 ? (
                             <p className="text-muted-foreground text-sm">Nenhum projeto para exibir.</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {projetosComDados.map(p => (
-                                    <Card key={p.id} className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleOpenDetails(p)}>
-                                        <CardHeader>
-                                            <CardTitle className="text-lg">{p.municipio} - {p.uf}</CardTitle>
-                                            <CardDescription className="flex items-center gap-4 pt-2">
+                                    <Card key={p.id} className="flex flex-col cursor-pointer hover:shadow-md transition-all border-none bg-white group" onClick={() => handleOpenDetails(p)}>
+                                        <CardHeader className='pb-3'>
+                                            <div className="flex justify-between items-start mb-2">
+                                                <CardTitle className="text-lg text-slate-900 group-hover:text-primary transition-colors">{p.municipio} - {p.uf}</CardTitle>
+                                                {p.responsavelNome && (
+                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-medium border-none py-1">
+                                                        <UserCog className="h-3 w-3 mr-1.5 opacity-70" />
+                                                        {p.responsavelNome.split(' ')[0]}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                            <CardDescription className="flex flex-wrap items-center gap-2 pt-1">
                                                 {p.demandasCount > 0 && 
-                                                    <Badge variant="outline" className="flex items-center gap-1">
-                                                        <ListTodo className="h-3 w-3"/>{p.demandasCount} {p.demandasCount === 1 ? 'demanda' : 'demandas'}
+                                                    <Badge variant="outline" className="flex items-center gap-1.5 text-[10px] font-bold uppercase border-slate-200 text-slate-500">
+                                                        <ListTodo className="h-3 w-3"/>{p.demandasCount}
                                                     </Badge>
                                                 }
                                                 {p.demandasAtrasadas > 0 && 
-                                                    <Badge variant="destructive" className="flex items-center gap-1">
-                                                        <Clock className="h-3 w-3"/>{p.demandasAtrasadas} {p.demandasAtrasadas === 1 ? 'atrasada' : 'atrasadas'}
+                                                    <Badge variant="destructive" className="flex items-center gap-1.5 text-[10px] font-bold uppercase bg-rose-50 text-rose-600 border-rose-100">
+                                                        <Clock className="h-3 w-3"/>{p.demandasAtrasadas} Atraso
                                                     </Badge>
                                                 }
                                                 {p.demandasUrgentes > 0 &&
-                                                    <Badge variant="destructive" className="flex items-center gap-1 bg-orange-500 text-white">
-                                                        <AlertTriangle className="h-3 w-3"/>{p.demandasUrgentes} {p.demandasUrgentes === 1 ? 'urgente' : 'urgentes'}
+                                                    <Badge variant="destructive" className="flex items-center gap-1.5 text-[10px] font-bold uppercase bg-orange-50 text-orange-600 border-orange-100">
+                                                        <AlertTriangle className="h-3 w-3"/>{p.demandasUrgentes} Crítico
                                                     </Badge>
                                                 }
                                             </CardDescription>
                                         </CardHeader>
-                                        <CardContent className="flex-grow space-y-3">
-                                            <div>
-                                                <div className="flex justify-between text-sm mb-1">
-                                                    <span className="font-medium">Progresso</span>
-                                                    <span className="text-muted-foreground">{p.progress.toFixed(0)}%</span>
+                                        <CardContent className="flex-grow space-y-4">
+                                            <div className='bg-slate-50 p-3 rounded-lg'>
+                                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
+                                                    <span>Progresso</span>
+                                                    <span>{p.progress.toFixed(0)}%</span>
                                                 </div>
-                                                <Progress value={p.progress} />
+                                                <Progress value={p.progress} className='h-2' />
                                             </div>
                                             {p.nextMilestone && (
-                                                <div className="text-sm text-muted-foreground">
-                                                    <strong>Próximo Marco:</strong> {p.nextMilestone.nome} em {format(p.nextMilestone.data, 'dd/MM/yyyy')}
+                                                <div className="text-xs text-slate-500 bg-indigo-50/50 p-2.5 rounded-md flex items-center gap-2">
+                                                    <Clock className='h-3.5 w-3.5 text-indigo-500 shrink-0' />
+                                                    <p>
+                                                        <span className='font-bold text-slate-700 uppercase mr-1'>Próximo:</span> 
+                                                        {p.nextMilestone.nome} • {format(p.nextMilestone.data, 'dd/MM/yyyy')}
+                                                    </p>
                                                 </div>
                                             )}
                                         </CardContent>
@@ -312,70 +335,88 @@ export default function GerenciaPage() {
                             </div>
                         )}
                     </div>
-                    <div className="lg:col-span-1 space-y-6">
+                    <div className="lg:col-span-1 space-y-8">
                         <div>
-                            <h2 className="text-xl font-semibold mb-4">Demandas Críticas</h2>
-                            <Card>
-                                <CardHeader className='pb-2'>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <AlertTriangle className="h-5 w-5 text-orange-500"/>
-                                        Urgentes
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {demandasCriticas.urgentes.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma demanda urgente.</p> : (
-                                        <ul className="space-y-2">
-                                            {demandasCriticas.urgentes.map(d => (
-                                                <li key={d.id} className="text-sm">
-                                                    <p className="font-medium truncate">{d.demanda}</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {d.municipio} • Resp: {d.responsavelNome}
-                                                        {d.prazo && ` • Prazo: ${format(d.prazo.toDate(), 'dd/MM/yyyy')}`}
-                                                    </p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </CardContent>
-                            </Card>
-                            <Card className="mt-4">
-                                <CardHeader className='pb-2'>
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <Clock className="h-5 w-5 text-red-500"/>
-                                        Atrasadas
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    {demandasCriticas.atrasadas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma demanda atrasada.</p> : (
-                                        <ul className="space-y-2">
-                                            {demandasCriticas.atrasadas.map(d => (
-                                                <li key={d.id} className="text-sm">
-                                                    <p className="font-medium truncate">{d.demanda}</p>
-                                                    <p className="text-xs text-muted-foreground">{d.municipio} • Venceu {formatDistanceToNow(d.prazo!.toDate(), { addSuffix: true, locale: ptBR })}</p>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </CardContent>
-                            </Card>
+                            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <AlertTriangle className="h-5 w-5 text-rose-500" />
+                                Demandas Críticas
+                            </h2>
+                            <div className="space-y-4">
+                                <Card className='border-none shadow-sm'>
+                                    <CardHeader className='pb-2 pt-4 px-4'>
+                                        <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-orange-600">
+                                            Urgentes do Portal
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className='px-4 pb-4'>
+                                        {demandasCriticas.urgentes.length === 0 ? <p className="text-sm text-slate-400 italic py-2">Nenhuma demanda urgente.</p> : (
+                                            <ul className="space-y-3">
+                                                {demandasCriticas.urgentes.map(d => (
+                                                    <li key={d.id} className="text-sm border-b border-slate-50 last:border-0 pb-2">
+                                                        <p className="font-semibold text-slate-800 truncate">{d.demanda}</p>
+                                                        <p className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                                            <span className='font-bold text-primary'>{d.municipio}</span>
+                                                            <span className='opacity-50'>•</span>
+                                                            <span className='flex items-center gap-1'><UserCog className='h-3 w-3'/> {d.responsavelNome.split(' ')[0]}</span>
+                                                            {d.prazo && (
+                                                                <>
+                                                                    <span className='opacity-50'>•</span>
+                                                                    <span className='font-medium text-rose-500'>{format(d.prazo.toDate(), 'dd/MM')}</span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                                <Card className='border-none shadow-sm'>
+                                    <CardHeader className='pb-2 pt-4 px-4'>
+                                        <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2 text-rose-600">
+                                            Atrasadas
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className='px-4 pb-4'>
+                                        {demandasCriticas.atrasadas.length === 0 ? <p className="text-sm text-slate-400 italic py-2">Nenhuma demanda atrasada.</p> : (
+                                            <ul className="space-y-3">
+                                                {demandasCriticas.atrasadas.map(d => (
+                                                    <li key={d.id} className="text-sm border-b border-slate-50 last:border-0 pb-2">
+                                                        <p className="font-semibold text-slate-800 truncate">{d.demanda}</p>
+                                                        <p className="text-[11px] text-rose-500 font-medium mt-0.5">
+                                                            {d.municipio} • Venceu {formatDistanceToNow(d.prazo!.toDate(), { addSuffix: true, locale: ptBR })}
+                                                        </p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold mb-4">Agenda da Semana</h2>
-                            <Card>
-                                <CardContent className='pt-6'>
-                                    {agendaDaSemana.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum evento importante para os próximos 7 dias.</p> : (
-                                        <ul className="space-y-3">
+                            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <Calendar className="h-5 w-5 text-indigo-500" />
+                                Agenda da Semana
+                            </h2>
+                            <Card className='border-none shadow-sm'>
+                                <CardContent className='pt-6 px-4 pb-4'>
+                                    {agendaDaSemana.length === 0 ? <p className="text-sm text-slate-400 italic text-center py-4">Nenhum evento importante para os próximos 7 dias.</p> : (
+                                        <ul className="space-y-4">
                                             {agendaDaSemana.map((evento, index) => {
                                                 const Icon = evento.type === 'formacao' ? KanbanSquare : (Object.entries(iconMapping).find(([key]) => evento.title.includes(key))?.[1] || Milestone);
                                                 return (
-                                                    <li key={index} className="flex items-start gap-3 text-sm">
-                                                        <div className="flex-shrink-0 text-center font-semibold text-primary">
-                                                            <div>{format(evento.date, 'dd')}</div>
-                                                            <div className="text-xs">{format(evento.date, 'MMM', { locale: ptBR })}</div>
+                                                    <li key={index} className="flex items-start gap-4">
+                                                        <div className="flex-shrink-0 text-center bg-slate-100 rounded-md py-1.5 px-2.5 min-w-[45px]">
+                                                            <div className='text-sm font-bold text-primary leading-tight'>{format(evento.date, 'dd')}</div>
+                                                            <div className="text-[10px] font-bold text-slate-500 uppercase">{format(evento.date, 'MMM', { locale: ptBR })}</div>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Icon className="h-4 w-4 text-muted-foreground"/>
-                                                            <span className="font-medium">{evento.title}</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0"/>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{evento.type === 'formacao' ? 'Formação' : 'Marco Projeto'}</span>
+                                                            </div>
+                                                            <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug">{evento.title}</p>
                                                         </div>
                                                     </li>
                                                 )
@@ -389,14 +430,21 @@ export default function GerenciaPage() {
                 </div>
             </div>
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-2xl border-none">
                     {selectedProjeto && (
                         <>
                             <DialogHeader>
-                                <DialogTitle>{selectedProjeto.municipio} - {selectedProjeto.uf}</DialogTitle>
-                                <DialogDescription>Visão detalhada do projeto</DialogDescription>
+                                <div className='flex items-center gap-3'>
+                                    <div className='p-2 bg-primary/10 rounded-lg'>
+                                        <ClipboardList className='h-6 w-6 text-primary' />
+                                    </div>
+                                    <div>
+                                        <DialogTitle className='text-xl font-bold text-slate-900'>{selectedProjeto.municipio} - {selectedProjeto.uf}</DialogTitle>
+                                        <DialogDescription className='text-slate-500'>Visão detalhada e cronograma do projeto</DialogDescription>
+                                    </div>
+                                </div>
                             </DialogHeader>
-                            <ScrollArea className="max-h-[70vh] p-1">
+                            <ScrollArea className="max-h-[70vh] px-1">
                                 <DetalhesProjetoModal
                                     projeto={selectedProjeto}
                                     demandas={demandas}
