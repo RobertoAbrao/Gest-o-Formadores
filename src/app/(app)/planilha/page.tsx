@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck, MessageSquare } from 'lucide-react';
+import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck, MessageSquare, UserCog } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Demanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -138,7 +138,7 @@ export default function PlanilhaPage() {
             Object.entries(p.simulados).forEach(([key, simulado]) => {
                 if (simulado.dataInicio) {
                     const etapaKey = `simulado_${key}`;
-                    atividades.push({ nome: `Simulado ${key.replace('s','')}`, etapaKey, startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!simulado.ok, demandas: getDemandasForEtapa(etapaKey) });
+                    atividades.push({ nome: `Simulado ${key.replace('s', '')}`, etapaKey, startDate: (simulado.dataInicio as Timestamp).toDate(), endDate: (simulado.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!simulado.ok, demandas: getDemandasForEtapa(etapaKey) });
                 }
             })
         }
@@ -146,7 +146,7 @@ export default function PlanilhaPage() {
             Object.entries(p.devolutivas).forEach(([key, devolutiva]) => {
                  if (devolutiva.dataInicio) {
                     const etapaKey = `devolutiva_${key}`;
-                    atividades.push({ nome: `Devolutiva ${key.replace('d','')}`, etapaKey, startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!devolutiva.ok, demandas: getDemandasForEtapa(etapaKey) });
+                    atividades.push({ nome: `Devolutiva ${key.replace('d', '')}`, etapaKey, startDate: (devolutiva.dataInicio as Timestamp).toDate(), endDate: (devolutiva.dataFim as Timestamp | undefined)?.toDate() ?? null, ok: !!devolutiva.ok, demandas: getDemandasForEtapa(etapaKey) });
                 }
             })
         }
@@ -161,8 +161,6 @@ export default function PlanilhaPage() {
     })
   }, [projetos, demandas]);
   
-  const formadoresMap = useMemo(() => new Map(formadores.map(f => [f.id, f.nomeCompleto])), [formadores]);
-
   const filteredProjetos = useMemo(() => {
     return projetosComAtividades.filter(p => {
         const searchMatch = searchTerm.trim() === '' || p.municipio.toLowerCase().includes(searchTerm.toLowerCase());
@@ -203,6 +201,7 @@ export default function PlanilhaPage() {
         p.atividades.map(a => ({
             'Município': p.municipio,
             'UF': p.uf,
+            'Responsável': p.responsavelNome || 'N/A',
             'Atividade': a.nome,
             'Data Início': a.startDate ? format(a.startDate, "dd/MM/yyyy") : 'N/A',
             'Data Fim': a.endDate ? format(a.endDate, "dd/MM/yyyy") : 'N/A',
@@ -238,7 +237,7 @@ export default function PlanilhaPage() {
   };
 
   const handleFormSuccess = () => {
-    fetchData(); // Re-fetch data to reflect changes
+    fetchData(); 
     setIsFormDialogOpen(false);
     setSelectedProjeto(null);
   };
@@ -330,39 +329,49 @@ export default function PlanilhaPage() {
                                     className="flex flex-col cursor-pointer hover:shadow-lg transition-shadow"
                                     onClick={() => handleEditClick(projeto)}
                                 >
-                                    <CardHeader>
-                                        <CardTitle>{projeto.municipio}</CardTitle>
-                                        <CardDescription>{projeto.uf}</CardDescription>
+                                    <CardHeader className="pb-3">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <CardTitle className="text-xl">{projeto.municipio}</CardTitle>
+                                                <CardDescription className="font-semibold text-indigo-600">{projeto.uf}</CardDescription>
+                                            </div>
+                                            {projeto.responsavelNome && (
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-700 border-slate-200">
+                                                    <UserCog className="h-3 w-3 mr-1" />
+                                                    {projeto.responsavelNome.split(' ')[0]}
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="flex-grow space-y-2">
                                         {projeto.atividades.length === 0 ? (
                                             <p className="text-sm text-muted-foreground text-center py-4">Nenhuma atividade agendada.</p>
                                         ) : (
                                             projeto.atividades.map((atividade, index) => (
-                                                <div key={index} className="flex flex-col text-sm p-2 rounded-md bg-muted/50">
+                                                <div key={index} className="flex flex-col text-sm p-2 rounded-md bg-muted/50 border border-transparent hover:border-slate-200 transition-colors">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-medium">{atividade.nome}</span>
+                                                        <span className="font-medium text-slate-700">{atividade.nome}</span>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {atividade.startDate ? format(atividade.startDate, 'dd/MM/yy') : 'N/A'}
+                                                            <span className="text-[10px] uppercase font-bold text-slate-400">
+                                                                {atividade.startDate ? format(atividade.startDate, 'dd/MM') : 'N/A'}
                                                             </span>
-                                                            {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                                                            {atividade.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <XCircle className="h-4 w-4 text-rose-500" />}
                                                         </div>
                                                     </div>
                                                     {atividade.demandas.length > 0 && (
-                                                        <div className="mt-2 pt-2 border-t border-muted-foreground/10 pl-2 space-y-2">
+                                                        <div className="mt-2 pt-2 border-t border-slate-200 pl-2 space-y-2">
                                                             {atividade.demandas.map(demanda => {
                                                                 const comentarios = demanda.historico?.filter(h => h.tipo === 'comentario').slice(0, 2) || [];
                                                                 return (
                                                                     <div key={demanda.id} className="text-xs">
                                                                         <div className="flex items-start gap-1.5">
-                                                                            <BookOpenCheck className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
-                                                                            <p className="line-clamp-2 text-foreground">{demanda.demanda}</p>
+                                                                            <BookOpenCheck className="h-3 w-3 mt-0.5 shrink-0 text-slate-400" />
+                                                                            <p className="line-clamp-2 text-slate-600 font-medium">{demanda.demanda}</p>
                                                                         </div>
                                                                         {comentarios.length > 0 && (
                                                                             <div className="pl-5 mt-1 space-y-1">
                                                                                 {comentarios.map(comentario => (
-                                                                                    <div key={comentario.id} className="flex items-start gap-1.5 text-muted-foreground/80">
+                                                                                    <div key={comentario.id} className="flex items-start gap-1.5 text-slate-400">
                                                                                         <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
                                                                                         <p className="line-clamp-1 italic">"{comentario.texto}"</p>
                                                                                     </div>
@@ -378,15 +387,23 @@ export default function PlanilhaPage() {
                                             ))
                                         )}
                                     </CardContent>
-                                    <CardFooter className="flex justify-between items-center">
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <User className="h-3 w-3" />
-                                            {projeto.formadoresIds?.length || 0} formador(es)
-                                        </p>
-                                        {projeto.demandaCount > 0 && (
-                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <BookOpenCheck className="h-3 w-3" />
-                                                {projeto.demandaCount} demanda(s)
+                                    <CardFooter className="flex justify-between items-center bg-slate-50/50 p-3 rounded-b-lg border-t text-slate-500">
+                                        <div className="flex items-center gap-3">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                <User className="h-3 w-3" />
+                                                {projeto.formadoresIds?.length || 0} Form.
+                                            </p>
+                                            {projeto.demandaCount > 0 && (
+                                                <p className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                    <BookOpenCheck className="h-3 w-3" />
+                                                    {projeto.demandaCount} Dem.
+                                                </p>
+                                            )}
+                                        </div>
+                                        {projeto.responsavelNome && (
+                                            <p className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                <UserCog className="h-3 w-3" />
+                                                {projeto.responsavelNome}
                                             </p>
                                         )}
                                     </CardFooter>
