@@ -17,8 +17,14 @@ import { DetalhesProjetoModal } from '@/components/gerencia/detalhes-projeto-mod
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Helper function to calculate project progress
-const calculateProgress = (projeto: ProjetoImplatancao): number => {
+const calculateProgress = (projeto: ProjetoImplatancao, formacoes: Formacao[]): number => {
+    const implantacaoOk = !!(
+        projeto.implantacaoFormacaoId &&
+        formacoes.find(f => f.id === projeto.implantacaoFormacaoId)?.status === 'concluido'
+    );
+
     const milestones = [
+        { ok: implantacaoOk }, // Adicionando a implantação como um marco.
         projeto.diagnostica,
         ...Object.values(projeto.simulados || {}),
         ...Object.values(projeto.devolutivas || {}),
@@ -30,11 +36,16 @@ const calculateProgress = (projeto: ProjetoImplatancao): number => {
 };
 
 // Helper function to find the next milestone
-const getNextMilestone = (projeto: ProjetoImplatancao): { nome: string; data: Date } | null => {
+const getNextMilestone = (projeto: ProjetoImplatancao, formacoes: Formacao[]): { nome: string; data: Date } | null => {
     const today = startOfToday();
     const milestones: { nome: string; data: Date }[] = [];
 
-    if (projeto.dataImplantacao) {
+    const implantacaoOk = !!(
+        projeto.implantacaoFormacaoId &&
+        formacoes.find(f => f.id === projeto.implantacaoFormacaoId)?.status === 'concluido'
+    );
+
+    if (projeto.dataImplantacao && !implantacaoOk) {
         milestones.push({ nome: 'Implantação', data: projeto.dataImplantacao.toDate() });
     }
     if (projeto.diagnostica?.data && !projeto.diagnostica.ok) {
@@ -163,8 +174,8 @@ export default function GerenciaPage() {
 
             return {
                 ...projeto,
-                progress: calculateProgress(projeto),
-                nextMilestone: getNextMilestone(projeto),
+                progress: calculateProgress(projeto, formacoes),
+                nextMilestone: getNextMilestone(projeto, formacoes),
                 demandasCount: demandasDoProjeto.length,
                 demandasUrgentes,
                 demandasAtrasadas,
@@ -172,7 +183,7 @@ export default function GerenciaPage() {
                 demandasGerais
             };
         }).sort((a,b) => (b.demandasUrgentes + b.demandasAtrasadas) - (a.demandasUrgentes + a.demandasAtrasadas));
-    }, [projetos, demandas]);
+    }, [projetos, demandas, formacoes]);
 
     const demandasCriticas = useMemo(() => {
         const urgentes = demandas
@@ -201,7 +212,7 @@ export default function GerenciaPage() {
         });
 
         projetos.forEach(p => {
-            const nextMilestone = getNextMilestone(p);
+            const nextMilestone = getNextMilestone(p, formacoes);
             if (nextMilestone && nextMilestone.data >= today && nextMilestone.data <= nextSevenDays) {
                  eventos.push({ date: nextMilestone.data, title: `${nextMilestone.nome}: ${p.municipio}`, type: 'projeto' });
             }
