@@ -281,7 +281,8 @@ export interface ProjetoImplatancao {
   qtdAlunos?: number;
   formacoesPendentes?: number;
   formadoresIds?: string[];
-  dataImplantacao: Timestamp | null;
+  dataInicioImplantacao: Timestamp | null;
+  dataFimImplantacao?: Timestamp | null;
   implantacaoAnexosIds?: string[];
   implantacaoDetalhes?: string;
   implantacaoFormacaoId?: string;

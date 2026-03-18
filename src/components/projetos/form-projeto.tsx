@@ -110,7 +110,8 @@ const formSchema = z.object({
   dossieUrl: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
   dataMigracao: z.date().nullable(),
   anexo: z.any().optional(), // Campo legado
-  dataImplantacao: z.date().nullable(),
+  dataInicioImplantacao: z.date().nullable(),
+  dataFimImplantacao: z.date().nullable(),
   implantacaoAnexosIds: z.array(z.string()).optional(),
   implantacaoDetalhes: z.string().optional(),
   implantacaoFormacaoId: z.string().optional(),
@@ -244,7 +245,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       dossieUrl: projeto?.dossieUrl || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       anexo: projeto?.anexo || null,
-      dataImplantacao: toDate(projeto?.dataImplantacao),
+      dataInicioImplantacao: toDate(projeto?.dataInicioImplantacao),
+      dataFimImplantacao: toDate(projeto?.dataFimImplantacao),
       implantacaoAnexosIds: projeto?.implantacaoAnexosIds || [],
       implantacaoDetalhes: projeto?.implantacaoDetalhes || '',
       implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
@@ -519,7 +521,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
           ...values,
           responsavelNome: selectedAdmin?.nome || '',
           dataMigracao: timestampOrNull(values.dataMigracao),
-          dataImplantacao: timestampOrNull(values.dataImplantacao),
+          dataInicioImplantacao: timestampOrNull(values.dataInicioImplantacao),
+          dataFimImplantacao: timestampOrNull(values.dataFimImplantacao),
           diagnostica: {
             data: timestampOrNull(values.diagnostica.data),
             ok: values.diagnostica.ok,
@@ -684,7 +687,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   };
 
   const handleCreateImplantacaoFormation = async () => {
-    const { dataImplantacao, municipio, implantacaoFormadores, implantacaoDetalhes } = form.getValues();
+    const { dataInicioImplantacao, dataFimImplantacao, municipio, implantacaoFormadores, implantacaoDetalhes } = form.getValues();
     const title = `Implantação: ${municipio}`;
     
     // Se não houver formadores selecionados especificamente para implantação, usa os do projeto
@@ -692,7 +695,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         ? implantacaoFormadores 
         : allFormadores.filter(f => form.getValues('formadoresIds')?.includes(f.id)).map(f => f.nomeCompleto);
 
-    const newFormationId = await handleCreateFormation(title, dataImplantacao, dataImplantacao, implantacaoDetalhes || 'Formação referente à implantação do sistema.', formadoresNames);
+    const newFormationId = await handleCreateFormation(title, dataInicioImplantacao, dataFimImplantacao, implantacaoDetalhes || 'Formação referente à implantação do sistema.', formadoresNames);
 
     if (newFormationId) {
         form.setValue('implantacaoFormacaoId', newFormationId);
@@ -702,7 +705,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   const handleUpdateImplantacaoFormation = async () => {
     setLoading(true);
     try {
-        const { dataImplantacao, implantacaoFormadores, implantacaoFormacaoId, implantacaoDetalhes } = form.getValues();
+        const { dataInicioImplantacao, dataFimImplantacao, implantacaoFormadores, implantacaoFormacaoId, implantacaoDetalhes } = form.getValues();
 
         if (!implantacaoFormacaoId) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Nenhuma formação de implantação associada.' });
@@ -713,8 +716,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         const formadoresIds = allFormadores.filter(f => formadoresNomes.includes(f.nomeCompleto)).map(f => f.id);
 
         const updateData = {
-            dataInicio: timestampOrNull(dataImplantacao),
-            dataFim: timestampOrNull(dataImplantacao),
+            dataInicio: timestampOrNull(dataInicioImplantacao),
+            dataFim: timestampOrNull(dataFimImplantacao),
             formadoresIds: formadoresIds,
             formadoresNomes: formadoresNomes,
             descricao: implantacaoDetalhes || 'Formação referente à implantação do sistema.',
@@ -813,7 +816,8 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   
   const handleClearImplantacao = () => {
     if (!window.confirm("Tem certeza que deseja limpar todos os dados desta etapa de Implantação?")) return;
-    form.setValue('dataImplantacao', null);
+    form.setValue('dataInicioImplantacao', null);
+    form.setValue('dataFimImplantacao', null);
     form.setValue('implantacaoDetalhes', '');
     form.setValue('implantacaoFormadores', []);
     // Note: We don't clear formacaoId automatically to avoid accidental unlinking. 
@@ -948,7 +952,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                 <CardTitle>Implementação e Métricas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <FormField control={form.control} name="dataMigracao" render={({ field }) => (
                     <FormItem className="flex flex-col"><FormLabel>Data de Migração</FormLabel>
                         <Popover><PopoverTrigger asChild><FormControl>
@@ -962,9 +966,9 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                     </FormItem>
                     )}/>
                      <div className="space-y-2">
-                        <FormField control={form.control} name="dataImplantacao" render={({ field }) => (
+                        <FormField control={form.control} name="dataInicioImplantacao" render={({ field }) => (
                             <FormItem className="flex flex-col">
-                                <FormLabel>Data de Implantação</FormLabel>
+                                <FormLabel>Data de Início da Implantação</FormLabel>
                                 <div className="flex gap-2 items-center">
                                     <Popover><PopoverTrigger asChild><FormControl>
                                     <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -990,6 +994,18 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                             </div>
                         ))}
                     </div>
+                    <FormField control={form.control} name="dataFimImplantacao" render={({ field }) => (
+                        <FormItem className="flex flex-col"><FormLabel>Data Fim da Implantação</FormLabel>
+                            <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                            </PopoverContent></Popover><FormMessage />
+                        </FormItem>
+                        )}/>
                  </div>
                  <div className="space-y-4">
                     <FormField
@@ -1081,7 +1097,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                                     </div>
                                 </div>
                             ) : (
-                                <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataImplantacao') || !isEditMode}>
+                                <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataInicioImplantacao') || !isEditMode}>
                                     <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
                                 </Button>
                             )}
