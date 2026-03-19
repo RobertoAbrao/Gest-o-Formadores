@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -72,6 +70,7 @@ const checklistItems = [
     { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
     { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
     { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
+    { id: 'antes_municipioSlideAtualizado', label: 'Município com slide atualizado', phase: 'antes' },
     { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
     { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
     
@@ -1321,7 +1320,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                           <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
                               <div>
                                   <DollarSign className="h-6 w-6 mx-auto mb-2"/>
-                                  Nenhuma despesa encontrada para esta formação.
+                                  Nenhuma de despesa encontrada para esta formação.
                               </div>
                           </div>
                        ) : (
