@@ -70,7 +70,7 @@ const checklistItems = [
     { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
     { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
     { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
-    { id: 'antes_municipioSlideAtualizado', label: 'Município com slide atualizado', phase: 'antes' },
+    { id: 'antes_municipioSlideAtualizado', label: 'Slide atualizado', phase: 'antes' },
     { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
     { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
     
