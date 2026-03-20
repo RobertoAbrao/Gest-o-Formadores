@@ -53,26 +53,35 @@ interface DetalhesFormacaoProps {
 type DisplayAnexo = Anexo & { id?: string };
 
 const checklistItems = [
-    { id: 'antes_marcarData', label: 'Marcar data da formação (quantos dias são necessários)', phase: 'antes' },
+    // 1. Definições Iniciais (O esqueleto do evento)
     { id: 'antes_levantarParticipantes', label: 'Levantar o quantitativo de participantes', phase: 'antes' },
-    { id: 'antes_solicitarBrindes', label: 'Solicitar brindes para a logística', phase: 'antes' },
-    { id: 'antes_selecionarBanners', label: 'Selecionar os banners para o evento', phase: 'antes' },
+    { id: 'antes_marcarData', label: 'Marcar data da formação (quantos dias são necessários)', phase: 'antes' },
+    { id: 'antes_verificarLocal', label: 'Verificar o local de curso', phase: 'antes' },
+    { id: 'antes_elaborarProgramacao', label: 'Elaborar a programação e a ficha de curso para o município', phase: 'antes' },
+    { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
+    
+    // 2. Divulgação (Com data, local e programação prontos, já pode divulgar)
+    { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
+
+    // 3. Equipe e Logística de Viagem
     { id: 'antes_levantarFormadores', label: 'Levantar o número de formadores necessários', phase: 'antes' },
-    { id: 'antes_reuniaoFormadores', label: 'Fazer reunião com formadores para passar a apresentação e orientações do marketing', phase: 'antes' },
     { id: 'antes_definirAssessor', label: 'Definir um assessor para acompanhar o evento', phase: 'antes' },
     { id: 'antes_contatoFormadores', label: 'Entrar em contato com os formadores', phase: 'antes' },
-    { id: 'antes_elaborarProgramacao', label: 'Elaborar a programação e a ficha de curso para o município', phase: 'antes' },
     { id: 'antes_pedirPassagens', label: 'Pedir passagens', phase: 'antes' },
     { id: 'antes_pedirHospedagens', label: 'Pedir hospedagens', phase: 'antes' },
     { id: 'antes_confirmarPagamentoDiarias', label: 'Confirmar se o pagamento das diárias foi efetuado', phase: 'antes' },
-    { id: 'antes_verificarCoffee', label: 'Verificar quem ficará responsável pelo coffee', phase: 'antes' },
-    { id: 'antes_verificarLocal', label: 'Verificar o local de curso', phase: 'antes' },
-    { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
+
+    // 4. Infraestrutura Detalhada do Local
     { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
+    { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
+    { id: 'antes_verificarCoffee', label: 'Verificar quem ficará responsável pelo coffee', phase: 'antes' },
+
+    // 5. Materiais de Apoio e Alinhamento Final
     { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
     { id: 'antes_municipioSlideAtualizado', label: 'Slide atualizado', phase: 'antes' },
-    { id: 'antes_divulgarEvento', label: 'Divulgar o evento', phase: 'antes' },
-    { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
+    { id: 'antes_reuniaoFormadores', label: 'Fazer reunião com formadores para passar a apresentação e orientações do marketing', phase: 'antes' },
+    { id: 'antes_selecionarBanners', label: 'Selecionar os banners para o evento', phase: 'antes' },
+    { id: 'antes_solicitarBrindes', label: 'Solicitar brindes para a logística', phase: 'antes' },
     
     { id: 'dia_testarSistema', label: 'Testar sistema de luz e som com a equipe técnica', phase: 'dia' },
     { id: 'dia_disponibilizarWifi', label: 'Disponibilizar acessos ao wi-fi', phase: 'dia' },
