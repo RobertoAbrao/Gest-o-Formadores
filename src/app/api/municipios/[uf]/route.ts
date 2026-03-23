@@ -3,9 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { uf: string } }
+  { params }: { params: Promise<{ uf: string }> }
 ) {
-  const uf = params.uf.toUpperCase();
+  const resolvedParams = await params;
+  const uf = resolvedParams.uf.toUpperCase();
 
   if (!uf || uf.length !== 2) {
     return NextResponse.json({ error: 'UF inválido.' }, { status: 400 });

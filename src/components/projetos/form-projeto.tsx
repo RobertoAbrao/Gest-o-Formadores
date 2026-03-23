@@ -348,16 +348,23 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     const fetchMunicipios = async () => {
         setLoadingMunicipios(true);
         try {
-            const response = await fetch(`/api/municipios/${selectedUf}`);
+            // Utilizando o BrasilAPI para contornar falhas de CORS do IBGE e problemas de SSL interno do Node
+            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${selectedUf}`);
             const data = await response.json();
             if (response.ok) {
-                setMunicipios(data);
+                // BrasilAPI has {nome: string} in the response as well so it's compatible
+                const formattedData = data.map((m: any) => ({
+                    id: parseInt(m.codigo_ibge),
+                    nome: m.nome
+                })).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+
+                setMunicipios(formattedData);
             } else {
-                throw new Error(data.error || 'Erro ao buscar municípios');
+                throw new Error(data.message || 'Erro ao buscar municípios');
             }
         } catch (error) {
             console.error('Failed to fetch municipios', error);
-            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os municípios." });
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os municípios. Verifique sua conexão com a internet ou bloqueadores de anúncio." });
         } finally {
             setLoadingMunicipios(false);
         }
