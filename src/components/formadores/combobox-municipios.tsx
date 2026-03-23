@@ -27,6 +27,7 @@ import {
     SelectValue,
   } from "@/components/ui/select"
 import { Badge } from '../ui/badge';
+import { ESTADOS_BR } from '@/lib/estados-br';
 
 
 interface Estado {
@@ -49,24 +50,10 @@ interface ComboboxMunicipiosProps {
 
 export function ComboboxMunicipios({ selected, onChange, onEstadoChange, initialUf = '' }: ComboboxMunicipiosProps) {
   const [open, setOpen] = React.useState(false);
-  const [estados, setEstados] = React.useState<Estado[]>([]);
+  const estados = ESTADOS_BR;
   const [selectedEstado, setSelectedEstado] = React.useState<string>(initialUf);
   const [municipios, setMunicipios] = React.useState<Municipio[]>([]);
   const [loading, setLoading] = React.useState(false);
-  
-
-  React.useEffect(() => {
-    const fetchEstados = async () => {
-        try {
-            const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
-            const data = await response.json();
-            setEstados(data);
-        } catch (error) {
-            console.error('Failed to fetch estados', error);
-        }
-    };
-    fetchEstados();
-  }, []);
   
   React.useEffect(() => {
     if (!selectedEstado) {
@@ -77,11 +64,16 @@ export function ComboboxMunicipios({ selected, onChange, onEstadoChange, initial
     const fetchMunicipios = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedEstado}/municipios`);
+            const response = await fetch(`/api/municipios/${selectedEstado}`);
             const data = await response.json();
-            setMunicipios(data);
+            if (response.ok && Array.isArray(data)) {
+                setMunicipios(data);
+            } else {
+                setMunicipios([]);
+            }
         } catch (error) {
             console.error('Failed to fetch municipios', error);
+            setMunicipios([]);
         } finally {
             setLoading(false);
         }

@@ -53,6 +53,7 @@ import Link from 'next/link';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useAuth } from '@/hooks/use-auth';
+import { ESTADOS_BR } from '@/lib/estados-br';
 
 const etapaStatusSchema = z.object({
   data: z.date().nullable().optional(),
@@ -233,7 +234,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   const [allAnexos, setAllAnexos] = useState<Anexo[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [impFormadorPopoverOpen, setImpFormadorPopoverOpen] = useState(false);
-  const [estados, setEstados] = useState<Estado[]>([]);
+  const estados = ESTADOS_BR;
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   
@@ -309,30 +310,28 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         setLoading(true);
         try {
             const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
-            const [formadoresSnap, estadosResponse, anexosSnap, adminsSnap] = await Promise.all([
+            const fetchList: Promise<any>[] = [
                 getDocs(collection(db, 'formadores')),
-                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome'),
                 projeto ? getDocs(query(collection(db, 'anexos'), where('projetoId', '==', projeto.id))) : Promise.resolve(null),
                 getDocs(adminsQuery)
-            ]);
+            ];
+            const [formadoresSnap, anexosSnap, adminsSnap] = await Promise.all(fetchList);
             
-            const formadoresData = formadoresSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formador));
+            const formadoresData = formadoresSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Formador));
             setAllFormadores(formadoresData);
             
-            const adminData = adminsSnap.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
+            const adminData = adminsSnap.docs.map((doc: any) => ({ id: doc.id, nome: doc.data().nome as string }));
             setAdmins(adminData);
 
             if (anexosSnap) {
-                const anexosData = anexosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Anexo));
+                const anexosData = anexosSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Anexo));
                 setAllAnexos(anexosData);
             }
-
-            const estadosData = await estadosResponse.json();
-            setEstados(estadosData);
+            // Estados são carregados localmente via ESTADOS_BR, sem necessidade de fetch externo.
 
         } catch (error) {
             console.error("Failed to fetch initial data", error);
-            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os dados necessários." });
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar alguns dados necessários." });
         } finally {
             setLoading(false);
         }
@@ -348,23 +347,21 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     const fetchMunicipios = async () => {
         setLoadingMunicipios(true);
         try {
-            // Utilizando o BrasilAPI para contornar falhas de CORS do IBGE e problemas de SSL interno do Node
-            const response = await fetch(`https://brasilapi.com.br/api/ibge/municipios/v1/${selectedUf}`);
-            const data = await response.json();
+            const response = await fetch(`/api/municipios/${selectedUf}`);
             if (response.ok) {
-                // BrasilAPI has {nome: string} in the response as well so it's compatible
-                const formattedData = data.map((m: any) => ({
-                    id: parseInt(m.codigo_ibge),
-                    nome: m.nome
-                })).sort((a: any, b: any) => a.nome.localeCompare(b.nome));
-
-                setMunicipios(formattedData);
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    data.sort((a: any, b: any) => a.nome.localeCompare(b.nome));
+                    setMunicipios(data);
+                } else {
+                    setMunicipios([]);
+                }
             } else {
-                throw new Error(data.message || 'Erro ao buscar municípios');
+                setMunicipios([]);
             }
         } catch (error) {
             console.error('Failed to fetch municipios', error);
-            toast({ variant: "destructive", title: "Erro", description: "Não foi possível carregar os municípios. Verifique sua conexão com a internet ou bloqueadores de anúncio." });
+            setMunicipios([]);
         } finally {
             setLoadingMunicipios(false);
         }
@@ -885,16 +882,23 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                     )}/>
                     <FormField control={form.control} name="municipio" render={({ field }) => (
                         <FormItem><FormLabel>Município</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                            {municipios.length > 0 ? (
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedUf || loadingMunicipios}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
                                 <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={loadingMunicipios ? "Carregando..." : "Selecione o município"} />
-                                    </SelectTrigger>
+                                    <Input placeholder={loadingMunicipios ? "Carregando..." : "Digite o nome do município"} {...field} disabled={!selectedUf || loadingMunicipios} />
                                 </FormControl>
-                                <SelectContent>
-                                    {municipios.map(m => <SelectItem key={m.id} value={m.nome}>{m.nome}</SelectItem>)}
-                                </SelectContent>
-                            </Select><FormMessage />
+                            )}
+                            <FormMessage />
                         </FormItem>
                     )}/>
                 </div>

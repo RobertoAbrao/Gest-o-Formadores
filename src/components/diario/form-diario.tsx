@@ -31,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { ESTADOS_BR } from '@/lib/estados-br';
 
 interface AdminUser {
     id: string;
@@ -92,7 +93,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [projetos, setProjetos] = useState<ProjetoImplatancao[]>([]);
-  const [estados, setEstados] = useState<Estado[]>([]);
+  const estados = ESTADOS_BR;
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
@@ -137,10 +138,9 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
                 orderBy('dataCriacao', 'desc')
             );
             
-            const [adminsSnapshot, projetosSnapshot, estadosResponse] = await Promise.all([
+            const [adminsSnapshot, projetosSnapshot] = await Promise.all([
                 getDocs(adminsQuery),
                 getDocs(projetosQuery),
-                fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
             ]);
 
             const adminData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome as string }));
@@ -148,9 +148,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
             
             const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
             setProjetos(projetosData);
-
-            const estadosData = await estadosResponse.json();
-            setEstados(estadosData);
+            // Estados são carregados localmente via ESTADOS_BR
 
         } catch (error) {
             console.error("Failed to fetch support data", error);
