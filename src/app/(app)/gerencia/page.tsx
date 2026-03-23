@@ -8,7 +8,7 @@ import type { ProjetoImplatancao, Demanda, Formacao, Formador } from '@/lib/type
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, Clock, ListTodo, KanbanSquare, ClipboardList, Calendar, Users, Target, Flag, Milestone, UserCog } from 'lucide-react';
+import { Loader2, AlertTriangle, Clock, ListTodo, KanbanSquare, ClipboardList, Calendar, Users, Target, Flag, Milestone, UserCog, CalendarCheck, MessageSquare } from 'lucide-react';
 import { format, isBefore, startOfToday, addDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -45,8 +45,8 @@ const getNextMilestone = (projeto: ProjetoImplatancao, formacoes: Formacao[]): {
         formacoes.find(f => f.id === projeto.implantacaoFormacaoId)?.status === 'concluido'
     );
 
-    if (projeto.dataImplantacao && !implantacaoOk) {
-        milestones.push({ nome: 'Implantação', data: projeto.dataImplantacao.toDate() });
+    if (projeto.dataInicioImplantacao && !implantacaoOk) {
+        milestones.push({ nome: 'Implantação', data: projeto.dataInicioImplantacao.toDate() });
     }
     if (projeto.diagnostica?.data && !projeto.diagnostica.ok) {
         milestones.push({ nome: 'Avaliação Diagnóstica', data: projeto.diagnostica.data.toDate() });
@@ -137,7 +137,7 @@ export default function GerenciaPage() {
             const demandasAtrasadas = demandasDoProjeto.filter(d => d.prazo && isBefore(d.prazo.toDate(), startOfToday())).length;
             
             const etapasDoProjeto = new Set<string>();
-            if (projeto.dataImplantacao) etapasDoProjeto.add('implantacao');
+            if (projeto.dataInicioImplantacao) etapasDoProjeto.add('implantacao');
             if (projeto.diagnostica?.data) etapasDoProjeto.add('diagnostica');
             if (projeto.simulados) Object.keys(projeto.simulados).forEach(key => etapasDoProjeto.add(`simulado_${key}`));
             if (projeto.devolutivas) Object.keys(projeto.devolutivas).forEach(key => etapasDoProjeto.add(`devolutiva_${key}`));
@@ -154,8 +154,8 @@ export default function GerenciaPage() {
             });
 
             const atividades: any[] = [];
-            if (projeto.dataImplantacao) {
-                atividades.push({ nome: 'Implantação', ok: true, startDate: projeto.dataImplantacao.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === 'implantacao') });
+            if (projeto.dataInicioImplantacao) {
+                atividades.push({ nome: 'Implantação', ok: true, startDate: projeto.dataInicioImplantacao.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === 'implantacao') });
             }
             if (projeto.diagnostica?.data) {
                 atividades.push({ nome: 'Avaliação Diagnóstica', ...projeto.diagnostica, startDate: projeto.diagnostica.data.toDate(), demandas: demandasDeMarco.filter(d => d.etapaProjeto === 'diagnostica') });
@@ -203,24 +203,54 @@ export default function GerenciaPage() {
         const today = startOfToday();
         const nextSevenDays = addDays(today, 7);
         
-        const eventos: { date: Date, title: string, type: 'formacao' | 'projeto' }[] = [];
+        type EventType = 'formacao' | 'projeto' | 'demanda' | 'reuniao' | 'evento';
+        const eventos: { date: Date, title: string, type: EventType }[] = [];
 
+        // Formações: início e fim
         formacoes.forEach(f => {
-            if (f.dataInicio && f.dataInicio.toDate() >= today && f.dataInicio.toDate() <= nextSevenDays) {
-                eventos.push({ date: f.dataInicio.toDate(), title: `Início: ${f.titulo}`, type: 'formacao' });
+            const inicio = f.dataInicio?.toDate();
+            const fim = f.dataFim?.toDate();
+            if (inicio && inicio >= today && inicio <= nextSevenDays) {
+                eventos.push({ date: inicio, title: `Início: ${f.titulo}`, type: 'formacao' });
+            }
+            if (fim && fim >= today && fim <= nextSevenDays) {
+                eventos.push({ date: fim, title: `Término: ${f.titulo}`, type: 'formacao' });
             }
         });
 
+        // Projetos: milestones
         projetos.forEach(p => {
             const nextMilestone = getNextMilestone(p, formacoes);
             if (nextMilestone && nextMilestone.data >= today && nextMilestone.data <= nextSevenDays) {
                  eventos.push({ date: nextMilestone.data, title: `${nextMilestone.nome}: ${p.municipio}`, type: 'projeto' });
             }
+            // Reuniões
+            p.reunioes?.forEach(r => {
+                const dataReuniao = r.data?.toDate();
+                if (dataReuniao && dataReuniao >= today && dataReuniao <= nextSevenDays) {
+                    eventos.push({ date: dataReuniao, title: `Reunião: ${p.municipio}`, type: 'reuniao' });
+                }
+            });
+            // Eventos adicionais
+            p.eventosAdicionais?.forEach(e => {
+                const dataEvento = e.data?.toDate();
+                if (dataEvento && dataEvento >= today && dataEvento <= nextSevenDays) {
+                    eventos.push({ date: dataEvento, title: `${e.titulo}: ${p.municipio}`, type: 'evento' });
+                }
+            });
+        });
+
+        // Demandas com prazo
+        demandas.forEach(d => {
+            const prazo = d.prazo?.toDate();
+            if (prazo && prazo >= today && prazo <= nextSevenDays) {
+                eventos.push({ date: prazo, title: `Prazo: ${d.demanda.substring(0, 60)}${d.demanda.length > 60 ? '...' : ''}`, type: 'demanda' });
+            }
         });
         
         return eventos.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    }, [formacoes, projetos]);
+    }, [formacoes, projetos, demandas]);
 
     const handleOpenDetails = (projeto: any) => {
         setSelectedProjeto(projeto);
@@ -415,7 +445,28 @@ export default function GerenciaPage() {
                                     {agendaDaSemana.length === 0 ? <p className="text-sm text-slate-400 italic text-center py-4">Nenhum evento importante para os próximos 7 dias.</p> : (
                                         <ul className="space-y-4">
                                             {agendaDaSemana.map((evento, index) => {
-                                                const Icon = evento.type === 'formacao' ? KanbanSquare : (Object.entries(iconMapping).find(([key]) => evento.title.includes(key))?.[1] || Milestone);
+                                                const iconMap: Record<string, any> = {
+                                                    'formacao': KanbanSquare,
+                                                    'projeto': Milestone,
+                                                    'demanda': AlertTriangle,
+                                                    'reuniao': Users,
+                                                    'evento': CalendarCheck,
+                                                };
+                                                const labelMap: Record<string, string> = {
+                                                    'formacao': 'Formação',
+                                                    'projeto': 'Marco Projeto',
+                                                    'demanda': 'Prazo Demanda',
+                                                    'reuniao': 'Reunião',
+                                                    'evento': 'Evento',
+                                                };
+                                                const colorMap: Record<string, string> = {
+                                                    'formacao': 'text-indigo-500',
+                                                    'projeto': 'text-emerald-500',
+                                                    'demanda': 'text-orange-500',
+                                                    'reuniao': 'text-sky-500',
+                                                    'evento': 'text-violet-500',
+                                                };
+                                                const Icon = iconMap[evento.type] || Milestone;
                                                 return (
                                                     <li key={index} className="flex items-start gap-4">
                                                         <div className="flex-shrink-0 text-center bg-slate-100 rounded-md py-1.5 px-2.5 min-w-[45px]">
@@ -424,8 +475,8 @@ export default function GerenciaPage() {
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 mb-0.5">
-                                                                <Icon className="h-3.5 w-3.5 text-slate-400 shrink-0"/>
-                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{evento.type === 'formacao' ? 'Formação' : 'Marco Projeto'}</span>
+                                                                <Icon className={`h-3.5 w-3.5 shrink-0 ${colorMap[evento.type] || 'text-slate-400'}`}/>
+                                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{labelMap[evento.type] || evento.type}</span>
                                                             </div>
                                                             <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug">{evento.title}</p>
                                                         </div>
