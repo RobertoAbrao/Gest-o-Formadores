@@ -121,6 +121,10 @@ const formSchema = z.object({
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
   ),
+  qtdProfessores: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
+    z.number().min(0).optional()
+  ),
   formacoesPendentes: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
     z.number().min(0).optional()
@@ -253,6 +257,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       implantacaoFormadores: projeto?.implantacaoFormadores || [],
       responsavelId: projeto?.responsavelId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
+      qtdProfessores: projeto?.qtdProfessores || undefined,
       formacoesPendentes: projeto?.formacoesPendentes || undefined,
       formadoresIds: projeto?.formadoresIds || [],
       diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '', anexosIds: projeto?.diagnostica?.anexosIds || [] },
@@ -1110,6 +1115,9 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
                         <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="qtdProfessores" render={({ field }) => (
+                        <FormItem><FormLabel>Quantidade de Professores</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 50" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="formacoesPendentes" render={({ field }) => (
                         <FormItem><FormLabel>Formações Pendentes</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 2" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
