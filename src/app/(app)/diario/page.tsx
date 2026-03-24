@@ -110,6 +110,7 @@ export default function DiarioPage() {
   const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'Normal' | 'Urgente'>('all');
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+  const [showAllConcluidas, setShowAllConcluidas] = useState(false);
 
   const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
   const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
@@ -453,7 +454,8 @@ export default function DiarioPage() {
                         ) : demandasDaColuna.length === 0 ? (
                             <div className="text-center text-sm text-muted-foreground p-8">Nenhuma demanda aqui.</div>
                         ) : (
-                            demandasDaColuna.map(demanda => (
+                            <>
+                              {(status === 'Concluída' && !showAllConcluidas ? demandasDaColuna.slice(0, 10) : demandasDaColuna).map(demanda => (
                                 <Card 
                                     key={demanda.id} 
                                     onClick={() => openEditDialog(demanda)} 
@@ -536,7 +538,26 @@ export default function DiarioPage() {
                                       )}
                                     </CardFooter>
                                 </Card>
-                            ))
+                              ))}
+                              {status === 'Concluída' && !showAllConcluidas && demandasDaColuna.length > 10 && (
+                                <Button 
+                                  variant="outline" 
+                                  className="w-full mt-2" 
+                                  onClick={() => setShowAllConcluidas(true)}
+                                >
+                                  Ver mais ({demandasDaColuna.length - 10})
+                                </Button>
+                              )}
+                              {status === 'Concluída' && showAllConcluidas && demandasDaColuna.length > 10 && (
+                                <Button 
+                                  variant="ghost" 
+                                  className="w-full mt-2 text-muted-foreground" 
+                                  onClick={() => setShowAllConcluidas(false)}
+                                >
+                                  Mostrar menos
+                                </Button>
+                              )}
+                            </>
                         )}
                     </div>
                 </ScrollArea>

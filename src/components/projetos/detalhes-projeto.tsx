@@ -303,6 +303,13 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             <p className="text-muted-foreground">{projeto.qtdAlunos || 'N/A'}</p>
                         </div>
                     </div>
+                     <div className="flex items-center gap-3">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                            <p className="font-medium">Professores</p>
+                            <p className="text-muted-foreground">{projeto.qtdProfessores || 'N/A'}</p>
+                        </div>
+                    </div>
                     <div className="flex items-center gap-3">
                         <UserCog className="h-5 w-5 text-muted-foreground" />
                         <div>
@@ -412,7 +419,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             <Calendar className="h-5 w-5 text-muted-foreground" />
                             <div>
                                 <p className="font-medium">Implantação</p>
-                                <p className="text-muted-foreground">{formatDate(projeto.dataImplantacao)}</p>
+                                <p className="text-muted-foreground">{formatDate(projeto.dataInicioImplantacao)}</p>
                             </div>
                         </div>
                          {getAnexosForEtapa('implantacao').map(anexo => (

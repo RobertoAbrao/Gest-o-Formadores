@@ -279,6 +279,7 @@ export interface ProjetoImplatancao {
   dataMigracao: Timestamp | null;
   anexo?: { nome: string; url: string; dataUpload: Timestamp; }; // Campo legado
   qtdAlunos?: number;
+  qtdProfessores?: number;
   formacoesPendentes?: number;
   formadoresIds?: string[];
   dataInicioImplantacao: Timestamp | null;
