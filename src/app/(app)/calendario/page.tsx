@@ -17,7 +17,7 @@ import { Loader2, Printer, Copy, RefreshCw, PlusCircle, CalendarDays } from 'luc
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLogo from '@/components/AppLogo';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, Timestamp, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { ProjetoImplatancao, AlinhamentoTecnico, Formador, Demanda, HistoricoItem, Formacao } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateFormationCode } from '@/lib/utils';
