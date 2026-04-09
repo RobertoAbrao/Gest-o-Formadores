@@ -222,6 +222,17 @@ export default function FichaDevolutivaPage() {
       });
   };
 
+  const handleRemoveRow = (formadorId: string, rowIndex: number, isGeneric = false) => {
+      const setState = isGeneric ? setAgendasGenericas : setAgendas;
+      setState(prev => {
+          const newAgendas = { ...prev };
+          const formadorAgenda = [...(newAgendas[formadorId] || [])];
+          formadorAgenda.splice(rowIndex, 1);
+          newAgendas[formadorId] = formadorAgenda;
+          return newAgendas;
+      });
+  };
+
   const handleLinkChange = (index: number, field: keyof Omit<LinkOnline, 'id'>, value: string) => {
       const newLinks = [...linksOnline];
       if (newLinks[index]) {
@@ -601,6 +612,7 @@ export default function FichaDevolutivaPage() {
                                                         <TableHead className='w-[20%]'>Horário</TableHead>
                                                         <TableHead>Ano/Área</TableHead>
                                                         <TableHead className='w-[20%]'>Participantes</TableHead>
+                                                        <TableHead className='w-[50px] no-print'></TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -634,6 +646,11 @@ export default function FichaDevolutivaPage() {
                                                                 <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
                                                                 <span className="hidden print-only">{agendaRow.participantes || ''}</span>
                                                             </TableCell>
+                                                            <TableCell className="no-print">
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveRow(formador.id, rowIndex)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </TableCell>
                                                         </TableRow>
                                                     ))}
                                                 </TableBody>
@@ -664,6 +681,7 @@ export default function FichaDevolutivaPage() {
                                                         <TableHead className='w-[20%]'>Horário</TableHead>
                                                         <TableHead>Ano/Área</TableHead>
                                                         <TableHead className='w-[20%]'>Participantes</TableHead>
+                                                        <TableHead className='w-[50px] no-print'></TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -696,6 +714,11 @@ export default function FichaDevolutivaPage() {
                                                              <TableCell>
                                                                 <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
                                                                 <span className="hidden print-only">{agendaRow.participantes || ''}</span>
+                                                            </TableCell>
+                                                            <TableCell className="no-print">
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveRow(formador.id, rowIndex, true)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
