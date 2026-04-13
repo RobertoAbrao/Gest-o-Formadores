@@ -275,7 +275,7 @@ export default function ProjetosPage() {
                                         >
                                             {projeto.material || 'N/A'}
                                         </TableCell>
-                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataImplantacao)}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataInicioImplantacao || projeto.dataImplantacao)}</TableCell>
                                         <TableCell className="hidden sm:table-cell text-center">
                                             {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
                                         </TableCell>

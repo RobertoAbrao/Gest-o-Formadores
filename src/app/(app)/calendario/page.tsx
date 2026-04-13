@@ -311,7 +311,8 @@ export default function CalendarioPage() {
         if (type === 'migracao') {
             updateData.dataMigracao = startDate;
         } else if (type === 'implantacao') {
-            updateData.dataImplantacao = startDate;
+            updateData.dataInicioImplantacao = startDate;
+            updateData.dataFimImplantacao = endDate;
         } else if (type === 'avaliacao-diagnostica') {
             updateData['diagnostica.data'] = startDate;
         } else if (type === 'simulado') {
@@ -325,12 +326,8 @@ export default function CalendarioPage() {
             const match = tooltip.match(/Devolutiva (\d)/);
             if (match) {
                 const num = match[1];
-                if (num === '4') {
-                    updateData[`devolutivas.d4.data`] = startDate;
-                } else {
-                    updateData[`devolutivas.d${num}.dataInicio`] = startDate;
-                    updateData[`devolutivas.d${num}.dataFim`] = endDate;
-                }
+                updateData[`devolutivas.d${num}.dataInicio`] = startDate;
+                updateData[`devolutivas.d${num}.dataFim`] = endDate;
             }
         }
         return updateData;
@@ -433,8 +430,8 @@ export default function CalendarioPage() {
   };
 
   const handleSyncDates = async () => {
-    if (!alinhamento?.cronograma || !selectedProjectId) {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Nenhum dado de alinhamento para sincronizar.' });
+    if (!selectedProjectId || selectedProjectId === 'geral' || selectedProjectId === 'todos') {
+      toast({ variant: 'destructive', title: 'Ação Inválida', description: 'Selecione um projeto para sincronizar as datas.' });
       return;
     }
 
@@ -443,42 +440,49 @@ export default function CalendarioPage() {
       const projetoRef = doc(db, 'projetos', selectedProjectId);
       const updateData: { [key: string]: any } = {};
 
-      for (const item of alinhamento.cronograma) {
-        if (item.status !== 'Aprovado' || !item.novaData) continue;
+      if (alinhamento?.cronograma && alinhamento.cronograma.length > 0) {
+        for (const item of alinhamento.cronograma) {
+          if (item.status !== 'Aprovado' || !item.novaData) continue;
 
-        const dates = item.novaData.split(' a ').map(dateStr => {
-          const [day, month, year] = dateStr.trim().split('/');
-          return Timestamp.fromDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
-        });
+          const dates = item.novaData.split(' a ').map(dateStr => {
+            const [day, month, year] = dateStr.trim().split('/');
+            return Timestamp.fromDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+          });
 
-        const startDate = dates[0];
-        const endDate = dates.length > 1 ? dates[1] : startDate;
+          const startDate = dates[0];
+          const endDate = dates.length > 1 ? dates[1] : startDate;
 
-        if (item.evento.includes('Migração de Dados')) {
-          updateData.dataMigracao = startDate;
-        } else if (item.evento.includes('Implantação')) {
-          updateData.dataImplantacao = startDate;
-        } else if (item.evento.includes('Avaliação Diagnóstica')) {
-          updateData['diagnostica.data'] = startDate;
-        } else if (item.evento.includes('Simulado')) {
-          const match = item.evento.match(/Simulado (\d)/);
-          if (match) {
-            const num = match[1];
-            updateData[`simulados.s${num}.dataInicio`] = startDate;
-            updateData[`simulados.s${num}.dataFim`] = endDate;
-          }
-        } else if (item.evento.includes('Devolutiva')) {
-          const match = item.evento.match(/Devolutiva (\d)/);
-          if (match) {
-            const num = match[1];
-            if (num === '4') { // Devolutiva 4 has only one date field
-              updateData[`devolutivas.d4.data`] = startDate;
-            } else {
+          if (item.evento.includes('Migração de Dados')) {
+            updateData.dataMigracao = startDate;
+          } else if (item.evento.includes('Implantação')) {
+            updateData.dataInicioImplantacao = startDate;
+            updateData.dataFimImplantacao = endDate;
+          } else if (item.evento.includes('Avaliação Diagnóstica')) {
+            updateData['diagnostica.data'] = startDate;
+          } else if (item.evento.includes('Simulado')) {
+            const match = item.evento.match(/Simulado (\d)/);
+            if (match) {
+              const num = match[1];
+              updateData[`simulados.s${num}.dataInicio`] = startDate;
+              updateData[`simulados.s${num}.dataFim`] = endDate;
+            }
+          } else if (item.evento.includes('Devolutiva')) {
+            const match = item.evento.match(/Devolutiva (\d)/);
+            if (match) {
+              const num = match[1];
               updateData[`devolutivas.d${num}.dataInicio`] = startDate;
               updateData[`devolutivas.d${num}.dataFim`] = endDate;
             }
           }
         }
+        toast({ title: 'Sucesso!', description: 'Datas sincronizadas com o Alinhamento Técnico.' });
+      } else {
+        // Fallback: Sincroniza a partir dos eventos do calendário
+        events.forEach(event => {
+            const eventUpdate = getProjectUpdateData(event.type, event.tooltip, event.startDate, event.endDate);
+            Object.assign(updateData, eventUpdate);
+        });
+        toast({ title: 'Sucesso!', description: 'Datas sincronizadas com os eventos do calendário.' });
       }
       
       if(Object.keys(updateData).length > 0) {
@@ -490,9 +494,9 @@ export default function CalendarioPage() {
             });
             errorEmitter.emit('permission-error', permissionError);
         });
-        toast({ title: 'Sucesso!', description: 'As datas do projeto foram sincronizadas com sucesso.' });
+        // Sincronização disparada acima
       } else {
-         toast({ title: 'Nenhuma Ação', description: 'Não há datas aprovadas para sincronizar.' });
+         toast({ title: 'Nenhuma Ação', description: 'Não foram encontrados dados ou eventos para sincronizar.' });
       }
 
     } catch (error) {
@@ -768,7 +772,7 @@ export default function CalendarioPage() {
                     <Copy className="mr-2 h-4 w-4" />
                     Copiar Link
                 </Button>
-                {alinhamento && (
+                {selectedProjectId !== 'geral' && selectedProjectId !== 'todos' && (
                    <Button onClick={handleSyncDates} variant="outline" disabled={loading}>
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                         Sincronizar Datas
