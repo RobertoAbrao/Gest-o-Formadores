@@ -4,7 +4,7 @@
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, orderBy, deleteField } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, Timestamp, query, where, getDocs, arrayUnion, addDoc, orderBy, deleteField, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { Demanda, StatusDemanda, HistoricoItem, Anexo, ProjetoImplatancao } from '@/lib/types';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -49,7 +49,7 @@ interface Municipio {
     nome: string;
 }
 
-const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
+const statusOptions: [StatusDemanda, ...StatusDemanda[]] = ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'];
 
 const formSchema = z.object({
   projetoOrigemId: z.string().optional().nullable(),
@@ -102,6 +102,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [syncingCalendar, setSyncingCalendar] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -215,7 +216,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
 
         const stages: { value: string; label: string }[] = [];
 
-        if (projeto.dataImplantacao) {
+        if (projeto.dataInicioImplantacao) {
             stages.push({ value: 'implantacao', label: 'Implantação' });
         }
         if (projeto.diagnostica?.data) {
@@ -328,6 +329,77 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível excluir the anexo.' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleCalendarSync = async () => {
+    if (!demanda) return;
+    
+    setSyncingCalendar(true);
+    try {
+        const title = `[DEMANDA] ${demanda.municipio} - ${demanda.responsavelNome}`;
+        const details = `${demanda.demanda}\n\nResponsável: ${demanda.responsavelNome}\nStatus: ${demanda.status}\nPrioridade: ${demanda.prioridade || 'Normal'}`;
+        
+        let dateParam = '';
+        if (demanda.prazo) {
+            const date = demanda.prazo.toDate();
+            const dateStr = date.toISOString().replace(/-|:|\.\d\d\d/g, '').split('T')[0];
+            // Para evento de dia inteiro: YYYYMMDD/YYYYMMDD (dia seguinte)
+            const nextDay = new Date(date);
+            nextDay.setDate(nextDay.getDate() + 1);
+            const nextDayStr = nextDay.toISOString().replace(/-|:|\.\d\d\d/g, '').split('T')[0];
+            dateParam = `${dateStr}/${nextDayStr}`;
+        }
+
+        const nameToEmail: Record<string, string> = {
+            'irene': "irene@editoralt.com.br",
+            'alessandra': "alessandra@editoralt.com.br",
+            'ana': "assessoria@editora.com.br",
+            'amaranta': "amaranta@editoralt.com.br",
+            'kellem': "kellem@editoralt.com.br"
+        };
+
+        const IRENE_EMAIL = "irene@editoralt.com.br";
+        const recipients = [IRENE_EMAIL];
+        
+        // Buscar o email do responsável (pelo primeiro nome para ser mais flexível)
+        const primeiroNomeResp = demanda.responsavelNome.split(' ')[0].toLowerCase();
+        const emailResp = nameToEmail[primeiroNomeResp];
+
+        if (emailResp && emailResp !== IRENE_EMAIL) {
+            recipients.push(emailResp);
+        }
+
+        const params = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: title,
+            details: details,
+            location: `${demanda.municipio} - ${demanda.uf}`,
+            add: recipients.join(','),
+        });
+        
+        if (dateParam) {
+            params.append('dates', dateParam);
+        }
+
+        const url = `https://www.google.com/calendar/render?${params.toString()}`;
+        
+        // Abrir em nova aba
+        window.open(url, '_blank');
+
+        // Atualizar no Firebase
+        await updateDoc(doc(db, 'demandas', demanda.id), {
+            sincronizadoCalendario: true,
+            dataAtualizacao: serverTimestamp()
+        });
+
+        toast({ title: "Sucesso!", description: "Link da agenda gerado e status atualizado." });
+        onSuccess();
+    } catch (error) {
+        console.error("Erro ao sincronizar calendário:", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status da agenda.' });
+    } finally {
+        setSyncingCalendar(false);
     }
   };
 
@@ -744,9 +816,23 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
           </div>
         )}
 
-        <Button type="submit" className="w-full !mt-8" disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Registrar Demanda')}
-        </Button>
+        <div className="flex gap-2 !mt-8">
+            <Button type="submit" className="flex-1" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : (isEditMode ? 'Salvar Alterações' : 'Registrar Demanda')}
+            </Button>
+            {isEditMode && (
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleCalendarSync} 
+                    disabled={syncingCalendar || loading}
+                    className={cn(demanda?.sincronizadoCalendario && "border-green-500 text-green-600 hover:text-green-700 hover:bg-green-50")}
+                >
+                    {syncingCalendar ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4 mr-2" />}
+                    {demanda?.sincronizadoCalendario ? 'Atualizar na Agenda' : 'Adicionar à Agenda'}
+                </Button>
+            )}
+        </div>
       </form>
     </Form>
   );

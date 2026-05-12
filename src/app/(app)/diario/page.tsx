@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target, CalendarDays } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -49,7 +49,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Aguardando retorno', 'Concluída'];
-const priorityOptions: Demanda['prioridade'][] = ['Normal', 'Urgente'];
+const priorityOptions: NonNullable<Demanda['prioridade']>[] = ['Normal', 'Urgente'];
 
 const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
   'Pendente': { color: 'border-yellow-500', label: 'Pendente' },
@@ -471,6 +471,11 @@ export default function DiarioPage() {
                                             {demanda.validado && (
                                                 <Badge variant="outline" className="flex items-center gap-2 border-teal-500 bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700 text-teal-800">
                                                     <BadgeCheck className="h-3 w-3" /> Validada
+                                                </Badge>
+                                            )}
+                                            {demanda.sincronizadoCalendario && (
+                                                <Badge variant="outline" className="flex items-center gap-1 border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                    <CalendarDays className="h-3 w-3" /> Agenda
                                                 </Badge>
                                             )}
                                         </div>

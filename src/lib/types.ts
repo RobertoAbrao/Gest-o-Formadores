@@ -40,6 +40,7 @@ export interface Demanda {
   projetoOrigemNome?: string;
   origemGatilho?: FormadorStatus;
   etapaProjeto?: string;
+  sincronizadoCalendario?: boolean;
 }
 
 export interface ChecklistItem {
