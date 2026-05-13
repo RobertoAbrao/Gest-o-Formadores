@@ -25,13 +25,14 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { Demanda, StatusDemanda, HistoricoItem, Anexo, ProjetoImplatancao } from '@/lib/types';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon, CalendarDays } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, Edit3, MessageSquarePlus, User as UserIcon, Clock, UploadCloud, Trash2, ImageIcon, CalendarDays, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { ESTADOS_BR } from '@/lib/estados-br';
+import { melhorarDescricaoDemandaFlow } from '@/ai/flows/diario-flows';
 
 interface AdminUser {
     id: string;
@@ -103,6 +104,7 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [syncingCalendar, setSyncingCalendar] = useState(false);
+  const [improvingDescription, setImprovingDescription] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -403,6 +405,26 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
     }
   };
 
+  const handleImproveDescription = async () => {
+    const currentDescription = form.getValues('demanda');
+    if (!currentDescription || currentDescription.length < 10) {
+      toast({ title: 'Texto muito curto', description: 'Escreva pelo menos 10 caracteres para que a IA possa ajudar.' });
+      return;
+    }
+
+    setImprovingDescription(true);
+    try {
+      const improved = await melhorarDescricaoDemandaFlow({ descricao: currentDescription });
+      form.setValue('demanda', improved, { shouldDirty: true, shouldValidate: true });
+      toast({ title: 'Texto melhorado!', description: 'A IA revisou a descrição para você.' });
+    } catch (error) {
+      console.error("Erro ao melhorar descrição:", error);
+      toast({ variant: 'destructive', title: 'Erro na IA', description: 'Não foi possível melhorar o texto no momento.' });
+    } finally {
+      setImprovingDescription(false);
+    }
+  };
+
 
   async function onSubmit(values: FormValues) {
     if (!user) {
@@ -645,9 +667,22 @@ export function FormDemanda({ demanda, onSuccess }: FormDemandaProps) {
           name="demanda"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Demanda Recebida</FormLabel>
+              <div className="flex items-center justify-between">
+                <FormLabel>Demanda Recebida</FormLabel>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-xs gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  onClick={handleImproveDescription}
+                  disabled={improvingDescription}
+                >
+                  {improvingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  Melhorar com IA
+                </Button>
+              </div>
               <FormControl>
-                <Textarea placeholder="Descreva claramente o que foi solicitado..." {...field} />
+                <Textarea placeholder="Descreva claramente o que foi solicitado..." {...field} className="min-h-[120px]" />
               </FormControl>
               <FormMessage />
             </FormItem>

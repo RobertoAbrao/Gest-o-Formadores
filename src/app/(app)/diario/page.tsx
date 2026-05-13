@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target, CalendarDays } from 'lucide-react';
+import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target, CalendarDays, Sparkles, BrainCircuit } from 'lucide-react';
 import type { Demanda, StatusDemanda } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
@@ -46,6 +46,7 @@ import { addDays, isBefore, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { resumirDemandasFlow } from '@/ai/flows/diario-flows';
 
 
 const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Aguardando retorno', 'Concluída'];
@@ -114,6 +115,9 @@ export default function DiarioPage() {
 
   const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
   const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   const canValidate = useMemo(() => user?.email && validatorEmails.includes(user.email), [user]);
 
@@ -194,6 +198,37 @@ export default function DiarioPage() {
   const openDeleteDialog = (demanda: Demanda) => {
     setSelectedDemanda(demanda);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleGenerateSummary = async () => {
+    if (filteredDemandas.length === 0) {
+      toast({ title: 'Sem dados', description: 'Não há demandas filtradas para resumir.' });
+      return;
+    }
+
+    setLoadingSummary(true);
+    setIsSummaryDialogOpen(true);
+    try {
+      // Serializar demandas para plain objects (Timestamps do Firestore não podem ser passados para Server Functions)
+      const plainDemandas = filteredDemandas.map(d => ({
+        ...d,
+        dataCriacao: d.dataCriacao ? (d.dataCriacao as any).toDate?.()?.toISOString?.() ?? String(d.dataCriacao) : null,
+        dataAtualizacao: d.dataAtualizacao ? (d.dataAtualizacao as any).toDate?.()?.toISOString?.() ?? String(d.dataAtualizacao) : null,
+        prazo: d.prazo ? (d.prazo as any).toDate?.()?.toISOString?.() ?? String(d.prazo) : null,
+        historico: d.historico?.map((h: any) => ({
+          ...h,
+          data: h.data ? (h.data as any).toDate?.()?.toISOString?.() ?? String(h.data) : null,
+        })) ?? [],
+      }));
+      const summary = await resumirDemandasFlow({ demandas: plainDemandas });
+      setAiSummary(summary);
+    } catch (error) {
+      console.error("Erro ao gerar resumo:", error);
+      toast({ variant: 'destructive', title: 'Erro na IA', description: 'Não foi possível gerar o resumo no momento.' });
+      setIsSummaryDialogOpen(false);
+    } finally {
+      setLoadingSummary(false);
+    }
   };
 
   const filteredDemandas = useMemo(() => {
@@ -342,6 +377,10 @@ export default function DiarioPage() {
           <p className="text-muted-foreground">Registre e acompanhe as demandas dos municípios.</p>
         </div>
         <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleGenerateSummary} className="gap-2 border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300">
+                <Sparkles className="h-4 w-4" />
+                Resumo IA
+            </Button>
             <Button asChild variant="outline">
               <a href={emailHref} target="_blank" rel="noopener noreferrer">
                   <Mail className="mr-2 h-4 w-4" />
@@ -602,6 +641,41 @@ export default function DiarioPage() {
                 <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
             </div>
             </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              Resumo da Equipe (IA)
+            </DialogTitle>
+            <DialogDescription>
+              Uma análise baseada em IA das demandas visíveis atualmente nos seus filtros.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="mt-4 h-[500px] max-h-[50vh] w-full rounded-md border p-4 bg-muted/30">
+            {loadingSummary ? (
+              <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground animate-pulse">Analisando dados e gerando insights...</p>
+              </div>
+            ) : aiSummary ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed">
+                {aiSummary}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-10">
+                Nenhum resumo disponível.
+              </div>
+            )}
+          </ScrollArea>
+          
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => setIsSummaryDialogOpen(false)}>Fechar</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
