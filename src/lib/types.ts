@@ -269,6 +269,16 @@ interface EventoAdicional {
   anexosIds?: string[];
 }
 
+export interface ImplantacaoEntry {
+  titulo?: string;
+  dataInicio: Timestamp | null;
+  dataFim?: Timestamp | null;
+  formadores?: string[];
+  detalhes?: string;
+  formacaoId?: string;
+  anexosIds?: string[];
+}
+
 export interface ProjetoImplatancao {
   id: string;
   municipio: string;
@@ -283,7 +293,12 @@ export interface ProjetoImplatancao {
   qtdProfessores?: number;
   formacoesPendentes?: number;
   formadoresIds?: string[];
-  dataInicioImplantacao: Timestamp | null;
+
+  // Novo formato: array de implantações
+  implantacoes?: ImplantacaoEntry[];
+
+  // Campos legados (mantidos para retrocompatibilidade)
+  dataInicioImplantacao?: Timestamp | null;
   dataFimImplantacao?: Timestamp | null;
   implantacaoAnexosIds?: string[];
   implantacaoDetalhes?: string;

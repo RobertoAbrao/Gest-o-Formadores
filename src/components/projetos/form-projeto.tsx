@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud, UserCog } from 'lucide-react';
-import type { Formacao, Formador, DevolutivaLink, Anexo, HistoricoItem, ProjetoImplatancao } from '@/lib/types';
+import type { Formacao, Formador, DevolutivaLink, Anexo, HistoricoItem, ProjetoImplatancao, ImplantacaoEntry } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
@@ -101,6 +101,16 @@ const eventoAdicionalSchema = z.object({
   anexosIds: z.array(z.string()).optional(),
 });
 
+const implantacaoEntrySchema = z.object({
+  titulo: z.string().optional(),
+  dataInicio: z.date().nullable().optional(),
+  dataFim: z.date().nullable().optional(),
+  formadores: z.array(z.string()).optional(),
+  detalhes: z.string().optional(),
+  formacaoId: z.string().optional(),
+  anexosIds: z.array(z.string()).optional(),
+});
+
 
 const formSchema = z.object({
   municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
@@ -111,12 +121,7 @@ const formSchema = z.object({
   dossieUrl: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
   dataMigracao: z.date().nullable(),
   anexo: z.any().optional(), // Campo legado
-  dataInicioImplantacao: z.date().nullable(),
-  dataFimImplantacao: z.date().nullable(),
-  implantacaoAnexosIds: z.array(z.string()).optional(),
-  implantacaoDetalhes: z.string().optional(),
-  implantacaoFormacaoId: z.string().optional(),
-  implantacaoFormadores: z.array(z.string()).optional(),
+  implantacoes: z.array(implantacaoEntrySchema).optional(),
   responsavelId: z.string().optional(),
   qtdAlunos: z.preprocess(
     (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
@@ -212,6 +217,7 @@ const cleanObject = (obj: any): any => {
 type FileUploadKey = 
   | 'diagnostica' 
   | 'implantacao'
+  | `implantacoes.${number}`
   | 'simulados.s1' 
   | 'simulados.s2' 
   | 'simulados.s3' 
@@ -233,7 +239,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   const [allFormadores, setAllFormadores] = useState<Formador[]>([]);
   const [allAnexos, setAllAnexos] = useState<Anexo[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [impFormadorPopoverOpen, setImpFormadorPopoverOpen] = useState(false);
+  const [impFormadorPopoverOpen, setImpFormadorPopoverOpen] = useState<Record<number, boolean>>({});
   const estados = ESTADOS_BR;
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [loadingMunicipios, setLoadingMunicipios] = useState(false);
@@ -250,12 +256,27 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       dossieUrl: projeto?.dossieUrl || '',
       dataMigracao: toDate(projeto?.dataMigracao),
       anexo: projeto?.anexo || null,
-      dataInicioImplantacao: toDate(projeto?.dataInicioImplantacao),
-      dataFimImplantacao: toDate(projeto?.dataFimImplantacao),
-      implantacaoAnexosIds: projeto?.implantacaoAnexosIds || [],
-      implantacaoDetalhes: projeto?.implantacaoDetalhes || '',
-      implantacaoFormacaoId: projeto?.implantacaoFormacaoId || '',
-      implantacaoFormadores: projeto?.implantacaoFormadores || [],
+      implantacoes: projeto?.implantacoes
+        ? projeto.implantacoes.map(imp => ({
+            titulo: imp.titulo || '',
+            dataInicio: toDate(imp.dataInicio),
+            dataFim: toDate(imp.dataFim),
+            formadores: imp.formadores || [],
+            detalhes: imp.detalhes || '',
+            formacaoId: imp.formacaoId || '',
+            anexosIds: imp.anexosIds || [],
+          }))
+        : projeto?.dataInicioImplantacao || projeto?.dataFimImplantacao || projeto?.implantacaoDetalhes
+          ? [{
+              titulo: 'Implantação',
+              dataInicio: toDate(projeto?.dataInicioImplantacao),
+              dataFim: toDate(projeto?.dataFimImplantacao),
+              formadores: projeto?.implantacaoFormadores || [],
+              detalhes: projeto?.implantacaoDetalhes || '',
+              formacaoId: projeto?.implantacaoFormacaoId || '',
+              anexosIds: projeto?.implantacaoAnexosIds || [],
+            }]
+          : [],
       responsavelId: projeto?.responsavelId || '',
       qtdAlunos: projeto?.qtdAlunos || undefined,
       qtdProfessores: projeto?.qtdProfessores || undefined,
@@ -385,9 +406,13 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     control: form.control,
     name: "eventosAdicionais",
   });
+
+  const { fields: implantacaoFields, append: appendImplantacao, remove: removeImplantacao } = useFieldArray({
+    control: form.control,
+    name: "implantacoes",
+  });
   
   const selectedFormadores = allFormadores.filter(f => form.watch('formadoresIds')?.includes(f.id));
-  const selectedImpFormadores = allFormadores.filter(f => form.watch('implantacaoFormadores')?.includes(f.nomeCompleto));
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, etapa: FileUploadKey) => {
     const file = event.target.files?.[0];
@@ -401,7 +426,10 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
           return;
       }
       
-      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : etapa === 'brasao' ? 'brasaoId' : `${etapa}.anexosIds`;
+      const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' 
+        : etapa === 'brasao' ? 'brasaoId' 
+        : etapa.startsWith('implantacoes.') ? `${etapa}.anexosIds`
+        : `${etapa}.anexosIds`;
       
       const dataUrl = await fileToDataURL(file);
       const novoAnexo: Omit<Anexo, 'id'> = { 
@@ -461,7 +489,10 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
           });
         
         if (etapa) {
-          const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : etapa === 'brasao' ? 'brasaoId' : `${etapa}.anexosIds`;
+          const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' 
+            : etapa === 'brasao' ? 'brasaoId' 
+            : etapa.startsWith('implantacoes.') ? `${etapa}.anexosIds`
+            : `${etapa}.anexosIds`;
           if (etapa === 'brasao') {
             form.setValue('brasaoId', undefined);
           } else {
@@ -530,8 +561,23 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
           ...values,
           responsavelNome: selectedAdmin?.nome || '',
           dataMigracao: timestampOrNull(values.dataMigracao),
-          dataInicioImplantacao: timestampOrNull(values.dataInicioImplantacao),
-          dataFimImplantacao: timestampOrNull(values.dataFimImplantacao),
+          // Novo formato: array de implantações
+          implantacoes: (values.implantacoes || []).map(imp => ({
+            titulo: imp.titulo || '',
+            dataInicio: timestampOrNull(imp.dataInicio),
+            dataFim: timestampOrNull(imp.dataFim),
+            formadores: imp.formadores || [],
+            detalhes: imp.detalhes || '',
+            formacaoId: imp.formacaoId || '',
+            anexosIds: imp.anexosIds || [],
+          })),
+          // Campos legados (primeira implantação para retrocompatibilidade)
+          dataInicioImplantacao: timestampOrNull(values.implantacoes?.[0]?.dataInicio),
+          dataFimImplantacao: timestampOrNull(values.implantacoes?.[0]?.dataFim),
+          implantacaoFormadores: values.implantacoes?.[0]?.formadores || [],
+          implantacaoDetalhes: values.implantacoes?.[0]?.detalhes || '',
+          implantacaoFormacaoId: values.implantacoes?.[0]?.formacaoId || '',
+          implantacaoAnexosIds: values.implantacoes?.[0]?.anexosIds || [],
           diagnostica: {
             data: timestampOrNull(values.diagnostica.data),
             ok: values.diagnostica.ok,
@@ -695,44 +741,50 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     }
   };
 
-  const handleCreateImplantacaoFormation = async () => {
-    const { dataInicioImplantacao, dataFimImplantacao, municipio, implantacaoFormadores, implantacaoDetalhes } = form.getValues();
-    const title = `Implantação: ${municipio}`;
+  const handleCreateImplantacaoFormation = async (index: number) => {
+    const implantacoes = form.getValues('implantacoes') || [];
+    const imp = implantacoes[index];
+    if (!imp) return;
+
+    const { municipio } = form.getValues();
+    const titulo = imp.titulo || `Implantação ${index + 1}`;
+    const title = `${titulo}: ${municipio}`;
     
     // Se não houver formadores selecionados especificamente para implantação, usa os do projeto
-    let formadoresNames = implantacaoFormadores && implantacaoFormadores.length > 0 
-        ? implantacaoFormadores 
+    let formadoresNames = imp.formadores && imp.formadores.length > 0 
+        ? imp.formadores 
         : allFormadores.filter(f => form.getValues('formadoresIds')?.includes(f.id)).map(f => f.nomeCompleto);
 
-    const newFormationId = await handleCreateFormation(title, dataInicioImplantacao, dataFimImplantacao, implantacaoDetalhes || 'Formação referente à implantação do sistema.', formadoresNames);
+    const newFormationId = await handleCreateFormation(title, imp.dataInicio, imp.dataFim, imp.detalhes || 'Formação referente à implantação do sistema.', formadoresNames);
 
     if (newFormationId) {
-        form.setValue('implantacaoFormacaoId', newFormationId);
+        form.setValue(`implantacoes.${index}.formacaoId`, newFormationId);
     }
   }
 
-  const handleUpdateImplantacaoFormation = async () => {
+  const handleUpdateImplantacaoFormation = async (index: number) => {
     setLoading(true);
     try {
-        const { dataInicioImplantacao, dataFimImplantacao, implantacaoFormadores, implantacaoFormacaoId, implantacaoDetalhes } = form.getValues();
+        const implantacoes = form.getValues('implantacoes') || [];
+        const imp = implantacoes[index];
 
-        if (!implantacaoFormacaoId) {
+        if (!imp?.formacaoId) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Nenhuma formação de implantação associada.' });
             return;
         }
         
-        const formadoresNomes = implantacaoFormadores || [];
+        const formadoresNomes = imp.formadores || [];
         const formadoresIds = allFormadores.filter(f => formadoresNomes.includes(f.nomeCompleto)).map(f => f.id);
 
         const updateData = {
-            dataInicio: timestampOrNull(dataInicioImplantacao),
-            dataFim: timestampOrNull(dataFimImplantacao),
+            dataInicio: timestampOrNull(imp.dataInicio),
+            dataFim: timestampOrNull(imp.dataFim),
             formadoresIds: formadoresIds,
             formadoresNomes: formadoresNomes,
-            descricao: implantacaoDetalhes || 'Formação referente à implantação do sistema.',
+            descricao: imp.detalhes || 'Formação referente à implantação do sistema.',
         };
 
-        const formacaoRef = doc(db, 'formacoes', implantacaoFormacaoId);
+        const formacaoRef = doc(db, 'formacoes', imp.formacaoId);
         updateDoc(formacaoRef, updateData)
           .catch(async (serverError) => {
             const permissionError = new FirestorePermissionError({
@@ -818,17 +870,22 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       const id = form.getValues('brasaoId');
       return id ? allAnexos.filter(anexo => anexo.id === id) : [];
     }
-    const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' : `${etapa}.anexosIds`;
+    const anexoPath = etapa === 'implantacao' ? 'implantacaoAnexosIds' 
+      : etapa.startsWith('implantacoes.') ? `${etapa}.anexosIds`
+      : `${etapa}.anexosIds`;
     const ids = form.getValues(anexoPath as any) || [];
     return allAnexos.filter(anexo => ids.includes(anexo.id));
   };
   
-  const handleClearImplantacao = () => {
-    if (!window.confirm("Tem certeza que deseja limpar todos os dados desta etapa de Implantação?")) return;
-    form.setValue('dataInicioImplantacao', null);
-    form.setValue('dataFimImplantacao', null);
-    form.setValue('implantacaoDetalhes', '');
-    form.setValue('implantacaoFormadores', []);
+  const handleClearImplantacao = (index: number) => {
+    const implantacoes = form.getValues('implantacoes') || [];
+    const imp = implantacoes[index];
+    const titulo = imp?.titulo || `Implantação ${index + 1}`;
+    if (!window.confirm(`Tem certeza que deseja limpar todos os dados de "${titulo}"?`)) return;
+    form.setValue(`implantacoes.${index}.dataInicio`, null);
+    form.setValue(`implantacoes.${index}.dataFim`, null);
+    form.setValue(`implantacoes.${index}.detalhes`, '');
+    form.setValue(`implantacoes.${index}.formadores`, []);
     // Note: We don't clear formacaoId automatically to avoid accidental unlinking. 
     // And we don't delete annexes to prevent data loss.
     toast({ title: 'Dados de implantação limpos.', description: 'Anexos não foram removidos.'});
@@ -981,148 +1038,191 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
                         </PopoverContent></Popover><FormMessage />
                     </FormItem>
                     )}/>
-                     <div className="space-y-2">
-                        <FormField control={form.control} name="dataInicioImplantacao" render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Data de Início da Implantação</FormLabel>
-                                <div className="flex gap-2 items-center">
-                                    <Popover><PopoverTrigger asChild><FormControl>
-                                    <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                    </PopoverContent></Popover>
-                                    <Button type="button" size="icon" variant="outline" onClick={() => handleAnexoTrigger('implantacao')} disabled={uploading === 'implantacao' || !isEditMode}>
-                                        {uploading === 'implantacao' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UploadCloud className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )}/>
-                        {getAnexosForEtapa('implantacao').map(anexo => (
-                            <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
-                                <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
-                                <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, 'implantacao')} disabled={uploading === 'implantacao'}>
-                                    <Trash2 className="h-4 w-4"/>
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
-                    <FormField control={form.control} name="dataFimImplantacao" render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Data Fim da Implantação</FormLabel>
-                            <Popover><PopoverTrigger asChild><FormControl>
-                            <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                            </PopoverContent></Popover><FormMessage />
-                        </FormItem>
-                        )}/>
                  </div>
+
+                 {/* Implantações Dinâmicas */}
                  <div className="space-y-4">
-                    <FormField
-                        control={form.control}
-                        name="implantacaoFormadores"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                                <FormLabel>Formadores da Implantação</FormLabel>
-                                <Popover open={impFormadorPopoverOpen} onOpenChange={setImpFormadorPopoverOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            <span className="truncate">
-                                                {selectedImpFormadores.length > 0 ? `${selectedImpFormadores.length} selecionado(s)` : "Selecione formadores..."}
-                                            </span>
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <div className="flex justify-between items-center">
+                        <FormLabel className="text-base font-semibold">Implantações</FormLabel>
+                        <Button type="button" size="sm" variant="outline" onClick={() => appendImplantacao({ titulo: '', dataInicio: null, dataFim: null, formadores: [], detalhes: '', formacaoId: '', anexosIds: [] })}>
+                            <PlusCircle className='mr-2 h-4 w-4'/> Adicionar Implantação
+                        </Button>
+                    </div>
+                    {implantacaoFields.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-md">
+                            Nenhuma implantação adicionada. Clique em &quot;Adicionar Implantação&quot; para começar.
+                        </p>
+                    )}
+                    {implantacaoFields.map((impField, index) => {
+                        const etapaKey = `implantacoes.${index}` as const;
+                        const impData = form.watch(`implantacoes.${index}`);
+                        const selectedImpFormadoresForCard = allFormadores.filter(f => impData?.formadores?.includes(f.nomeCompleto));
+                        return (
+                            <Card key={impField.id} className="p-4 bg-muted/40 shadow-sm shadow-primary/5">
+                                <div className='flex justify-between items-center mb-4'>
+                                    <h4 className='font-semibold text-base'>Implantação {index + 1}</h4>
+                                    <div className="flex items-center gap-1">
+                                        <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10 h-7" onClick={() => handleClearImplantacao(index)}>
+                                            <Eraser className="mr-1 h-3 w-3" /> Limpar
                                         </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[300px] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Buscar formador..." />
-                                            <CommandList>
-                                                <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {allFormadores.map((formador) => (
-                                                        <CommandItem
-                                                            key={formador.id}
-                                                            value={formador.nomeCompleto}
-                                                            onSelect={() => {
-                                                                const currentValues = field.value || [];
-                                                                const newValues = currentValues.includes(formador.nomeCompleto)
-                                                                    ? currentValues.filter(name => name !== formador.nomeCompleto)
-                                                                    : [...currentValues, formador.nomeCompleto];
-                                                                field.onChange(newValues);
-                                                            }}
-                                                        >
-                                                            <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.nomeCompleto) ? 'opacity-100' : 'opacity-0')} />
-                                                            {formador.nomeCompleto}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                                {selectedImpFormadores.length > 0 && (
-                                    <div className="pt-2 flex flex-wrap gap-1">
-                                        {selectedImpFormadores.map(formador => (
-                                        <Badge key={formador.id} variant="secondary">
-                                            {formador.nomeCompleto}
-                                            <button
-                                            type="button"
-                                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                            onClick={() => field.onChange(field.value?.filter(name => name !== formador.nomeCompleto))}
-                                            >
-                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                            </button>
-                                        </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField control={form.control} name="implantacaoDetalhes" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Detalhes da Implantação</FormLabel>
-                                <FormControl><Textarea placeholder="Descreva observações sobre a implantação..." {...field} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}/>
-                        <div className="space-y-2 pt-6">
-                            {form.watch("implantacaoFormacaoId") ? (
-                                <div className="text-sm text-green-600 flex flex-col gap-2">
-                                    <span className='flex items-center gap-2'>
-                                    <Check className="h-4 w-4" /> Formação de implantação vinculada.
-                                    </span>
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href={`/quadro`} target="_blank">Ver no Quadro</Link>
-                                        </Button>
-                                        <Button type="button" size="sm" variant="secondary" onClick={handleUpdateImplantacaoFormation}>
-                                            <RefreshCw className="mr-2 h-4 w-4" /> Atualizar
-                                        </Button>
-                                        <Button type="button" size="sm" variant="ghost" className="text-xs h-auto p-1 text-destructive" onClick={() => form.setValue('implantacaoFormacaoId', undefined)}>
-                                            Desvincular
+                                        <Button type="button" size="icon" variant="ghost" className='h-7 w-7 text-destructive' onClick={() => {
+                                            if (window.confirm(`Tem certeza que deseja remover esta implantação?`)) removeImplantacao(index);
+                                        }}>
+                                            <Trash2 className='h-4 w-4'/>
                                         </Button>
                                     </div>
                                 </div>
-                            ) : (
-                                <Button type="button" size="sm" variant="secondary" onClick={handleCreateImplantacaoFormation} disabled={!form.watch('dataInicioImplantacao') || !isEditMode}>
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação para Implantação
-                                </Button>
-                            )}
-                            <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive hover:bg-destructive/10" onClick={handleClearImplantacao}>
-                                <Eraser className="mr-2 h-3 w-3" /> Limpar Dados
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+                                <div className="space-y-4">
+                                    <FormField control={form.control} name={`implantacoes.${index}.titulo`} render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Título / Identificação</FormLabel>
+                                            <FormControl><Input placeholder="Ex: Implantação Turma A, Implantação 2º Semestre..." {...field} value={field.value ?? ''} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}/>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <FormField control={form.control} name={`implantacoes.${index}.dataInicio`} render={({ field }) => (
+                                                <FormItem className="flex flex-col">
+                                                    <FormLabel>Data de Início</FormLabel>
+                                                    <div className="flex gap-2 items-center">
+                                                        <Popover><PopoverTrigger asChild><FormControl>
+                                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                            {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                        </Button>
+                                                        </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                        </PopoverContent></Popover>
+                                                        <Button type="button" size="icon" variant="outline" onClick={() => handleAnexoTrigger(etapaKey)} disabled={uploading === etapaKey || !isEditMode}>
+                                                            {uploading === etapaKey ? <Loader2 className="h-4 w-4 animate-spin"/> : <UploadCloud className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}/>
+                                            {getAnexosForEtapa(etapaKey).map(anexo => (
+                                                <div key={anexo.id} className="text-xs text-green-600 flex items-center justify-between">
+                                                    <span className="flex items-center gap-2"><ImageIcon className="h-4 w-4" /> {anexo.nome}</span>
+                                                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteAnexo(anexo.id!, etapaKey)} disabled={uploading === etapaKey}>
+                                                        <Trash2 className="h-4 w-4"/>
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <FormField control={form.control} name={`implantacoes.${index}.dataFim`} render={({ field }) => (
+                                            <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
+                                                <Popover><PopoverTrigger asChild><FormControl>
+                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
+                                                </PopoverContent></Popover><FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                    </div>
+                                    <FormField
+                                        control={form.control}
+                                        name={`implantacoes.${index}.formadores`}
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel>Formadores</FormLabel>
+                                                <Popover open={impFormadorPopoverOpen[index] || false} onOpenChange={(open) => setImpFormadorPopoverOpen(prev => ({ ...prev, [index]: open }))}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                            <span className="truncate">
+                                                                {selectedImpFormadoresForCard.length > 0 ? `${selectedImpFormadoresForCard.length} selecionado(s)` : "Selecione formadores..."}
+                                                            </span>
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[300px] p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Buscar formador..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>Nenhum formador encontrado.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {allFormadores.map((formador) => (
+                                                                        <CommandItem
+                                                                            key={formador.id}
+                                                                            value={formador.nomeCompleto}
+                                                                            onSelect={() => {
+                                                                                const currentValues = field.value || [];
+                                                                                const newValues = currentValues.includes(formador.nomeCompleto)
+                                                                                    ? currentValues.filter(name => name !== formador.nomeCompleto)
+                                                                                    : [...currentValues, formador.nomeCompleto];
+                                                                                field.onChange(newValues);
+                                                                            }}
+                                                                        >
+                                                                            <Check className={cn('mr-2 h-4 w-4', field.value?.includes(formador.nomeCompleto) ? 'opacity-100' : 'opacity-0')} />
+                                                                            {formador.nomeCompleto}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                {selectedImpFormadoresForCard.length > 0 && (
+                                                    <div className="pt-2 flex flex-wrap gap-1">
+                                                        {selectedImpFormadoresForCard.map(formador => (
+                                                        <Badge key={formador.id} variant="secondary">
+                                                            {formador.nomeCompleto}
+                                                            <button
+                                                            type="button"
+                                                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                            onClick={() => field.onChange(field.value?.filter(name => name !== formador.nomeCompleto))}
+                                                            >
+                                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                            </button>
+                                                        </Badge>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField control={form.control} name={`implantacoes.${index}.detalhes`} render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Detalhes</FormLabel>
+                                                <FormControl><Textarea placeholder="Descreva observações sobre a implantação..." {...field} value={field.value ?? ''} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                        <div className="space-y-2 pt-6">
+                                            {impData?.formacaoId ? (
+                                                <div className="text-sm text-green-600 flex flex-col gap-2">
+                                                    <span className='flex items-center gap-2'>
+                                                    <Check className="h-4 w-4" /> Formação vinculada.
+                                                    </span>
+                                                    <div className="flex gap-2">
+                                                        <Button variant="outline" size="sm" asChild>
+                                                            <Link href={`/quadro`} target="_blank">Ver no Quadro</Link>
+                                                        </Button>
+                                                        <Button type="button" size="sm" variant="secondary" onClick={() => handleUpdateImplantacaoFormation(index)}>
+                                                            <RefreshCw className="mr-2 h-4 w-4" /> Atualizar
+                                                        </Button>
+                                                        <Button type="button" size="sm" variant="ghost" className="text-xs h-auto p-1 text-destructive" onClick={() => form.setValue(`implantacoes.${index}.formacaoId`, undefined)}>
+                                                            Desvincular
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <Button type="button" size="sm" variant="secondary" onClick={() => handleCreateImplantacaoFormation(index)} disabled={!impData?.dataInicio || !isEditMode}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Criar Formação
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        );
+                    })}
+                 </div>
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={form.control} name="qtdAlunos" render={({ field }) => (
                         <FormItem><FormLabel>Quantidade de Alunos</FormLabel><FormControl><Input type="number" min="0" placeholder="Ex: 500" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
