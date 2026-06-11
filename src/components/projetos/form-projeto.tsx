@@ -43,6 +43,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Calendar } from '../ui/calendar';
+import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -70,7 +71,7 @@ const periodoStatusSchema = z.object({
   anexosIds: z.array(z.string()).optional(),
 });
 
-const devolutivaLinkSchema: z.ZodType<Omit<DevolutivaLink, 'data'>> = z.object({
+const devolutivaLinkSchema = z.object({
   formacaoId: z.string().optional(),
   formacaoTitulo: z.string().optional(),
   dataInicio: z.date().nullable().optional(),

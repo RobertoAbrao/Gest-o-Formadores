@@ -64,6 +64,8 @@ const materiaisTema = [
     { id: 'historia_geografia_pr', label: 'História e Geografia do Paraná' },
     { id: 'atlas_regional', label: 'Atlas Regional by Ziraldo' },
     { id: 'inteligenios', label: 'Inteligênios' },
+    { id: 'afro', label: 'Afro' },
+    { id: 'lumina', label: 'Lúmina' },
 ];
 
 const avaliacaoSchema = z.object({
