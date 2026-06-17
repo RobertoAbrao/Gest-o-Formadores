@@ -23,6 +23,7 @@ import {
   GalleryHorizontal,
   BookOpenCheck,
   AreaChart,
+  Sparkles,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -84,6 +85,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
           { href: '/calendario', label: 'Calendário', icon: CalendarDays },
+          { href: '/agente', label: 'Assistente IA', icon: Sparkles },
         ]
       : [
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
