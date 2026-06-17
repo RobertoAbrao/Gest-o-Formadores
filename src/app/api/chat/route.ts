@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ai } from '../../../ai/genkit';
-import { z } from 'genkit';
 import {
   listFormadores,
   getFormador,
@@ -56,381 +54,560 @@ Você ajuda administradores e formadores a gerenciar projetos, formações, form
 6. Sempre retorne um resumo do que foi feito após criar algo`;
 }
 
-// ─── TOOL DEFINITIONS ─────────────────────────────────────────
+// ─── TOOL DEFINITIONS (OpenAI format) ────────────────────────
 
-function createTools() {
-  const zod = z;
-
-  return [
-    // ── FORMADORES ──
-    ai.defineTool(
-      {
-        name: 'listar_formadores',
-        description: 'Lista todos os formadores do sistema, opcionalmente filtrados por UF (sigla do estado como PR, SP, RJ)',
-        inputSchema: zod.object({
-          uf: zod.string().length(2).optional().describe('Sigla do estado (ex: PR, SP, RJ)'),
-        }),
-        outputSchema: zod.string(),
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'listar_formadores',
+      description: 'Lista todos os formadores do sistema, opcionalmente filtrados por UF (sigla do estado como PR, SP, RJ)',
+      parameters: {
+        type: 'object',
+        properties: {
+          uf: { type: 'string', description: 'Sigla do estado (ex: PR, SP, RJ)' },
+        },
       },
-      async ({ uf }: { uf?: string }) => {
-        const formadores = await listFormadores(uf);
-        if (formadores.length === 0) return 'Nenhum formador encontrado.';
-        return formadores.map(f =>
-          `• ${f.nomeCompleto} (${f.uf}) - ${f.email} - Municípios: ${f.municipiosResponsaveis.join(', ')}`
-        ).join('\n');
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'buscar_formador',
-        description: 'Busca um formador pelo ID',
-        inputSchema: zod.object({ id: zod.string() }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_formador',
+      description: 'Busca um formador pelo ID',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'ID do formador' },
+        },
+        required: ['id'],
       },
-      async ({ id }: { id: string }) => {
-        const f = await getFormador(id);
-        if (!f) return 'Formador não encontrado.';
-        return `Formador: ${f.nomeCompleto}\nEmail: ${f.email}\nCPF: ${f.cpf}\nTelefone: ${f.telefone}\nUF: ${f.uf}\nMunicípios: ${f.municipiosResponsaveis.join(', ')}\nDisciplina: ${f.disciplina || 'N/A'}\nBanco: ${f.banco || 'N/A'} ${f.agencia || ''} ${f.conta || ''}\nPIX: ${f.pix || 'N/A'}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'criar_formador',
-        description: 'Cria um novo formador. Gera email automaticamente baseado no nome.',
-        inputSchema: zod.object({
-          nomeCompleto: zod.string().min(3),
-          cpf: zod.string().min(11),
-          telefone: zod.string().min(10),
-          municipiosResponsaveis: zod.array(zod.string()).min(1),
-          uf: zod.string().length(2),
-          disciplina: zod.string().optional(),
-          curriculo: zod.string().optional(),
-          banco: zod.string().optional(),
-          agencia: zod.string().optional(),
-          conta: zod.string().optional(),
-          pix: zod.string().optional(),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_formador',
+      description: 'Cria um novo formador. Gera email automaticamente baseado no nome.',
+      parameters: {
+        type: 'object',
+        properties: {
+          nomeCompleto: { type: 'string', minLength: 3 },
+          cpf: { type: 'string', minLength: 11 },
+          telefone: { type: 'string', minLength: 10 },
+          municipiosResponsaveis: { type: 'array', items: { type: 'string' }, minItems: 1 },
+          uf: { type: 'string', minLength: 2, maxLength: 2 },
+          disciplina: { type: 'string' },
+          curriculo: { type: 'string' },
+          banco: { type: 'string' },
+          agencia: { type: 'string' },
+          conta: { type: 'string' },
+          pix: { type: 'string' },
+        },
+        required: ['nomeCompleto', 'cpf', 'telefone', 'municipiosResponsaveis', 'uf'],
       },
-      async (data: any) => {
-        const baseName = data.nomeCompleto.toLowerCase().replace(/\s+/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const email = `${baseName}@editoralt.com.br`;
-        const id = await createFormador({ ...data, email, status: 'preparacao' });
-        return `✅ Formador criado com sucesso!\nNome: ${data.nomeCompleto}\nEmail: ${email}\nID: ${id}\nMunicípios: ${data.municipiosResponsaveis.join(', ')}\nUF: ${data.uf}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'atualizar_formador',
-        description: 'Atualiza dados de um formador existente pelo ID',
-        inputSchema: zod.object({
-          id: zod.string(),
-          nomeCompleto: zod.string().optional(),
-          telefone: zod.string().optional(),
-          municipiosResponsaveis: zod.array(zod.string()).optional(),
-          uf: zod.string().optional(),
-          disciplina: zod.string().optional(),
-          banco: zod.string().optional(),
-          agencia: zod.string().optional(),
-          conta: zod.string().optional(),
-          pix: zod.string().optional(),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_formador',
+      description: 'Atualiza dados de um formador existente pelo ID',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          nomeCompleto: { type: 'string' },
+          telefone: { type: 'string' },
+          municipiosResponsaveis: { type: 'array', items: { type: 'string' } },
+          uf: { type: 'string' },
+          disciplina: { type: 'string' },
+          banco: { type: 'string' },
+          agencia: { type: 'string' },
+          conta: { type: 'string' },
+          pix: { type: 'string' },
+        },
+        required: ['id'],
       },
-      async (params: any) => {
-        const { id, ...data } = params;
-        await updateFormador(id, data);
-        return `✅ Formador ${id} atualizado com sucesso!`;
-      }
-    ),
-
-    // ── FORMAÇÕES ──
-    ai.defineTool(
-      {
-        name: 'listar_formacoes',
-        description: 'Lista formações do sistema, opcionalmente filtradas por status (preparacao, em-formacao, pos-formacao, concluido, arquivado)',
-        inputSchema: zod.object({
-          status: zod.enum(['preparacao', 'em-formacao', 'pos-formacao', 'concluido', 'arquivado']).optional(),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_formacoes',
+      description: 'Lista formações do sistema, opcionalmente filtradas por status (preparacao, em-formacao, pos-formacao, concluido, arquivado)',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['preparacao', 'em-formacao', 'pos-formacao', 'concluido', 'arquivado'] },
+        },
       },
-      async ({ status }: { status?: string }) => {
-        const formacoes = await listFormacoes(status as any);
-        if (formacoes.length === 0) return 'Nenhuma formação encontrada.';
-        return formacoes.map(f =>
-          `• [${f.status}] ${f.titulo} (${f.municipio}/${f.uf}) - Código: ${f.codigo}`
-        ).join('\n');
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'buscar_formacao',
-        description: 'Busca uma formação pelo ID',
-        inputSchema: zod.object({ id: zod.string() }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_formacao',
+      description: 'Busca uma formação pelo ID',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+        required: ['id'],
       },
-      async ({ id }: { id: string }) => {
-        const f = await getFormacao(id);
-        if (!f) return 'Formação não encontrada.';
-        return `Formação: ${f.titulo}\nCódigo: ${f.codigo}\nStatus: ${f.status}\nMunicípio: ${f.municipio}/${f.uf}\nDescrição: ${f.descricao}\nFormadores: ${f.formadoresNomes?.join(', ') || 'N/A'}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'criar_formacao',
-        description: 'Cria uma nova formação. Gera código automaticamente baseado no município.',
-        inputSchema: zod.object({
-          titulo: zod.string().min(3),
-          descricao: zod.string().min(10),
-          municipio: zod.string().min(1),
-          uf: zod.string().length(2),
-          formadoresIds: zod.array(zod.string()).min(1),
-          formadoresNomes: zod.array(zod.string()).min(1),
-          participantes: zod.number().optional(),
-          dataInicio: zod.string().optional().describe('Data no formato YYYY-MM-DD'),
-          dataFim: zod.string().optional().describe('Data no formato YYYY-MM-DD'),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_formacao',
+      description: 'Cria uma nova formação. Gera código automaticamente baseado no município.',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string', minLength: 3 },
+          descricao: { type: 'string', minLength: 10 },
+          municipio: { type: 'string' },
+          uf: { type: 'string', minLength: 2, maxLength: 2 },
+          formadoresIds: { type: 'array', items: { type: 'string' }, minItems: 1 },
+          formadoresNomes: { type: 'array', items: { type: 'string' }, minItems: 1 },
+          participantes: { type: 'number' },
+          dataInicio: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
+          dataFim: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
+        },
+        required: ['titulo', 'descricao', 'municipio', 'uf', 'formadoresIds', 'formadoresNomes'],
       },
-      async (data: any) => {
-        const id = await createFormacao({
-          ...data,
-          dataInicio: data.dataInicio ? new Date(data.dataInicio) : null,
-          dataFim: data.dataFim ? new Date(data.dataFim) : null,
-        });
-        return `✅ Formação criada com sucesso!\nTítulo: ${data.titulo}\nMunicípio: ${data.municipio}/${data.uf}\nID: ${id}\nFormadores: ${data.formadoresNomes.join(', ')}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'atualizar_status_formacao',
-        description: 'Atualiza o status de uma formação',
-        inputSchema: zod.object({
-          id: zod.string(),
-          status: zod.enum(['preparacao', 'em-formacao', 'pos-formacao', 'concluido', 'arquivado']),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_status_formacao',
+      description: 'Atualiza o status de uma formação',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          status: { type: 'string', enum: ['preparacao', 'em-formacao', 'pos-formacao', 'concluido', 'arquivado'] },
+        },
+        required: ['id', 'status'],
       },
-      async (input: { id?: string; status?: string }) => {
-        await updateFormacaoStatus(input.id!, input.status as any);
-        return `✅ Status da formação ${input.id} atualizado para: ${input.status}`;
-      }
-    ),
-
-    // ── PROJETOS ──
-    ai.defineTool(
-      {
-        name: 'listar_projetos',
-        description: 'Lista todos os projetos de implantação',
-        inputSchema: zod.object({}),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_projetos',
+      description: 'Lista todos os projetos de implantação',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_projeto',
+      description: 'Busca um projeto pelo ID',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+        },
+        required: ['id'],
       },
-      async () => {
-        const projetos = await listProjetos();
-        if (projetos.length === 0) return 'Nenhum projeto encontrado.';
-        return projetos.map(p =>
-          `• ${p.municipio}/${p.uf} - Alunos: ${p.qtdAlunos || 'N/A'} - Professores: ${p.qtdProfessores || 'N/A'}`
-        ).join('\n');
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'buscar_projeto',
-        description: 'Busca um projeto pelo ID',
-        inputSchema: zod.object({ id: zod.string() }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_projeto',
+      description: 'Cria um novo projeto de implantação em um município',
+      parameters: {
+        type: 'object',
+        properties: {
+          municipio: { type: 'string' },
+          uf: { type: 'string', minLength: 2, maxLength: 2 },
+          versao: { type: 'string' },
+          material: { type: 'string' },
+          qtdAlunos: { type: 'number' },
+          qtdProfessores: { type: 'number' },
+          formadoresIds: { type: 'array', items: { type: 'string' } },
+          responsavelId: { type: 'string' },
+          responsavelNome: { type: 'string' },
+        },
+        required: ['municipio', 'uf'],
       },
-      async ({ id }: { id: string }) => {
-        const p = await getProjeto(id);
-        if (!p) return 'Projeto não encontrado.';
-        return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}\nDiagnóstica: ${p.diagnostica?.ok ? '✅ Concluída' : '⏳ Pendente'}\nSimulados: S1:${p.simulados?.s1?.ok ? '✅' : '⏳'} S2:${p.simulados?.s2?.ok ? '✅' : '⏳'} S3:${p.simulados?.s3?.ok ? '✅' : '⏳'} S4:${p.simulados?.s4?.ok ? '✅' : '⏳'}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'criar_projeto',
-        description: 'Cria um novo projeto de implantação em um município',
-        inputSchema: zod.object({
-          municipio: zod.string().min(1),
-          uf: zod.string().length(2),
-          versao: zod.string().optional(),
-          material: zod.string().optional(),
-          qtdAlunos: zod.number().optional(),
-          qtdProfessores: zod.number().optional(),
-          formadoresIds: zod.array(zod.string()).optional(),
-          responsavelId: zod.string().optional(),
-          responsavelNome: zod.string().optional(),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_demandas',
+      description: 'Lista demandas do Diário de Bordo, opcionalmente filtradas por status',
+      parameters: {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'] },
+        },
       },
-      async (data: any) => {
-        const id = await createProjeto(data);
-        return `✅ Projeto criado com sucesso!\nMunicípio: ${data.municipio}/${data.uf}\nID: ${id}\nAlunos: ${data.qtdAlunos || 'N/A'}\nProfessores: ${data.qtdProfessores || 'N/A'}`;
-      }
-    ),
-
-    // ── DEMANDAS ──
-    ai.defineTool(
-      {
-        name: 'listar_demandas',
-        description: 'Lista demandas do Diário de Bordo, opcionalmente filtradas por status',
-        inputSchema: zod.object({
-          status: zod.enum(['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno']).optional(),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_demanda',
+      description: 'Cria uma nova demanda no Diário de Bordo',
+      parameters: {
+        type: 'object',
+        properties: {
+          demanda: { type: 'string', minLength: 5 },
+          municipio: { type: 'string' },
+          uf: { type: 'string', minLength: 2, maxLength: 2 },
+          responsavelId: { type: 'string' },
+          responsavelNome: { type: 'string' },
+          prioridade: { type: 'string', enum: ['Normal', 'Urgente'] },
+          prazo: { type: 'string', description: 'Data no formato YYYY-MM-DD' },
+        },
+        required: ['demanda', 'municipio', 'uf', 'responsavelId', 'responsavelNome'],
       },
-      async ({ status }: { status?: string }) => {
-        const demandas = await listDemandas(status as any);
-        if (demandas.length === 0) return 'Nenhuma demanda encontrada.';
-        return demandas.map(d =>
-          `• [${d.status}] ${d.demanda.substring(0, 80)} - ${d.municipio}/${d.uf} - Resp: ${d.responsavelNome}`
-        ).join('\n');
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'criar_demanda',
-        description: 'Cria uma nova demanda no Diário de Bordo',
-        inputSchema: zod.object({
-          demanda: zod.string().min(5),
-          municipio: zod.string().min(1),
-          uf: zod.string().length(2),
-          responsavelId: zod.string(),
-          responsavelNome: zod.string(),
-          prioridade: zod.enum(['Normal', 'Urgente']).optional(),
-          prazo: zod.string().optional().describe('Data no formato YYYY-MM-DD'),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'atualizar_status_demanda',
+      description: 'Atualiza o status de uma demanda',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          status: { type: 'string', enum: ['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno'] },
+        },
+        required: ['id', 'status'],
       },
-      async (data: any) => {
-        const id = await createDemanda({
-          ...data,
-          prazo: data.prazo ? new Date(data.prazo) : null,
-        });
-        return `✅ Demanda criada com sucesso!\nDescrição: ${data.demanda}\nMunicípio: ${data.municipio}/${data.uf}\nResponsável: ${data.responsavelNome}\nPrioridade: ${data.prioridade || 'Normal'}\nID: ${id}`;
-      }
-    ),
-
-    ai.defineTool(
-      {
-        name: 'atualizar_status_demanda',
-        description: 'Atualiza o status de uma demanda',
-        inputSchema: zod.object({
-          id: zod.string(),
-          status: zod.enum(['Pendente', 'Em andamento', 'Concluída', 'Aguardando retorno']),
-        }),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_materiais',
+      description: 'Lista todos os materiais de apoio',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_material',
+      description: 'Cria um novo material de apoio',
+      parameters: {
+        type: 'object',
+        properties: {
+          titulo: { type: 'string' },
+          descricao: { type: 'string' },
+          tipoMaterial: { type: 'string', enum: ['PDF', 'Vídeo', 'Link Externo', 'Documento Word', 'Apresentação', 'Pasta'] },
+          url: { type: 'string' },
+        },
+        required: ['titulo', 'tipoMaterial', 'url'],
       },
-      async (input: { id?: string; status?: string }) => {
-        await updateDemandaStatus(input.id!, input.status as any);
-        return `✅ Status da demanda ${input.id} atualizado para: ${input.status}`;
-      }
-    ),
-
-    // ── MATERIAIS ──
-    ai.defineTool(
-      {
-        name: 'listar_materiais',
-        description: 'Lista todos os materiais de apoio',
-        inputSchema: zod.object({}),
-        outputSchema: zod.string(),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'listar_assessores',
+      description: 'Lista todos os assessores',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'criar_assessor',
+      description: 'Cria um novo assessor',
+      parameters: {
+        type: 'object',
+        properties: {
+          nomeCompleto: { type: 'string', minLength: 3 },
+          email: { type: 'string' },
+          cpf: { type: 'string', minLength: 11 },
+          telefone: { type: 'string', minLength: 10 },
+          municipiosResponsaveis: { type: 'array', items: { type: 'string' }, minItems: 1 },
+          uf: { type: 'string', minLength: 2, maxLength: 2 },
+          disciplina: { type: 'string' },
+          banco: { type: 'string' },
+          agencia: { type: 'string' },
+          conta: { type: 'string' },
+          pix: { type: 'string' },
+        },
+        required: ['nomeCompleto', 'email', 'cpf', 'telefone', 'municipiosResponsaveis', 'uf'],
       },
-      async () => {
-        const materiais = await listMateriais();
-        if (materiais.length === 0) return 'Nenhum material encontrado.';
-        return materiais.map(m => `• [${m.tipoMaterial}] ${m.titulo} - ${m.descricao}`).join('\n');
-      }
-    ),
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'estatisticas',
+      description: 'Obtém resumo estatístico geral do sistema',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+];
 
-    ai.defineTool(
-      {
-        name: 'criar_material',
-        description: 'Cria um novo material de apoio',
-        inputSchema: zod.object({
-          titulo: zod.string().min(1),
-          descricao: zod.string().optional(),
-          tipoMaterial: zod.enum(['PDF', 'Vídeo', 'Link Externo', 'Documento Word', 'Apresentação', 'Pasta']),
-          url: zod.string(),
-        }),
-        outputSchema: zod.string(),
-      },
-      async (data: any) => {
-        const id = await createMaterial(data);
-        return `✅ Material criado com sucesso!\nTítulo: ${data.titulo}\nTipo: ${data.tipoMaterial}\nURL: ${data.url}\nID: ${id}`;
-      }
-    ),
+// ─── TOOL EXECUTOR ────────────────────────────────────────────
 
-    // ── ASSESSORES ──
-    ai.defineTool(
-      {
-        name: 'listar_assessores',
-        description: 'Lista todos os assessores',
-        inputSchema: zod.object({}),
-        outputSchema: zod.string(),
-      },
-      async () => {
-        const assessores = await listAssessores();
-        if (assessores.length === 0) return 'Nenhum assessor encontrado.';
-        return assessores.map(a => `• ${a.nomeCompleto} (${a.uf}) - ${a.email}`).join('\n');
-      }
-    ),
+async function executeTool(name: string, args: Record<string, unknown>): Promise<string> {
+  switch (name) {
+    case 'listar_formadores':
+      return execListFormadores(args);
+    case 'buscar_formador':
+      return execBuscarFormador(args);
+    case 'criar_formador':
+      return execCriarFormador(args);
+    case 'atualizar_formador':
+      return execAtualizarFormador(args);
+    case 'listar_formacoes':
+      return execListarFormacoes(args);
+    case 'buscar_formacao':
+      return execBuscarFormacao(args);
+    case 'criar_formacao':
+      return execCriarFormacao(args);
+    case 'atualizar_status_formacao':
+      return execAtualizarStatusFormacao(args);
+    case 'listar_projetos':
+      return execListarProjetos();
+    case 'buscar_projeto':
+      return execBuscarProjeto(args);
+    case 'criar_projeto':
+      return execCriarProjeto(args);
+    case 'listar_demandas':
+      return execListarDemandas(args);
+    case 'criar_demanda':
+      return execCriarDemanda(args);
+    case 'atualizar_status_demanda':
+      return execAtualizarStatusDemanda(args);
+    case 'listar_materiais':
+      return execListarMateriais();
+    case 'criar_material':
+      return execCriarMaterial(args);
+    case 'listar_assessores':
+      return execListarAssessores();
+    case 'criar_assessor':
+      return execCriarAssessor(args);
+    case 'estatisticas':
+      return execEstatisticas();
+    default:
+      return `Ferramenta desconhecida: ${name}`;
+  }
+}
 
-    ai.defineTool(
-      {
-        name: 'criar_assessor',
-        description: 'Cria um novo assessor',
-        inputSchema: zod.object({
-          nomeCompleto: zod.string().min(3),
-          email: zod.string(),
-          cpf: zod.string().min(11),
-          telefone: zod.string().min(10),
-          municipiosResponsaveis: zod.array(zod.string()).min(1),
-          uf: zod.string().length(2),
-          disciplina: zod.string().optional(),
-          banco: zod.string().optional(),
-          agencia: zod.string().optional(),
-          conta: zod.string().optional(),
-          pix: zod.string().optional(),
-        }),
-        outputSchema: zod.string(),
-      },
-      async (data: any) => {
-        const id = await createAssessor(data);
-        return `✅ Assessor criado com sucesso!\nNome: ${data.nomeCompleto}\nEmail: ${data.email}\nID: ${id}`;
-      }
-    ),
+// Formadores
+async function execListFormadores(args: Record<string, unknown>) {
+  const formadores = await listFormadores(args.uf as string | undefined);
+  if (formadores.length === 0) return 'Nenhum formador encontrado.';
+  return formadores.map(f => `• ${f.nomeCompleto} (${f.uf}) - ${f.email} - Municípios: ${f.municipiosResponsaveis.join(', ')}`).join('\n');
+}
 
-    // ── ESTATÍSTICAS ──
-    ai.defineTool(
-      {
-        name: 'estatisticas',
-        description: 'Obtém resumo estatístico geral do sistema',
-        inputSchema: zod.object({}),
-        outputSchema: zod.string(),
-      },
-      async () => {
-        const stats = await getStats();
-        return `📊 Estatísticas do Sistema\n\n` +
-          `Formadores: ${stats.totalFormadores}\n` +
-          `Formações: ${stats.totalFormacoes}\n` +
-          `Projetos: ${stats.totalProjetos}\n` +
-          `Demandas: ${stats.totalDemandas}\n\n` +
-          `Formações por status:\n` +
-          Object.entries(stats.formacoesPorStatus).map(([k, v]) => `  ${k}: ${v}`).join('\n') +
-          `\n\nDemandas por status:\n` +
-          Object.entries(stats.demandasPorStatus).map(([k, v]) => `  ${k}: ${v}`).join('\n');
-      }
-    ),
-  ];
+async function execBuscarFormador(args: Record<string, unknown>) {
+  const f = await getFormador(args.id as string);
+  if (!f) return 'Formador não encontrado.';
+  return `Formador: ${f.nomeCompleto}\nEmail: ${f.email}\nCPF: ${f.cpf}\nTelefone: ${f.telefone}\nUF: ${f.uf}\nMunicípios: ${f.municipiosResponsaveis.join(', ')}\nDisciplina: ${f.disciplina || 'N/A'}\nBanco: ${f.banco || 'N/A'} ${f.agencia || ''} ${f.conta || ''}\nPIX: ${f.pix || 'N/A'}`;
+}
+
+async function execCriarFormador(args: Record<string, unknown>) {
+  const baseName = (args.nomeCompleto as string).toLowerCase().replace(/\s+/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const email = `${baseName}@editoralt.com.br`;
+  const id = await createFormador({
+    nomeCompleto: args.nomeCompleto as string,
+    email,
+    cpf: args.cpf as string,
+    telefone: args.telefone as string,
+    municipiosResponsaveis: args.municipiosResponsaveis as string[],
+    uf: args.uf as string,
+    disciplina: args.disciplina as string | undefined,
+    curriculo: args.curriculo as string | undefined,
+    banco: args.banco as string | undefined,
+    agencia: args.agencia as string | undefined,
+    conta: args.conta as string | undefined,
+    pix: args.pix as string | undefined,
+    status: 'preparacao',
+  });
+  return `✅ Formador criado!\nNome: ${args.nomeCompleto}\nEmail: ${email}\nID: ${id}\nUF: ${args.uf}`;
+}
+
+async function execAtualizarFormador(args: Record<string, unknown>) {
+  const { id, ...data } = args;
+  await updateFormador(id as string, data as Partial<import('../../../lib/types').Formador>);
+  return `✅ Formador ${id} atualizado!`;
+}
+
+// Formações
+async function execListarFormacoes(args: Record<string, unknown>) {
+  const formacoes = await listFormacoes(args.status as any);
+  if (formacoes.length === 0) return 'Nenhuma formação encontrada.';
+  return formacoes.map(f => `• [${f.status}] ${f.titulo} (${f.municipio}/${f.uf}) - ${f.codigo}`).join('\n');
+}
+
+async function execBuscarFormacao(args: Record<string, unknown>) {
+  const f = await getFormacao(args.id as string);
+  if (!f) return 'Formação não encontrada.';
+  return `Formação: ${f.titulo}\nCódigo: ${f.codigo}\nStatus: ${f.status}\nMunicípio: ${f.municipio}/${f.uf}\nDescrição: ${f.descricao}\nFormadores: ${f.formadoresNomes?.join(', ') || 'N/A'}`;
+}
+
+async function execCriarFormacao(args: Record<string, unknown>) {
+  const id = await createFormacao({
+    titulo: args.titulo as string,
+    descricao: args.descricao as string,
+    municipio: args.municipio as string,
+    uf: args.uf as string,
+    formadoresIds: args.formadoresIds as string[],
+    formadoresNomes: args.formadoresNomes as string[],
+    participantes: args.participantes as number | undefined,
+    dataInicio: args.dataInicio ? new Date(args.dataInicio as string) : null,
+    dataFim: args.dataFim ? new Date(args.dataFim as string) : null,
+  });
+  return `✅ Formação criada!\nTítulo: ${args.titulo}\nMunicípio: ${args.municipio}/${args.uf}\nID: ${id}\nFormadores: ${(args.formadoresNomes as string[]).join(', ')}`;
+}
+
+async function execAtualizarStatusFormacao(args: Record<string, unknown>) {
+  await updateFormacaoStatus(args.id as string, args.status as any);
+  return `✅ Status da formação ${args.id} atualizado para: ${args.status}`;
+}
+
+// Projetos
+async function execListarProjetos() {
+  const projetos = await listProjetos();
+  if (projetos.length === 0) return 'Nenhum projeto encontrado.';
+  return projetos.map(p => `• ${p.municipio}/${p.uf} - Alunos: ${p.qtdAlunos || 'N/A'} - Professores: ${p.qtdProfessores || 'N/A'}`).join('\n');
+}
+
+async function execBuscarProjeto(args: Record<string, unknown>) {
+  const p = await getProjeto(args.id as string);
+  if (!p) return 'Projeto não encontrado.';
+  return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}`;
+}
+
+async function execCriarProjeto(args: Record<string, unknown>) {
+  const id = await createProjeto({
+    municipio: args.municipio as string,
+    uf: args.uf as string,
+    versao: args.versao as string | undefined,
+    material: args.material as string | undefined,
+    qtdAlunos: args.qtdAlunos as number | undefined,
+    qtdProfessores: args.qtdProfessores as number | undefined,
+    formadoresIds: args.formadoresIds as string[] | undefined,
+    responsavelId: args.responsavelId as string | undefined,
+    responsavelNome: args.responsavelNome as string | undefined,
+  });
+  return `✅ Projeto criado!\nMunicípio: ${args.municipio}/${args.uf}\nID: ${id}`;
+}
+
+// Demandas
+async function execListarDemandas(args: Record<string, unknown>) {
+  const demandas = await listDemandas(args.status as any);
+  if (demandas.length === 0) return 'Nenhuma demanda encontrada.';
+  return demandas.map(d => `• [${d.status}] ${d.demanda.substring(0, 80)} - ${d.municipio}/${d.uf} - Resp: ${d.responsavelNome}`).join('\n');
+}
+
+async function execCriarDemanda(args: Record<string, unknown>) {
+  const id = await createDemanda({
+    demanda: args.demanda as string,
+    municipio: args.municipio as string,
+    uf: args.uf as string,
+    responsavelId: args.responsavelId as string,
+    responsavelNome: args.responsavelNome as string,
+    prioridade: args.prioridade as 'Normal' | 'Urgente' | undefined,
+    prazo: args.prazo ? new Date(args.prazo as string) : null,
+  });
+  return `✅ Demanda criada!\nDescrição: ${args.demanda}\nMunicípio: ${args.municipio}/${args.uf}\nResponsável: ${args.responsavelNome}\nID: ${id}`;
+}
+
+async function execAtualizarStatusDemanda(args: Record<string, unknown>) {
+  await updateDemandaStatus(args.id as string, args.status as any);
+  return `✅ Status da demanda ${args.id} atualizado para: ${args.status}`;
+}
+
+// Materiais
+async function execListarMateriais() {
+  const materiais = await listMateriais();
+  if (materiais.length === 0) return 'Nenhum material encontrado.';
+  return materiais.map(m => `• [${m.tipoMaterial}] ${m.titulo} - ${m.descricao}`).join('\n');
+}
+
+async function execCriarMaterial(args: Record<string, unknown>) {
+  const id = await createMaterial({
+    titulo: args.titulo as string,
+    descricao: args.descricao as string | undefined,
+    tipoMaterial: args.tipoMaterial as any,
+    url: args.url as string,
+  });
+  return `✅ Material criado!\nTítulo: ${args.titulo}\nTipo: ${args.tipoMaterial}\nID: ${id}`;
+}
+
+// Assessores
+async function execListarAssessores() {
+  const assessores = await listAssessores();
+  if (assessores.length === 0) return 'Nenhum assessor encontrado.';
+  return assessores.map(a => `• ${a.nomeCompleto} (${a.uf}) - ${a.email}`).join('\n');
+}
+
+async function execCriarAssessor(args: Record<string, unknown>) {
+  const id = await createAssessor({
+    nomeCompleto: args.nomeCompleto as string,
+    email: args.email as string,
+    cpf: args.cpf as string,
+    telefone: args.telefone as string,
+    municipiosResponsaveis: args.municipiosResponsaveis as string[],
+    uf: args.uf as string,
+    disciplina: args.disciplina as string | undefined,
+    curriculo: undefined,
+    banco: args.banco as string | undefined,
+    agencia: args.agencia as string | undefined,
+    conta: args.conta as string | undefined,
+    pix: args.pix as string | undefined,
+  });
+  return `✅ Assessor criado!\nNome: ${args.nomeCompleto}\nEmail: ${args.email}\nID: ${id}`;
+}
+
+// Estatísticas
+async function execEstatisticas() {
+  const stats = await getStats();
+  return `📊 Estatísticas do Sistema\n\n` +
+    `Formadores: ${stats.totalFormadores}\n` +
+    `Formações: ${stats.totalFormacoes}\n` +
+    `Projetos: ${stats.totalProjetos}\n` +
+    `Demandas: ${stats.totalDemandas}\n\n` +
+    `Formações por status:\n` +
+    Object.entries(stats.formacoesPorStatus).map(([k, v]) => `  ${k}: ${v}`).join('\n') +
+    `\n\nDemandas por status:\n` +
+    Object.entries(stats.demandasPorStatus).map(([k, v]) => `  ${k}: ${v}`).join('\n');
+}
+
+// ─── OPENROUTER API CALL ──────────────────────────────────────
+
+async function callOpenRouter(messages: any[], tools: any[]): Promise<any> {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'HTTP-Referer': 'https://gest-o-formadores.vercel.app',
+      'X-Title': 'Gestão de Formadores',
+    },
+    body: JSON.stringify({
+      model: 'openrouter/owl-alpha',
+      messages,
+      tools,
+      tool_choice: 'auto',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
 }
 
 // ─── CHAT ROUTE ───────────────────────────────────────────────
@@ -449,30 +626,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages are required' }, { status: 400 });
     }
 
-    const tools = createTools();
     const systemPrompt = buildSystemPrompt(userName, userRole);
 
-    // Build conversation history
-    const conversationHistory = messages
-      .filter(m => m.role !== 'system')
-      .map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.content}`)
-      .join('\n\n');
+    // Build OpenRouter messages
+    const openRouterMessages = [
+      { role: 'system', content: systemPrompt },
+      ...messages.filter(m => m.role !== 'system').map(m => ({
+        role: m.role,
+        content: m.content,
+      })),
+    ];
 
-    const fullPrompt = `${systemPrompt}
+    // Call OpenRouter
+    let result = await callOpenRouter(openRouterMessages, tools);
 
----
+    // Handle tool calls (possibly multiple rounds)
+    let maxRounds = 5;
+    while (maxRounds > 0) {
+      const choice = result.choices?.[0];
+      if (!choice) break;
 
-## Conversa atual
-${conversationHistory}`;
+      const toolCalls = choice.message?.tool_calls;
+      if (!toolCalls || toolCalls.length === 0) break;
 
-    const response = await ai.generate({
-      prompt: fullPrompt,
-      tools,
-      model: 'googleai/gemini-2.0-flash',
-    });
+      // Execute all tool calls
+      const toolResults = await Promise.all(
+        toolCalls.map(async (tc: any) => {
+          const args = JSON.parse(tc.function.arguments || '{}');
+          const toolResult = await executeTool(tc.function.name, args);
+          return {
+            tool_call_id: tc.id,
+            role: 'tool' as const,
+            content: toolResult,
+          };
+        })
+      );
+
+      // Add assistant message with tool calls and tool results
+      openRouterMessages.push(choice.message);
+      openRouterMessages.push(...toolResults);
+
+      // Call again with tool results
+      result = await callOpenRouter(openRouterMessages, tools);
+      maxRounds--;
+    }
+
+    const finalChoice = result.choices?.[0];
+    const responseText = finalChoice?.message?.content || 'Desculpe, não consegui processar sua solicitação.';
 
     return NextResponse.json({
-      message: response.text || 'Desculpe, não consegui processar sua solicitação.',
+      message: responseText,
       success: true,
     });
 
