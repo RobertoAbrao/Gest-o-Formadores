@@ -439,6 +439,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         dataUpload: Timestamp.now(),
         projetoId: projetoId,
         etapa: etapa,
+        autorId: user!.uid,
       };
       
       const anexoDocRef = doc(collection(db, 'anexos'));
