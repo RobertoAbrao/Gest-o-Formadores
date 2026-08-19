@@ -1,25 +1,22 @@
-
-
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Timestamp,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import { differenceInCalendarDays, startOfToday } from 'date-fns';
+import { Loader2, Mail, PlusCircle, RefreshCw, Sparkles } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,654 +27,731 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, BookOpenCheck, Hourglass, ListTodo, CheckCircle, BadgeCheck, AlertTriangle, Mail, User, ClipboardList, Target, CalendarDays, Sparkles, BrainCircuit } from 'lucide-react';
-import type { Demanda, StatusDemanda } from '@/lib/types';
-import { useAuth } from '@/hooks/use-auth';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, where, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { FormDemanda } from '@/components/diario/form-diario';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { addDays, isBefore, startOfToday, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import type { Demanda, HistoricoItem, StatusDemanda } from '@/lib/types';
 import { resumirDemandasFlow } from '@/ai/flows/diario-flows';
+import { FormDemanda } from '@/components/diario/form-diario';
+import { BoardColumn } from '@/components/diario/board-column';
+import { DemandaCard } from '@/components/diario/demanda-card';
+import { DiarioToolbar } from '@/components/diario/diario-toolbar';
+import {
+  FILTROS_PADRAO,
+  QUEUES,
+  STATUS_OPTIONS,
+  carregarFiltros,
+  getSla,
+  ordenarDemandas,
+  salvarFiltros,
+  type DiarioFiltros,
+  type JanelaConcluidas,
+  type QueueId,
+} from '@/components/diario/diario-utils';
 
+const VALIDADORES = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
 
-const statusOptions: StatusDemanda[] = ['Pendente', 'Em andamento', 'Aguardando retorno', 'Concluída'];
-const priorityOptions: NonNullable<Demanda['prioridade']>[] = ['Normal', 'Urgente'];
+const DESTINATARIOS_RELATORIO = [
+  'alessandra@editoralt.com.br',
+  'amaranta@editoralt.com.br',
+  'assessoria@editoralt.com.br',
+  'irene@editoralt.com.br',
+  'kellem@editoralt.com.br',
+];
 
-const statusConfig: Record<StatusDemanda, { color: string, label: string }> = {
-  'Pendente': { color: 'border-yellow-500', label: 'Pendente' },
-  'Em andamento': { color: 'border-blue-500', label: 'Em Andamento' },
-  'Concluída': { color: 'border-green-500', label: 'Concluída' },
-  'Aguardando retorno': { color: 'border-orange-500', label: 'Aguardando Retorno' },
-};
+/** Gmail rejeita URLs muito longas; o corpo é cortado antes disso. */
+const LIMITE_CORPO_EMAIL = 1600;
 
-const getCardClass = (demanda: Demanda): string => {
-    if (demanda.validado) {
-        return 'bg-teal-50 dark:bg-teal-900/40 opacity-80 hover:opacity-100';
-    }
-    if (demanda.status === 'Concluída') {
-      return 'bg-muted/50 text-muted-foreground opacity-70 hover:opacity-100';
-    }
-    
-    const hoje = startOfToday();
-    const prazoDate = demanda.prazo?.toDate();
-    
-    if (demanda.prioridade === 'Urgente') {
-      if (prazoDate && isBefore(prazoDate, hoje)) {
-        return 'bg-red-100 border-red-200 dark:bg-red-900/40 dark:border-red-800 hover:bg-red-100/80 dark:hover:bg-red-900/50';
-      }
-      return 'bg-orange-100 border-orange-200 dark:bg-orange-900/40 dark:border-orange-800 hover:bg-orange-100/80 dark:hover:bg-orange-900/50';
-    }
-
-    if (!prazoDate) {
-      return '';
-    }
-    
-    const limiteAmarelo = addDays(hoje, 3);
-
-    if (isBefore(prazoDate, hoje)) {
-      return 'bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-800/50 hover:bg-red-50/80 dark:hover:bg-red-900/30';
-    }
-    
-    if (isBefore(prazoDate, limiteAmarelo)) {
-      return 'bg-yellow-50 border-yellow-100 dark:bg-yellow-900/20 dark:border-yellow-800/50 hover:bg-yellow-50/80 dark:hover:bg-yellow-900/30';
-    }
-    
-    return '';
-};
-
-const validatorEmails = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
-
+const JANELAS: { value: JanelaConcluidas; label: string }[] = [
+  { value: '7', label: '7 dias' },
+  { value: '30', label: '30 dias' },
+  { value: '90', label: '90 dias' },
+  { value: 'todas', label: 'Tudo' },
+];
 
 export default function DiarioPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const { toast } = useToast();
+
   const [demandas, setDemandas] = useState<Demanda[]>([]);
+  const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [responsavelFilter, setResponsavelFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<'all' | 'Normal' | 'Urgente'>('all');
-  const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
-  const [showAllConcluidas, setShowAllConcluidas] = useState(false);
+  const [atualizando, setAtualizando] = useState(false);
 
-  const [admins, setAdmins] = useState<{ id: string, nome: string }[]>([]);
-  const [loadingValidation, setLoadingValidation] = useState<string | null>(null);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [isSummaryDialogOpen, setIsSummaryDialogOpen] = useState(false);
-  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [filtros, setFiltros] = useState<DiarioFiltros>(FILTROS_PADRAO);
+  const filtrosCarregados = useRef(false);
 
-  const canValidate = useMemo(() => user?.email && validatorEmails.includes(user.email), [user]);
+  const [demandaSelecionada, setDemandaSelecionada] = useState<Demanda | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [demandaParaExcluir, setDemandaParaExcluir] = useState<Demanda | null>(null);
 
-  const fetchDemandas = useCallback(async () => {
-    setLoading(true);
-    try {
-      const demandasQuery = query(collection(db, 'demandas'), orderBy('dataCriacao', 'desc'));
-      const adminsQuery = query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'));
-      
-      const [demandasSnapshot, adminsSnapshot] = await Promise.all([
-          getDocs(demandasQuery),
-          getDocs(adminsQuery)
-      ]);
+  const [emMovimento, setEmMovimento] = useState<Set<string>>(new Set());
+  const [arrastando, setArrastando] = useState<Demanda | null>(null);
+  const [colunaAlvo, setColunaAlvo] = useState<StatusDemanda | null>(null);
 
-      const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
-      setDemandas(demandasData);
-      
-      const adminsData = adminsSnapshot.docs.map(doc => ({ id: doc.id, nome: doc.data().nome }));
-      setAdmins(adminsData);
+  const [isResumoOpen, setIsResumoOpen] = useState(false);
+  const [resumoIA, setResumoIA] = useState<string | null>(null);
+  const [gerandoResumo, setGerandoResumo] = useState(false);
 
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados do diário.' });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const canValidate = useMemo(
+    () => !!user?.email && VALIDADORES.includes(user.email),
+    [user?.email],
+  );
+  const canDelete = user?.perfil === 'administrador';
+
+  /* ----------------------------------------------------------------------- */
+  /* Filtros persistidos                                                     */
+  /* ----------------------------------------------------------------------- */
 
   useEffect(() => {
-    fetchDemandas();
-  }, [fetchDemandas]);
+    setFiltros(carregarFiltros());
+    filtrosCarregados.current = true;
+  }, []);
 
-  const handleSuccess = () => {
-    fetchDemandas();
-    setIsDialogOpen(false);
-    setSelectedDemanda(null);
+  useEffect(() => {
+    // Não sobrescreve o que está salvo com o padrão do primeiro render.
+    if (!filtrosCarregados.current) return;
+    salvarFiltros(filtros);
+  }, [filtros]);
+
+  const aplicarFiltros = useCallback((patch: Partial<DiarioFiltros>) => {
+    setFiltros((atual) => ({ ...atual, ...patch }));
+  }, []);
+
+  const limparFiltros = useCallback(() => {
+    setFiltros((atual) => ({
+      ...FILTROS_PADRAO,
+      ordenacao: atual.ordenacao,
+      janelaConcluidas: atual.janelaConcluidas,
+    }));
+  }, []);
+
+  /* ----------------------------------------------------------------------- */
+  /* Dados                                                                   */
+  /* ----------------------------------------------------------------------- */
+
+  const buscarDados = useCallback(
+    async (silencioso = false) => {
+      if (silencioso) setAtualizando(true);
+      else setLoading(true);
+      try {
+        const [demandasSnap, adminsSnap] = await Promise.all([
+          getDocs(query(collection(db, 'demandas'), orderBy('dataCriacao', 'desc'))),
+          getDocs(query(collection(db, 'usuarios'), where('perfil', '==', 'administrador'))),
+        ]);
+
+        setDemandas(demandasSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Demanda));
+        setResponsaveis(
+          adminsSnap.docs.map((d) => ({ id: d.id, nome: (d.data().nome as string) ?? 'Sem nome' })),
+        );
+      } catch (error) {
+        console.error('Erro ao carregar o diário:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar',
+          description: 'Não foi possível carregar os dados do diário.',
+        });
+      } finally {
+        setLoading(false);
+        setAtualizando(false);
+      }
+    },
+    [toast],
+  );
+
+  useEffect(() => {
+    buscarDados();
+  }, [buscarDados]);
+
+  /* ----------------------------------------------------------------------- */
+  /* Recortes                                                                */
+  /* ----------------------------------------------------------------------- */
+
+  /** Tudo, menos a fila selecionada — é a base das contagens das filas. */
+  const baseFiltrada = useMemo(() => {
+    const busca = filtros.busca.trim().toLowerCase();
+    return demandas.filter((d) => {
+      if (busca) {
+        const alvo =
+          `${d.municipio} ${d.uf} ${d.demanda} ${d.responsavelNome}`.toLowerCase();
+        if (!alvo.includes(busca)) return false;
+      }
+      if (filtros.responsavelId !== 'all' && d.responsavelId !== filtros.responsavelId) return false;
+      if (filtros.prioridade !== 'all' && (d.prioridade ?? 'Normal') !== filtros.prioridade)
+        return false;
+      if (filtros.escopo === 'minhas' && d.responsavelId !== user?.uid) return false;
+      return true;
+    });
+  }, [demandas, filtros.busca, filtros.responsavelId, filtros.prioridade, filtros.escopo, user?.uid]);
+
+  const queueCounts = useMemo(() => {
+    const counts = {} as Record<QueueId, number>;
+    for (const queue of QUEUES) {
+      counts[queue.id] = baseFiltrada.filter(queue.match).length;
+    }
+    return counts;
+  }, [baseFiltrada]);
+
+  const demandasVisiveis = useMemo(() => {
+    if (!filtros.queue) return baseFiltrada;
+    const queue = QUEUES.find((q) => q.id === filtros.queue);
+    return queue ? baseFiltrada.filter(queue.match) : baseFiltrada;
+  }, [baseFiltrada, filtros.queue]);
+
+  const colunas = useMemo(() => {
+    const porStatus = {} as Record<StatusDemanda, { visiveis: Demanda[]; total: number }>;
+    const hoje = startOfToday();
+
+    for (const status of STATUS_OPTIONS) {
+      let lista = demandasVisiveis.filter((d) => d.status === status);
+      const total = lista.length;
+
+      // A coluna Concluída acumularia indefinidamente: recorta por período,
+      // exceto quando uma fila já está restringindo o quadro.
+      if (status === 'Concluída' && filtros.janelaConcluidas !== 'todas' && !filtros.queue) {
+        const limite = Number(filtros.janelaConcluidas);
+        lista = lista.filter((d) => {
+          const referencia = d.dataAtualizacao?.toDate?.() ?? d.dataCriacao?.toDate?.();
+          if (!referencia) return true;
+          return differenceInCalendarDays(hoje, referencia) <= limite;
+        });
+      }
+
+      porStatus[status] = { visiveis: ordenarDemandas(lista, filtros.ordenacao), total };
+    }
+    return porStatus;
+  }, [demandasVisiveis, filtros.ordenacao, filtros.janelaConcluidas, filtros.queue]);
+
+  const totalVisivel = useMemo(
+    () => STATUS_OPTIONS.reduce((soma, s) => soma + colunas[s].visiveis.length, 0),
+    [colunas],
+  );
+
+  /* ----------------------------------------------------------------------- */
+  /* Mutações                                                                */
+  /* ----------------------------------------------------------------------- */
+
+  const marcarEmMovimento = (id: string, ativo: boolean) => {
+    setEmMovimento((atual) => {
+      const proximo = new Set(atual);
+      if (ativo) proximo.add(id);
+      else proximo.delete(id);
+      return proximo;
+    });
   };
 
-  const handleValidate = async (demandaId: string) => {
-    if (!canValidate) {
-        toast({ variant: 'destructive', title: 'Acesso negado.' });
+  const novoHistorico = useCallback(
+    (texto: string, tipo: HistoricoItem['tipo'] = 'alteracao') => ({
+      id: doc(collection(db, 'demandas')).id,
+      data: Timestamp.now(),
+      autorId: user?.uid ?? '',
+      autorNome: user?.nome ?? 'Usuário',
+      tipo,
+      texto,
+    }),
+    [user?.uid, user?.nome],
+  );
+
+  /**
+   * Aplica a mudança na tela antes de confirmar no Firestore e desfaz se falhar —
+   * é o que faz o arrastar parecer instantâneo.
+   */
+  const atualizarDemanda = useCallback(
+    async (
+      demanda: Demanda,
+      mudancaLocal: Partial<Demanda>,
+      payloadRemoto: Record<string, unknown>,
+      mensagemErro: string,
+    ) => {
+      marcarEmMovimento(demanda.id, true);
+      setDemandas((atual) =>
+        atual.map((d) => (d.id === demanda.id ? { ...d, ...mudancaLocal } : d)),
+      );
+
+      try {
+        await updateDoc(doc(db, 'demandas', demanda.id), {
+          ...payloadRemoto,
+          dataAtualizacao: serverTimestamp(),
+        });
+        return true;
+      } catch (error) {
+        console.error(mensagemErro, error);
+        // Desfaz só esta demanda: outra mutação em voo não pode ser atropelada.
+        setDemandas((atual) => atual.map((d) => (d.id === demanda.id ? demanda : d)));
+        toast({ variant: 'destructive', title: 'Não foi possível salvar', description: mensagemErro });
+        return false;
+      } finally {
+        marcarEmMovimento(demanda.id, false);
+      }
+    },
+    [toast],
+  );
+
+  const moverStatus = useCallback(
+    async (demanda: Demanda, status: StatusDemanda) => {
+      if (demanda.status === status) return;
+
+      const historico: HistoricoItem[] = [
+        novoHistorico(`Status alterado de "${demanda.status}" para "${status}".`),
+      ];
+      const mudancaLocal: Partial<Demanda> = { status };
+      const payload: Record<string, unknown> = {
+        status,
+        historico: arrayUnion(historico[0]),
+      };
+
+      // Reabrir uma demanda já validada invalida a validação anterior.
+      if (status !== 'Concluída' && demanda.validado) {
+        mudancaLocal.validado = false;
+        payload.validado = false;
+        historico.push(novoHistorico('Validação removida: a demanda foi reaberta.'));
+        payload.historico = arrayUnion(...historico);
+      }
+
+      mudancaLocal.historico = [...(demanda.historico ?? []), ...historico];
+
+      const ok = await atualizarDemanda(
+        demanda,
+        mudancaLocal,
+        payload,
+        'Erro ao mover a demanda de status.',
+      );
+      if (ok) toast({ title: 'Movida', description: `${demanda.municipio} → ${status}.` });
+    },
+    [atualizarDemanda, novoHistorico, toast],
+  );
+
+  const alternarPrioridade = useCallback(
+    async (demanda: Demanda) => {
+      const nova = demanda.prioridade === 'Urgente' ? 'Normal' : 'Urgente';
+      const item = novoHistorico(`Prioridade alterada para "${nova}".`);
+      await atualizarDemanda(
+        demanda,
+        { prioridade: nova, historico: [...(demanda.historico ?? []), item] },
+        { prioridade: nova, historico: arrayUnion(item) },
+        'Erro ao alterar a prioridade.',
+      );
+    },
+    [atualizarDemanda, novoHistorico],
+  );
+
+  const validarDemanda = useCallback(
+    async (demanda: Demanda) => {
+      if (!canValidate) {
+        toast({ variant: 'destructive', title: 'Acesso negado', description: 'Você não tem permissão para validar demandas.' });
         return;
-    }
-    setLoadingValidation(demandaId);
+      }
+      const item = novoHistorico('Demanda validada.');
+      const ok = await atualizarDemanda(
+        demanda,
+        { validado: true, historico: [...(demanda.historico ?? []), item] },
+        { validado: true, historico: arrayUnion(item) },
+        'Erro ao validar a demanda.',
+      );
+      if (ok) toast({ title: 'Validada', description: `${demanda.municipio} foi validada.` });
+    },
+    [atualizarDemanda, canValidate, novoHistorico, toast],
+  );
+
+  const excluirDemanda = useCallback(async () => {
+    if (!demandaParaExcluir) return;
+    const alvo = demandaParaExcluir;
+    setDemandaParaExcluir(null);
+    setDemandas((atual) => atual.filter((d) => d.id !== alvo.id));
     try {
-        const demandaRef = doc(db, 'demandas', demandaId);
-        await updateDoc(demandaRef, { validado: true });
-        toast({ title: 'Sucesso!', description: 'Demanda validada com sucesso.' });
-        fetchDemandas();
+      await deleteDoc(doc(db, 'demandas', alvo.id));
+      toast({ title: 'Excluída', description: 'A demanda foi removida.' });
     } catch (error) {
-        console.error("Error validating demanda: ", error);
-        toast({ variant: 'destructive', title: 'Erro ao validar', description: 'Não foi possível validar a demanda.' });
-    } finally {
-        setLoadingValidation(null);
+      console.error('Erro ao excluir demanda:', error);
+      // Recarrega em vez de reinserir na mão, para não perder a posição na lista.
+      buscarDados(true);
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'A demanda foi mantida.' });
     }
-  };
+  }, [buscarDados, demandaParaExcluir, toast]);
 
-  const handleDelete = async () => {
-    if (!selectedDemanda) return;
-    try {
-      await deleteDoc(doc(db, "demandas", selectedDemanda.id));
-      toast({ title: 'Sucesso!', description: 'Demanda excluída com sucesso.' });
-      fetchDemandas();
-    } catch (error) {
-      console.error("Error deleting demanda: ", error);
-      toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir a demanda.' });
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setSelectedDemanda(null);
+  /* ----------------------------------------------------------------------- */
+  /* Arrastar e soltar                                                       */
+  /* ----------------------------------------------------------------------- */
+
+  const soltarNaColuna = useCallback(
+    (status: StatusDemanda) => {
+      const demanda = arrastando;
+      setArrastando(null);
+      setColunaAlvo(null);
+      if (demanda) moverStatus(demanda, status);
+    },
+    [arrastando, moverStatus],
+  );
+
+  /* ----------------------------------------------------------------------- */
+  /* Ações do cabeçalho                                                      */
+  /* ----------------------------------------------------------------------- */
+
+  const abrirDemanda = useCallback((demanda: Demanda | null) => {
+    setDemandaSelecionada(demanda);
+    setIsFormOpen(true);
+  }, []);
+
+  const aoSalvarFormulario = useCallback(() => {
+    setIsFormOpen(false);
+    setDemandaSelecionada(null);
+    buscarDados(true);
+  }, [buscarDados]);
+
+  const emailHref = useMemo(() => {
+    const abertas = demandasVisiveis
+      .filter((d) => d.status !== 'Concluída' && !d.validado)
+      .sort((a, b) => (a.prazo?.toMillis() ?? Infinity) - (b.prazo?.toMillis() ?? Infinity));
+
+    let corpo = 'Olá equipe,\n\nSegue a lista de demandas abertas do Diário de Bordo:\n\n';
+    let incluidas = 0;
+
+    for (const d of abertas) {
+      const sla = getSla(d);
+      const linha =
+        `• ${d.municipio}/${d.uf} — ${d.demanda}\n` +
+        `  Status: ${d.status} | Prioridade: ${d.prioridade ?? 'Normal'} | ` +
+        `Responsável: ${d.responsavelNome} | Prazo: ${sla.label}\n\n`;
+
+      if (corpo.length + linha.length > LIMITE_CORPO_EMAIL) break;
+      corpo += linha;
+      incluidas++;
     }
-  };
 
-  const openEditDialog = (demanda: Demanda) => {
-    setSelectedDemanda(demanda);
-    setIsDialogOpen(true);
-  };
+    if (incluidas < abertas.length) {
+      corpo += `... e mais ${abertas.length - incluidas} demanda(s). Veja o quadro completo no portal.\n\n`;
+    }
+    if (abertas.length === 0) {
+      corpo += 'Nenhuma demanda aberta com os filtros atuais.\n\n';
+    }
+    corpo += 'Atenciosamente,\nPortal de Gestão Pedagógica';
 
-  const openDeleteDialog = (demanda: Demanda) => {
-    setSelectedDemanda(demanda);
-    setIsDeleteDialogOpen(true);
-  };
+    const params = new URLSearchParams({
+      to: DESTINATARIOS_RELATORIO.join(','),
+      su: 'Relatório de Demandas — Diário de Bordo',
+      body: corpo,
+    });
+    return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
+  }, [demandasVisiveis]);
 
-  const handleGenerateSummary = async () => {
-    if (filteredDemandas.length === 0) {
-      toast({ title: 'Sem dados', description: 'Não há demandas filtradas para resumir.' });
+  const gerarResumo = useCallback(async () => {
+    if (demandasVisiveis.length === 0) {
+      toast({ title: 'Sem dados', description: 'Não há demandas visíveis para resumir.' });
       return;
     }
 
-    setLoadingSummary(true);
-    setIsSummaryDialogOpen(true);
+    setGerandoResumo(true);
+    setResumoIA(null);
+    setIsResumoOpen(true);
     try {
-      // Serializar demandas para plain objects (Timestamps do Firestore não podem ser passados para Server Functions)
-      const plainDemandas = filteredDemandas.map(d => ({
+      // Server Actions não aceitam Timestamp do Firestore: tudo vira string ISO.
+      const paraISO = (v: unknown) =>
+        v && typeof (v as Timestamp).toDate === 'function'
+          ? (v as Timestamp).toDate().toISOString()
+          : null;
+
+      const payload = demandasVisiveis.map((d) => ({
         ...d,
-        dataCriacao: d.dataCriacao ? (d.dataCriacao as any).toDate?.()?.toISOString?.() ?? String(d.dataCriacao) : null,
-        dataAtualizacao: d.dataAtualizacao ? (d.dataAtualizacao as any).toDate?.()?.toISOString?.() ?? String(d.dataAtualizacao) : null,
-        prazo: d.prazo ? (d.prazo as any).toDate?.()?.toISOString?.() ?? String(d.prazo) : null,
-        historico: d.historico?.map((h: any) => ({
-          ...h,
-          data: h.data ? (h.data as any).toDate?.()?.toISOString?.() ?? String(h.data) : null,
-        })) ?? [],
+        dataCriacao: paraISO(d.dataCriacao),
+        dataAtualizacao: paraISO(d.dataAtualizacao),
+        prazo: paraISO(d.prazo),
+        historico: (d.historico ?? []).map((h) => ({ ...h, data: paraISO(h.data) })),
       }));
-      const summary = await resumirDemandasFlow({ demandas: plainDemandas });
-      setAiSummary(summary);
+
+      setResumoIA(await resumirDemandasFlow({ demandas: payload }));
     } catch (error) {
-      console.error("Erro ao gerar resumo:", error);
-      toast({ variant: 'destructive', title: 'Erro na IA', description: 'Não foi possível gerar o resumo no momento.' });
-      setIsSummaryDialogOpen(false);
+      console.error('Erro ao gerar resumo:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro na IA',
+        description: 'Não foi possível gerar o resumo agora.',
+      });
+      setIsResumoOpen(false);
     } finally {
-      setLoadingSummary(false);
+      setGerandoResumo(false);
     }
-  };
+  }, [demandasVisiveis, toast]);
 
-  const filteredDemandas = useMemo(() => {
-    return demandas.filter(d => {
-      const searchMatch = searchTerm === '' ||
-        d.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.demanda.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        d.responsavelNome.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const responsavelMatch = responsavelFilter === 'all' || d.responsavelId === responsavelFilter;
-      const priorityMatch = priorityFilter === 'all' || d.prioridade === priorityFilter;
-      const viewMatch = viewMode === 'all' || d.responsavelId === user?.uid;
+  /* ----------------------------------------------------------------------- */
+  /* Render                                                                  */
+  /* ----------------------------------------------------------------------- */
 
-      return searchMatch && responsavelMatch && priorityMatch && viewMatch;
-    });
-  }, [demandas, searchTerm, responsavelFilter, priorityFilter, viewMode, user]);
-
- const groupedDemandas = useMemo(() => {
-    const grouped = statusOptions.reduce((acc, status) => {
-      acc[status] = [];
-      return acc;
-    }, {} as Record<StatusDemanda, Demanda[]>);
-
-    filteredDemandas.forEach(demanda => {
-      if (grouped[demanda.status]) {
-        grouped[demanda.status].push(demanda);
-      }
-    });
-
-    for (const status in grouped) {
-        grouped[status as StatusDemanda].sort((a, b) => {
-            const aIsUrgente = a.prioridade === 'Urgente';
-            const bIsUrgente = b.prioridade === 'Urgente';
-            if (aIsUrgente !== bIsUrgente) return aIsUrgente ? -1 : 1;
-
-            const aPrazo = a.prazo?.toMillis();
-            const bPrazo = b.prazo?.toMillis();
-            if (aPrazo && bPrazo) return aPrazo - bPrazo;
-            if (aPrazo) return -1;
-            if (bPrazo) return 1;
-
-            return (b.dataCriacao?.toMillis() ?? 0) - (a.dataCriacao?.toMillis() ?? 0);
-        });
-    }
-
-    return grouped;
-  }, [filteredDemandas]);
-  
-
-  const summaryStats = useMemo(() => {
-    return demandas.reduce((acc, d) => {
-      if (d.status === 'Pendente') acc.pendente++;
-      if (d.status === 'Em andamento') acc.emAndamento++;
-      if (d.status === 'Aguardando retorno') acc.aguardando++;
-      return acc;
-    }, { pendente: 0, emAndamento: 0, aguardando: 0 });
-  }, [demandas]);
-  
-  const generateDemandsEmailBody = (demandas: Demanda[]): string => {
-    let body = "Olá equipe,\n\nSegue a lista de demandas do Diário de Bordo, filtrada pela visão atual:\n\n";
-
-    if (demandas.length === 0) {
-        body += "Nenhuma demanda encontrada com os filtros atuais.\n";
-    } else {
-        demandas.forEach(d => {
-            const prazo = d.prazo ? d.prazo.toDate().toLocaleDateString('pt-BR') : 'N/A';
-            body += `Município: ${d.municipio} - ${d.uf}\n`;
-            body += `Demanda: ${d.demanda}\n`;
-            body += `Status: ${d.status}\n`;
-            body += `Prioridade: ${d.prioridade || 'Normal'}\n`;
-            body += `Responsável: ${d.responsavelNome}\n`;
-            body += `Prazo: ${prazo}\n`;
-            body += `--------------------------------------------------\n\n`;
-        });
-    }
-
-    body += "\nAtenciosamente,\nPortal de Gestão Pedagógica";
-    return body;
-  };
-
-  const emailHref = useMemo(() => {
-    const subject = "Relatório de Demandas - Diário de Bordo";
-    const demandasParaEmail = filteredDemandas.filter(d => d.status !== 'Concluída' && !d.validado);
-    const body = generateDemandsEmailBody(demandasParaEmail);
-    const recipients = [
-        "alessandra@editoralt.com.br",
-        "amaranta@editoralt.com.br",
-        "assessoria@editoralt.com.br",
-        "irene@editoralt.com.br",
-        "kellem@editoralt.com.br"
-    ];
-    
-    const params = new URLSearchParams({
-        to: recipients.join(','),
-        su: subject,
-        body: body,
-    });
-
-    return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
-  }, [filteredDemandas]);
-  
-  const formatPrazo = (prazo: Timestamp | undefined | null, status: StatusDemanda, validado?: boolean) => {
-    if (!prazo) return null;
-    const prazoDate = prazo.toDate();
-    const hoje = startOfToday();
-
-    if (status === 'Concluída' || validado) {
-        return <span>{prazoDate.toLocaleDateString('pt-BR')}</span>;
-    }
-
-    if (isBefore(prazoDate, hoje)) {
-      return <span className="text-red-600 font-semibold">{prazoDate.toLocaleDateString('pt-BR')} (Atrasado)</span>
-    }
-    return <span>{prazoDate.toLocaleDateString('pt-BR')} ({formatDistanceToNow(prazoDate, { addSuffix: true, locale: ptBR })})</span>;
-  };
-
-    const formatEtapaName = (etapa: string) => {
-        if (!etapa) return '';
-        const parts = etapa.split('_');
-        if (parts.length < 2) {
-            return etapa.charAt(0).toUpperCase() + etapa.slice(1);
-        }
-        const type = parts[0];
-        const identifier = parts[1];
-
-        if (type === 'implantacao') return 'Implantação';
-        if (type === 'diagnostica') return 'Diagnóstica';
-        if (type === 'simulado') return `Simulado ${identifier.replace('s', '')}`;
-        if (type === 'devolutiva') return `Devolutiva ${identifier.replace('d', '')}`;
-        return etapa;
-    };
-
-  if (loading && demandas.length === 0) {
-    return (
-      <div className="flex h-[80vh] w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const filaAtiva = QUEUES.find((q) => q.id === filtros.queue);
 
   return (
-    <div className="flex flex-col gap-4 py-6 h-full">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Diário de Bordo</h1>
-          <p className="text-muted-foreground">Registre e acompanhe as demandas dos municípios.</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleGenerateSummary} className="gap-2 border-purple-200 hover:bg-purple-50 dark:border-purple-800 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300">
-                <Sparkles className="h-4 w-4" />
-                Resumo IA
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col gap-4 py-6">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="font-headline text-3xl font-bold tracking-tight">Diário de Bordo</h1>
+            <p className="text-sm text-muted-foreground">
+              {filaAtiva
+                ? `Filtrando: ${filaAtiva.label.toLowerCase()} — ${filaAtiva.descricao.toLowerCase()}.`
+                : 'Acompanhe as demandas dos municípios do registro à validação.'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => buscarDados(true)}
+                  disabled={atualizando}
+                >
+                  <RefreshCw className={atualizando ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                  <span className="sr-only">Atualizar</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Recarregar as demandas</TooltipContent>
+            </Tooltip>
+
+            <Button variant="outline" onClick={gerarResumo} className="gap-2">
+              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="hidden sm:inline">Resumo IA</span>
             </Button>
-            <Button asChild variant="outline">
+
+            <Button asChild variant="outline" className="gap-2">
               <a href={emailHref} target="_blank" rel="noopener noreferrer">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar por Email
+                <Mail className="h-4 w-4" />
+                <span className="hidden sm:inline">Enviar por e-mail</span>
               </a>
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) setSelectedDemanda(null);
-            }}>
-            <DialogTrigger asChild>
-                <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Nova Demanda
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
-                <DialogHeader>
-                <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
-                <DialogDescription>
-                    {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
-                </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className='max-h-[80vh]'>
-                <div className='p-4'>
-                    <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
-                </div>
-                </ScrollArea>
-            </DialogContent>
-            </Dialog>
-        </div>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Demandas Pendentes</CardTitle>
-            <ListTodo className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{summaryStats.pendente}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Andamento</CardTitle>
-            <Hourglass className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{summaryStats.emAndamento}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aguardando Retorno</CardTitle>
-            <Hourglass className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{summaryStats.aguardando}</div></CardContent>
-        </Card>
-      </div>
 
-      <Card>
-        <CardContent className="p-4 flex flex-col md:flex-row flex-wrap items-center gap-4">
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value: 'all' | 'mine') => value && setViewMode(value)} className="border rounded-md">
-            <ToggleGroupItem value="all">Todas as Demandas</ToggleGroupItem>
-            <ToggleGroupItem value="mine">Minhas Demandas</ToggleGroupItem>
-          </ToggleGroup>
-          <div className="relative flex-grow w-full md:w-auto">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por município, demanda ou responsável..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <Button onClick={() => abrirDemanda(null)} className="gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Nova demanda
+            </Button>
+          </div>
+        </header>
+
+        {loading ? (
+          <BoardSkeleton />
+        ) : (
+          <>
+            <DiarioToolbar
+              filtros={filtros}
+              onChange={aplicarFiltros}
+              onLimpar={limparFiltros}
+              queueCounts={queueCounts}
+              responsaveis={responsaveis}
+              totalVisivel={totalVisivel}
+              totalGeral={demandas.length}
             />
-          </div>
-          <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Responsáveis</SelectItem>
-              {admins.map(admin => <SelectItem key={admin.id} value={admin.id}>{admin.nome}</SelectItem>)}
-            </SelectContent>
-          </Select>
-           <Select value={priorityFilter} onValueChange={(value) => setPriorityFilter(value as any)}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Filtrar por prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as Prioridades</SelectItem>
-              {priorityOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {statusOptions.map(status => {
-          const demandasDaColuna = groupedDemandas[status] || [];
-          return (
-            <div key={status} className="flex flex-col w-full rounded-lg bg-muted/40">
-                <div className="flex items-center justify-between p-4 border-b">
-                    <div className="flex items-center gap-2">
-                        <div className={cn("w-3 h-3 rounded-full", statusConfig[status].color.replace('border-', 'bg-'))} />
-                        <h2 className="font-semibold text-lg">{statusConfig[status].label}</h2>
-                    </div>
-                    <Badge variant="secondary">{demandasDaColuna.length}</Badge>
-                </div>
-                <ScrollArea className="flex-1">
-                    <div className="space-y-4 p-4">
-                        {loading ? (
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin mt-8" />
-                        ) : demandasDaColuna.length === 0 ? (
-                            <div className="text-center text-sm text-muted-foreground p-8">Nenhuma demanda aqui.</div>
-                        ) : (
-                            <>
-                              {(status === 'Concluída' && !showAllConcluidas ? demandasDaColuna.slice(0, 10) : demandasDaColuna).map(demanda => (
-                                <Card 
-                                    key={demanda.id} 
-                                    onClick={() => openEditDialog(demanda)} 
-                                    className={cn("cursor-pointer hover:shadow-md transition-shadow", getCardClass(demanda))}
-                                >
-                                    <CardHeader className="flex flex-row items-start justify-between p-3">
-                                        <div className="space-y-1">
-                                            {demanda.prioridade === 'Urgente' && (
-                                                <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                                    <AlertTriangle className="h-3 w-3" /> Urgente
-                                                </Badge>
-                                            )}
-                                            {demanda.validado && (
-                                                <Badge variant="outline" className="flex items-center gap-2 border-teal-500 bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300 dark:border-teal-700 text-teal-800">
-                                                    <BadgeCheck className="h-3 w-3" /> Validada
-                                                </Badge>
-                                            )}
-                                            {demanda.sincronizadoCalendario && (
-                                                <Badge variant="outline" className="flex items-center gap-1 border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                                    <CalendarDays className="h-3 w-3" /> Agenda
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                <Button variant="ghost" className="h-7 w-7 p-0">
-                                                <span className="sr-only">Abrir menu</span>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                              {demanda.status === 'Concluída' && !demanda.validado && canValidate && (
-                                                <>
-                                                  <DropdownMenuItem 
-                                                    onClick={(e) => { e.stopPropagation(); handleValidate(demanda.id); }}
-                                                    disabled={loadingValidation === demanda.id}
-                                                  >
-                                                    {loadingValidation === demanda.id ? (
-                                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                      <CheckCircle className="mr-2 h-4 w-4" />
-                                                    )}
-                                                    Validar Demanda
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuSeparator />
-                                                </>
-                                              )}
-                                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(demanda); }}>
-                                                <Pencil className="mr-2 h-4 w-4" /> Editar
-                                              </DropdownMenuItem>
-                                              {user?.perfil === 'administrador' && (
-                                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={(e) => { e.stopPropagation(); openDeleteDialog(demanda); }}>
-                                                  <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                                                </DropdownMenuItem>
-                                              )}
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </CardHeader>
-                                    <CardContent className="p-3 pt-0 space-y-2">
-                                        <p className="font-semibold text-sm">{demanda.municipio} - {demanda.uf}</p>
-                                        <div className="flex flex-wrap items-start gap-1">
-                                            {demanda.projetoOrigemId && (
-                                                <Badge variant="outline" className="flex items-center gap-1 w-fit text-xs">
-                                                    <ClipboardList className="h-3 w-3" />
-                                                    {demanda.projetoOrigemNome || `Projeto: ${demanda.projetoOrigemId.substring(0,4)}`}
-                                                </Badge>
-                                            )}
-                                            {demanda.etapaProjeto && (
-                                                <Badge variant="secondary" className="flex items-center gap-1 w-fit text-xs">
-                                                    <Target className="h-3 w-3" />
-                                                    {formatEtapaName(demanda.etapaProjeto)}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <p className="text-sm text-muted-foreground line-clamp-3">{demanda.demanda}</p>
-                                    </CardContent>
-                                    <CardFooter className="p-3 pt-0 text-xs text-muted-foreground space-y-2 flex-col items-start">
-                                      <div className="flex items-center gap-2">
-                                        <User className="h-3 w-3" /> {demanda.responsavelNome}
-                                      </div>
-                                      {demanda.prazo && (
-                                        <div className="flex items-center gap-2">
-                                          <Hourglass className="h-3 w-3" /> {formatPrazo(demanda.prazo, demanda.status, demanda.validado)}
-                                        </div>
-                                      )}
-                                    </CardFooter>
-                                </Card>
-                              ))}
-                              {status === 'Concluída' && !showAllConcluidas && demandasDaColuna.length > 10 && (
-                                <Button 
-                                  variant="outline" 
-                                  className="w-full mt-2" 
-                                  onClick={() => setShowAllConcluidas(true)}
-                                >
-                                  Ver mais ({demandasDaColuna.length - 10})
-                                </Button>
-                              )}
-                              {status === 'Concluída' && showAllConcluidas && demandasDaColuna.length > 10 && (
-                                <Button 
-                                  variant="ghost" 
-                                  className="w-full mt-2 text-muted-foreground" 
-                                  onClick={() => setShowAllConcluidas(false)}
-                                >
-                                  Mostrar menos
-                                </Button>
-                              )}
-                            </>
-                        )}
-                    </div>
-                </ScrollArea>
+            <div
+              onDragEnd={() => {
+                setArrastando(null);
+                setColunaAlvo(null);
+              }}
+              className="flex snap-x gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-4"
+            >
+              {STATUS_OPTIONS.map((status) => (
+                <BoardColumn
+                  key={status}
+                  status={status}
+                  demandas={colunas[status].visiveis}
+                  totalSemRecorte={colunas[status].total}
+                  isDropTarget={
+                    colunaAlvo === status && !!arrastando && arrastando.status !== status
+                  }
+                  onDragEnter={setColunaAlvo}
+                  onDragLeave={() => setColunaAlvo(null)}
+                  onDropDemanda={soltarNaColuna}
+                  emptyLabel={
+                    filtros.queue
+                      ? 'Nenhuma demanda desta fila neste status.'
+                      : 'Nenhuma demanda aqui.'
+                  }
+                  headerExtra={
+                    status === 'Concluída' ? (
+                      <Select
+                        value={filtros.janelaConcluidas}
+                        onValueChange={(v) =>
+                          aplicarFiltros({ janelaConcluidas: v as JanelaConcluidas })
+                        }
+                      >
+                        <SelectTrigger className="h-7 w-[92px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {JANELAS.map((j) => (
+                            <SelectItem key={j.value} value={j.value} className="text-xs">
+                              {j.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : undefined
+                  }
+                  renderCard={(demanda) => (
+                    <DemandaCard
+                      key={demanda.id}
+                      demanda={demanda}
+                      onOpen={abrirDemanda}
+                      onMoverStatus={moverStatus}
+                      onAlternarPrioridade={alternarPrioridade}
+                      onValidar={validarDemanda}
+                      onExcluir={setDemandaParaExcluir}
+                      canValidate={canValidate}
+                      canDelete={!!canDelete}
+                      isBusy={emMovimento.has(demanda.id)}
+                      isDragging={arrastando?.id === demanda.id}
+                      onDragStart={setArrastando}
+                      onDragEnd={() => {
+                        setArrastando(null);
+                        setColunaAlvo(null);
+                      }}
+                    />
+                  )}
+                />
+              ))}
             </div>
-          )
-        })}
-      </div>
+          </>
+        )}
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-            <AlertDialogDescription>Esta ação não pode ser desfeita. Isso excluirá permanentemente a demanda.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedDemanda(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Sim, excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) setSelectedDemanda(null);
-      }}>
-        <DialogContent className="sm:max-w-xl">
+        {/* Detalhe da demanda */}
+        <Dialog
+          open={isFormOpen}
+          onOpenChange={(open) => {
+            setIsFormOpen(open);
+            if (!open) setDemandaSelecionada(null);
+          }}
+        >
+          <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-            <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
-            <DialogDescription>
-                {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
-            </DialogDescription>
+              <DialogTitle>
+                {demandaSelecionada ? 'Editar demanda' : 'Nova demanda'}
+              </DialogTitle>
+              <DialogDescription>
+                {demandaSelecionada
+                  ? 'Altere os dados, comente e acompanhe o histórico.'
+                  : 'Preencha os dados para registrar uma nova demanda.'}
+              </DialogDescription>
             </DialogHeader>
-            <ScrollArea className='max-h-[80vh]'>
-            <div className='p-4'>
-                <FormDemanda demanda={selectedDemanda} onSuccess={handleSuccess} />
-            </div>
+            <ScrollArea className="max-h-[75vh]">
+              <div className="p-4">
+                <FormDemanda demanda={demandaSelecionada} onSuccess={aoSalvarFormulario} />
+              </div>
             </ScrollArea>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
 
-      <Dialog open={isSummaryDialogOpen} onOpenChange={setIsSummaryDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
-              Resumo da Equipe (IA)
-            </DialogTitle>
-            <DialogDescription>
-              Uma análise baseada em IA das demandas visíveis atualmente nos seus filtros.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <ScrollArea className="mt-4 h-[500px] max-h-[50vh] w-full rounded-md border p-4 bg-muted/30">
-            {loadingSummary ? (
-              <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground animate-pulse">Analisando dados e gerando insights...</p>
-              </div>
-            ) : aiSummary ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap leading-relaxed">
-                {aiSummary}
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground py-10">
-                Nenhum resumo disponível.
-              </div>
-            )}
-          </ScrollArea>
-          
-          <div className="mt-4 flex justify-end">
-            <Button onClick={() => setIsSummaryDialogOpen(false)}>Fechar</Button>
+        {/* Confirmação de exclusão */}
+        <AlertDialog
+          open={!!demandaParaExcluir}
+          onOpenChange={(open) => !open && setDemandaParaExcluir(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir esta demanda?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {demandaParaExcluir
+                  ? `"${demandaParaExcluir.demanda.slice(0, 120)}" (${demandaParaExcluir.municipio}/${demandaParaExcluir.uf}) será removida junto com todo o histórico. Esta ação não pode ser desfeita.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={excluirDemanda}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim, excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Resumo por IA */}
+        <Dialog open={isResumoOpen} onOpenChange={setIsResumoOpen}>
+          <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                Resumo da equipe
+              </DialogTitle>
+              <DialogDescription>
+                Análise das {demandasVisiveis.length} demandas visíveis nos filtros atuais.
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScrollArea className="mt-2 max-h-[55vh] rounded-md border bg-muted/30 p-4">
+              {gerandoResumo ? (
+                <div className="flex min-h-[240px] flex-col items-center justify-center gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="animate-pulse text-sm text-muted-foreground">
+                    Analisando as demandas...
+                  </p>
+                </div>
+              ) : resumoIA ? (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">{resumoIA}</div>
+              ) : (
+                <p className="py-10 text-center text-sm text-muted-foreground">
+                  Nenhum resumo disponível.
+                </p>
+              )}
+            </ScrollArea>
+
+            <div className="mt-3 flex justify-end gap-2">
+              {resumoIA && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(resumoIA);
+                    toast({ title: 'Copiado', description: 'O resumo foi para a área de transferência.' });
+                  }}
+                >
+                  Copiar
+                </Button>
+              )}
+              <Button onClick={() => setIsResumoOpen(false)}>Fechar</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
+  );
+}
+
+function BoardSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-[68px] rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="h-[52px] rounded-lg" />
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, coluna) => (
+          <div key={coluna} className="space-y-2 rounded-lg border bg-muted/40 p-2">
+            <Skeleton className="h-8" />
+            {Array.from({ length: 3 }).map((_, card) => (
+              <Skeleton key={card} className="h-[124px] rounded-md" />
+            ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        ))}
+      </div>
     </div>
   );
 }
