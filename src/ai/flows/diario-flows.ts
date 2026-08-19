@@ -2,6 +2,7 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
+import { gerarTextoComFallback } from '@/ai/gerar-com-fallback';
 import { z } from 'genkit';
 import type { Demanda } from '@/lib/types';
 
@@ -23,14 +24,7 @@ export const melhorarDescricaoDemandaFlow = ai.defineFlow(
   async (input) => {
     const prompt = `Você é um assistente de gestão de projetos. Melhore a seguinte descrição de tarefa para ficar mais clara, profissional, objetiva e acionável. Não adicione saudações ou comentários extras, retorne APENAS a descrição melhorada.\n\nDescrição original: ${input.descricao}`;
 
-    const { text } = await ai.generate({ 
-      model: 'googleai/gemini-2.5-flash',
-      prompt,
-      config: {
-        temperature: 0.3,
-      }
-    });
-    return text.trim();
+    return gerarTextoComFallback(prompt, { temperature: 0.3 });
   }
 );
 
@@ -59,10 +53,6 @@ export const resumirDemandasFlow = ai.defineFlow(
     4. Mencione os responsáveis pelos trabalhos.
     5. O texto deve ter de 2 a 3 parágrafos curtos.\n\n${boardData}`;
 
-    const { text } = await ai.generate({ 
-      model: 'googleai/gemini-2.5-flash',
-      prompt 
-    });
-    return text;
+    return gerarTextoComFallback(prompt);
   }
 );

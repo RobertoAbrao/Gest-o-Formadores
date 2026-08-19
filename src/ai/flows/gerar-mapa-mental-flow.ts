@@ -8,6 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { gerarTextoComFallback } from '@/ai/gerar-com-fallback';
 import { z } from 'genkit';
 
 const RespostasAbertasSchema = z.object({
@@ -85,8 +86,7 @@ const gerarMapaMentalFlow = ai.defineFlow(
       Agora, gere o mapa mental para os dados fornecidos.
     `;
 
-    const { text } = await ai.generate({ model: 'googleai/gemini-2.5-flash', prompt });
-    return text;
+    return gerarTextoComFallback(prompt);
   }
 );
 

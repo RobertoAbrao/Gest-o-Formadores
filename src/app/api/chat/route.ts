@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  chatGratuito,
+  MODELOS_GRATUITOS_COM_TOOLS,
+  type MensagemChat,
+} from '@/lib/ai/openrouter-free';
+import {
   listFormadores,
   getFormador,
   createFormador,
@@ -585,29 +590,18 @@ async function execEstatisticas() {
 
 // ─── OPENROUTER API CALL ──────────────────────────────────────
 
+/**
+ * O modelo anterior (`openrouter/owl-alpha`) foi removido da API do OpenRouter.
+ * A chamada agora percorre a cascata gratuita, que só contém modelos com
+ * preço zero e suporte a tool calling.
+ */
 async function callOpenRouter(messages: any[], tools: any[]): Promise<any> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://gest-o-formadores.vercel.app',
-      'X-Title': 'Gestão de Formadores',
-    },
-    body: JSON.stringify({
-      model: 'openrouter/owl-alpha',
-      messages,
-      tools,
-      tool_choice: 'auto',
-    }),
+  return chatGratuito({
+    messages: messages as MensagemChat[],
+    tools,
+    toolChoice: 'auto',
+    modelos: MODELOS_GRATUITOS_COM_TOOLS,
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-  }
-
-  return response.json();
 }
 
 // ─── CHAT ROUTE ───────────────────────────────────────────────
