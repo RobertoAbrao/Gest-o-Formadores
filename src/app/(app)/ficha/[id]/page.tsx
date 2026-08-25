@@ -143,8 +143,25 @@ export default function FichaDevolutivaPage() {
             setIntroducao(fichaData.introducao);
             setHorario(fichaData.horario);
             setEndereco(fichaData.endereco);
-            setAgendas(fichaData.agendas || {});
-            setLinksOnline(fichaData.links?.map((l, i) => ({ ...l, id: `loaded_${i}`})) || []);
+            // A ficha pode ter sido salva antes de a formação receber os formadores (ou depois
+            // de a equipe mudar). Reconcilia o que está salvo com a equipe atual em vez de
+            // exibir a tabela vazia: mantém o que já foi preenchido e acrescenta quem falta.
+            const agendasSalvas = fichaData.agendas || {};
+            const agendasReconciliadas: AgendasState = { ...agendasSalvas };
+            formadoresData.forEach(formador => {
+                if (!agendasReconciliadas[formador.id]) {
+                    agendasReconciliadas[formador.id] = [{ dia: '', horario: '', area: '', participantes: 0 }];
+                }
+            });
+            setAgendas(agendasReconciliadas);
+
+            const linksSalvos: LinkOnline[] = (fichaData.links || []).map((l, i) => ({ ...l, id: `loaded_${i}` }));
+            const nomesComLink = new Set(linksSalvos.map(l => l.formadorNome));
+            const linksFaltantes: LinkOnline[] = formadoresData
+                .filter(formador => !nomesComLink.has(formador.nomeCompleto))
+                .map(formador => ({ id: formador.id, formadorNome: formador.nomeCompleto, anoArea: '', linkUrl: '' }));
+            setLinksOnline([...linksSalvos, ...linksFaltantes]);
+
             setFormadoresGenericos(fichaData.formadoresGenericos || []);
             setAgendasGenericas(fichaData.agendasGenericas || {});
         } else {

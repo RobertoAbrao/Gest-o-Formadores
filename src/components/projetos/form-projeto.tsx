@@ -548,6 +548,53 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     }
   };
 
+  // Espelha na formação vinculada os campos que a ficha (/ficha/[id]) e o quadro leem.
+  // A ficha monta a equipe a partir de 'formacoes.formadoresIds'; até aqui esse espelho só
+  // acontecia no botão "Atualizar Formação", então quem preenchia os formadores depois de
+  // criar a formação ficava com a ficha vazia. Só grava campo que tem valor no projeto —
+  // nunca zera o que já existe na formação.
+  const sincronizarFormacoesVinculadas = (values: FormValues) => {
+    const alvos: { formacaoId: string; formadores?: string[] | null; dataInicio?: Date | null; dataFim?: Date | null }[] = [];
+
+    (values.implantacoes || []).forEach(imp => {
+      if (imp.formacaoId) {
+        alvos.push({ formacaoId: imp.formacaoId, formadores: imp.formadores, dataInicio: imp.dataInicio, dataFim: imp.dataFim });
+      }
+    });
+
+    (['d1', 'd2', 'd3', 'd4'] as const).forEach(chave => {
+      const dev = values.devolutivas?.[chave];
+      if (dev?.formacaoId) {
+        alvos.push({ formacaoId: dev.formacaoId, formadores: dev.formadores, dataInicio: dev.dataInicio, dataFim: dev.dataFim });
+      }
+    });
+
+    alvos.forEach(({ formacaoId, formadores, dataInicio, dataFim }) => {
+      const updateData: Record<string, any> = {};
+      const nomes = formadores || [];
+
+      if (nomes.length > 0) {
+        updateData.formadoresNomes = nomes;
+        updateData.formadoresIds = allFormadores.filter(f => nomes.includes(f.nomeCompleto)).map(f => f.id);
+      }
+      if (dataInicio) updateData.dataInicio = timestampOrNull(dataInicio);
+      if (dataFim) updateData.dataFim = timestampOrNull(dataFim);
+
+      if (Object.keys(updateData).length === 0) return;
+
+      const formacaoRef = doc(db, 'formacoes', formacaoId);
+      updateDoc(formacaoRef, updateData)
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: formacaoRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        });
+    });
+  };
+
   async function onSubmit(values: FormValues) {
     if (!user) {
       toast({ variant: 'destructive', title: 'Erro de autenticação' });
@@ -640,6 +687,9 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         });
         toast({ title: 'Sucesso!', description: 'Projeto criado com sucesso.' });
       }
+
+      sincronizarFormacoesVinculadas(values);
+
       onSuccess();
     } catch (error: any) {
       console.error('Submit error:', error);
@@ -667,11 +717,15 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
     setLoading(true);
     try {
+      // Ids e nomes precisam descrever o mesmo conjunto: a ficha lê 'formadoresIds' e o
+      // quadro lê 'formadoresNomes'. Preencher um e deixar o outro vazio gera ficha em branco.
+      let finalFormadoresNomes: string[] = formadorNomes || [];
       let finalFormadoresIds: string[] = [];
-      if (formadorNomes && formadorNomes.length > 0) {
-        finalFormadoresIds = allFormadores.filter(f => formadorNomes.includes(f.nomeCompleto)).map(f => f.id);
+      if (finalFormadoresNomes.length > 0) {
+        finalFormadoresIds = allFormadores.filter(f => finalFormadoresNomes.includes(f.nomeCompleto)).map(f => f.id);
       } else {
         finalFormadoresIds = form.getValues('formadoresIds') || [];
+        finalFormadoresNomes = allFormadores.filter(f => finalFormadoresIds.includes(f.id)).map(f => f.nomeCompleto);
       }
 
 
@@ -683,7 +737,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         uf,
         codigo: generateFormationCode(municipio),
         formadoresIds: finalFormadoresIds,
-        formadoresNomes: formadorNomes,
+        formadoresNomes: finalFormadoresNomes,
         materiaisIds: [],
         avaliacoesAbertas: false,
         dataInicio: dataInicio ? Timestamp.fromDate(dataInicio) : null,
