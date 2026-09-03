@@ -333,6 +333,25 @@ export const CHAVES_POR_ETAPA = {
 
 export type EtapaProjeto = keyof typeof CHAVES_POR_ETAPA;
 
+/**
+ * Campos do FORMULÁRIO por etapa — não confundir com `CHAVES_POR_ETAPA`, que são
+ * chaves do DOCUMENTO. Os dois divergem de propósito: o documento tem espelhos
+ * legados (`implantacaoFormadores` etc.) que não existem no formulário.
+ *
+ * Usado para limpar o estado "sujo" só dos campos que o auto-save acabou de gravar,
+ * preservando o `isDirty` de edições manuais em outras seções.
+ */
+export const CAMPOS_FORM_POR_ETAPA = {
+  dadosGerais: ['municipio', 'uf', 'versao', 'material', 'brasaoId', 'dossieUrl', 'dataMigracao', 'qtdAlunos', 'qtdProfessores', 'formacoesPendentes', 'responsavelId'],
+  formadores: ['formadoresIds'],
+  diagnostica: ['diagnostica'],
+  simulados: ['simulados'],
+  devolutivas: ['devolutivas'],
+  implantacoes: ['implantacoes'],
+  reunioes: ['reunioes'],
+  eventosAdicionais: ['eventosAdicionais'],
+} as const satisfies Record<EtapaProjeto, readonly string[]>;
+
 /** Recorta do payload completo apenas as chaves das etapas informadas. */
 export function recortarPayload(payload: Record<string, any>, etapas: readonly EtapaProjeto[]): Record<string, any> {
   const recorte: Record<string, any> = {};

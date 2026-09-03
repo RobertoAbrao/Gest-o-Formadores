@@ -56,8 +56,11 @@ import { ESTADOS_BR } from '@/lib/estados-br';
 import {
   buildProjetoPayload,
   cleanObject,
+  recortarPayload,
   timestampOrNull,
   toDate,
+  CAMPOS_FORM_POR_ETAPA,
+  type EtapaProjeto,
   type FileUploadKey,
   type FormValues,
 } from './projeto-form-schema';
@@ -84,6 +87,14 @@ interface FormProjetoProps {
 export interface FormProjetoHandle {
   /** Submete e RESOLVE só depois da gravação terminar. */
   submit: () => Promise<boolean>;
+  /** Grava só o recorte das etapas informadas (auto-save do robô). */
+  salvarEtapas: (etapas: readonly EtapaProjeto[]) => Promise<boolean>;
+  /**
+   * Acrescenta uma implantação e devolve o índice dela.
+   * Passa pelo `useFieldArray` de propósito: `setValue` no array inteiro grava os
+   * valores mas não sincroniza as linhas já renderizadas do formulário.
+   */
+  adicionarImplantacao: (entrada: Record<string, unknown>) => number;
   criarFormacaoDevolutiva: (devolutivaNumber: 1 | 2 | 3 | 4) => Promise<void>;
   atualizarFormacaoDevolutiva: (devolutivaNumber: 1 | 2 | 3 | 4) => Promise<void>;
   criarFormacaoImplantacao: (index: number) => Promise<void>;
@@ -525,6 +536,77 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
     await gravarProjeto(values, false);
   }
 
+  /**
+   * Auto-save por etapa — o robo guiado grava a cada decisao do usuario.
+   *
+   * Grava SO o recorte do payload correspondente as etapas informadas. Isso tem
+   * duas consequencias boas e deliberadas:
+   *  1. Escrita pequena (importa em 4G).
+   *  2. Um campo invalido que o robo nunca tocou (ex.: dossieUrl mal digitado numa
+   *     edicao manual) nao vai parar no banco nem bloqueia o passo — diferente do
+   *     submit inteiro, que valida o formulario todo.
+   */
+  const salvarEtapas = useCallback(async (etapas: readonly EtapaProjeto[]): Promise<boolean> => {
+    if (!projeto?.id) {
+      toast({ variant: 'destructive', title: 'Ação necessária', description: 'Selecione um projeto já salvo para usar o preenchimento guiado.' });
+      return false;
+    }
+
+    const values = form.getValues();
+    const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+    const payload = buildProjetoPayload(values, selectedAdmin?.nome || '');
+    const recorte = recortarPayload(payload, etapas);
+
+    if (Object.keys(recorte).length === 0) return true;
+
+    setLoading(true);
+    const projetoRef = doc(db, 'projetos', projeto.id);
+    try {
+      await updateDoc(projetoRef, recorte).catch((serverError) => {
+        errorEmitter.emit(
+          'permission-error',
+          new FirestorePermissionError({
+            path: projetoRef.path,
+            operation: 'update',
+            requestResourceData: recorte,
+          })
+        );
+        throw serverError;
+      });
+
+      // Formacoes vinculadas seguem as datas/formadores do projeto. Sincroniza so
+      // quando a etapa gravada realmente pode ter mexido nelas.
+      if (etapas.some(e => e === 'devolutivas' || e === 'implantacoes')) {
+        sincronizarFormacoesVinculadas(values);
+      }
+
+      // Limpa o "sujo" apenas dos campos gravados: edicoes manuais pendentes em
+      // outras secoes continuam sinalizadas para o usuario.
+      for (const etapa of etapas) {
+        for (const campo of CAMPOS_FORM_POR_ETAPA[etapa]) {
+          form.resetField(campo as any, { defaultValue: form.getValues(campo as any) });
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Não salvou',
+        description: 'A alteração não chegou ao servidor. Verifique a conexão e tente de novo.',
+      });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [projeto, form, admins, toast]);
+
+  const adicionarImplantacao = useCallback((entrada: Record<string, unknown>): number => {
+    const indice = (form.getValues('implantacoes') || []).length;
+    appendImplantacao(entrada as any);
+    return indice;
+  }, [appendImplantacao, form]);
+
   /** Submit programatico do robo: valida, grava e so resolve depois de confirmar. */
   const submitAndWait = useCallback(async (): Promise<boolean> => {
     let gravou = false;
@@ -808,6 +890,8 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
     ref,
     () => ({
       submit: submitAndWait,
+      salvarEtapas,
+      adicionarImplantacao,
       criarFormacaoDevolutiva: handleCreateDevolutivaFormation,
       atualizarFormacaoDevolutiva: handleUpdateFormation,
       criarFormacaoImplantacao: handleCreateImplantacaoFormation,
@@ -818,7 +902,7 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
       formadores: allFormadores,
       admins,
     }),
-    [submitAndWait, allFormadores, admins]
+    [submitAndWait, salvarEtapas, adicionarImplantacao, allFormadores, admins]
   );
 
   return (
