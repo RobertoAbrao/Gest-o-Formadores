@@ -1,9 +1,7 @@
 
 'use client';
 
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import {
   collection,
   doc,
@@ -35,7 +33,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Loader2, CalendarIcon, Info, PlusCircle, Trash2, ChevronsUpDown, Check, X, RefreshCw, UploadCloud, Image as ImageIcon, Eraser, Star, Shield, DownloadCloud, UserCog } from 'lucide-react';
 import type { Formacao, Formador, DevolutivaLink, Anexo, HistoricoItem, ProjetoImplatancao, ImplantacaoEntry } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -55,112 +53,54 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useAuth } from '@/hooks/use-auth';
 import { ESTADOS_BR } from '@/lib/estados-br';
-
-const etapaStatusSchema = z.object({
-  data: z.date().nullable().optional(),
-  ok: z.boolean().optional(),
-  detalhes: z.string().optional(),
-  anexosIds: z.array(z.string()).optional(),
-});
-
-const periodoStatusSchema = z.object({
-  dataInicio: z.date().nullable().optional(),
-  dataFim: z.date().nullable().optional(),
-  ok: z.boolean().optional(),
-  detalhes: z.string().optional(),
-  anexosIds: z.array(z.string()).optional(),
-});
-
-const devolutivaLinkSchema = z.object({
-  formacaoId: z.string().optional(),
-  formacaoTitulo: z.string().optional(),
-  dataInicio: z.date().nullable().optional(),
-  dataFim: z.date().nullable().optional(),
-  formadores: z.array(z.string()).optional(),
-  ok: z.boolean().optional(),
-  detalhes: z.string().optional(),
-  anexosIds: z.array(z.string()).optional(),
-  responsavelId: z.string().optional(),
-  responsavelNome: z.string().optional(),
-});
-
-
-const linkReuniaoSchema = z.object({
-    url: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
-    descricao: z.string().optional(),
-});
-
-const reuniaoSchema = z.object({
-    data: z.date().nullable().optional(),
-    links: z.array(linkReuniaoSchema).optional(),
-});
-
-const eventoAdicionalSchema = z.object({
-  titulo: z.string().min(1, "O título é obrigatório."),
-  data: z.date().nullable().optional(),
-  detalhes: z.string().optional(),
-  anexosIds: z.array(z.string()).optional(),
-});
-
-const implantacaoEntrySchema = z.object({
-  titulo: z.string().optional(),
-  dataInicio: z.date().nullable().optional(),
-  dataFim: z.date().nullable().optional(),
-  formadores: z.array(z.string()).optional(),
-  detalhes: z.string().optional(),
-  formacaoId: z.string().optional(),
-  anexosIds: z.array(z.string()).optional(),
-});
-
-
-const formSchema = z.object({
-  municipio: z.string().min(1, { message: 'O município é obrigatório.' }),
-  uf: z.string().min(2, { message: 'O estado é obrigatório.'}),
-  versao: z.string().optional(),
-  material: z.string().optional(),
-  brasaoId: z.string().optional(),
-  dossieUrl: z.string().url("Por favor, insira uma URL válida.").optional().or(z.literal('')),
-  dataMigracao: z.date().nullable(),
-  anexo: z.any().optional(), // Campo legado
-  implantacoes: z.array(implantacaoEntrySchema).optional(),
-  responsavelId: z.string().optional(),
-  qtdAlunos: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
-    z.number().min(0).optional()
-  ),
-  qtdProfessores: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
-    z.number().min(0).optional()
-  ),
-  formacoesPendentes: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined) ? undefined : Number(val),
-    z.number().min(0).optional()
-  ),
-  formadoresIds: z.array(z.string()).optional(),
-  diagnostica: etapaStatusSchema,
-  simulados: z.object({
-    s1: periodoStatusSchema,
-    s2: periodoStatusSchema,
-    s3: periodoStatusSchema,
-    s4: periodoStatusSchema,
-  }),
-  devolutivas: z.object({
-    d1: devolutivaLinkSchema,
-    d2: devolutivaLinkSchema,
-    d3: devolutivaLinkSchema,
-    d4: devolutivaLinkSchema,
-  }),
-  reunioes: z.array(reuniaoSchema).optional(),
-  eventosAdicionais: z.array(eventoAdicionalSchema).optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import {
+  buildProjetoPayload,
+  cleanObject,
+  timestampOrNull,
+  toDate,
+  type FileUploadKey,
+  type FormValues,
+} from './projeto-form-schema';
+import { useProjetoForm } from './use-projeto-form';
 
 interface FormProjetoProps {
   projeto?: ProjetoImplatancao | null;
   onSuccess: () => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  /**
+   * Instância de formulário criada por quem renderiza (página `/agente`).
+   * Omitida, o componente cria a sua — comportamento das telas atuais.
+   */
+  form?: UseFormReturn<FormValues>;
+  /**
+   * Chamado quando o submit é barrado pela validação. Sem isto, o react-hook-form
+   * apenas foca o campo inválido — que no celular pode estar numa aba invisível,
+   * e o salvamento falha em silêncio.
+   */
+  onInvalid?: (errors: Record<string, unknown>) => void;
 }
+
+/** Ações imperativas que o robô guiado dispara neste formulário. */
+export interface FormProjetoHandle {
+  /** Submete e RESOLVE só depois da gravação terminar. */
+  submit: () => Promise<boolean>;
+  criarFormacaoDevolutiva: (devolutivaNumber: 1 | 2 | 3 | 4) => Promise<void>;
+  atualizarFormacaoDevolutiva: (devolutivaNumber: 1 | 2 | 3 | 4) => Promise<void>;
+  criarFormacaoImplantacao: (index: number) => Promise<void>;
+  atualizarFormacaoImplantacao: (index: number) => Promise<void>;
+  /** Rola até a seção indicada (usado ao trocar para a aba do formulário). */
+  irParaSecao: (secao: SecaoProjeto) => void;
+  formadores: Formador[];
+  admins: AdminUser[];
+}
+
+export type SecaoProjeto =
+  | 'dados-gerais'
+  | 'implantacoes'
+  | 'reunioes'
+  | 'eventos-adicionais'
+  | 'avaliacoes'
+  | 'devolutivas';
 
 interface Estado {
     id: number;
@@ -178,15 +118,6 @@ interface AdminUser {
     nome: string;
 }
 
-const toDate = (timestamp: Timestamp | null | undefined): Date | null => {
-    if (!timestamp) return null;
-    return timestamp.toDate();
-};
-
-const timestampOrNull = (date: Date | null | undefined): Timestamp | null => {
-  return date ? Timestamp.fromDate(date) : null;
-};
-
 const fileToDataURL = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -196,41 +127,11 @@ const fileToDataURL = (file: File): Promise<string> => {
   });
 };
 
-const cleanObject = (obj: any): any => {
-    if (obj === null || typeof obj !== 'object' || obj instanceof Date || obj instanceof Timestamp) {
-      return obj;
-    }
-    if (Array.isArray(obj)) {
-      return obj.map(cleanObject);
-    }
-    const newObj: any = {};
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        const value = obj[key];
-        if (value !== undefined) {
-          newObj[key] = cleanObject(value);
-        }
-      }
-    }
-    return newObj;
-};
 
-type FileUploadKey = 
-  | 'diagnostica' 
-  | 'implantacao'
-  | `implantacoes.${number}`
-  | 'simulados.s1' 
-  | 'simulados.s2' 
-  | 'simulados.s3' 
-  | 'simulados.s4'
-  | 'devolutivas.d1'
-  | 'devolutivas.d2'
-  | 'devolutivas.d3'
-  | 'devolutivas.d4'
-  | 'brasao'
-  | `eventosAdicionais.${number}`;
-
-export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoProps) {
+export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(function FormProjeto(
+  { projeto, onSuccess, onDirtyChange, form: formExterno, onInvalid },
+  ref
+) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -247,76 +148,13 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
   
   const isEditMode = !!projeto;
 
-  const defaultValues = useMemo(() => {
-    return {
-      municipio: projeto?.municipio || '',
-      uf: projeto?.uf || '',
-      versao: projeto?.versao || '',
-      material: projeto?.material || '',
-      brasaoId: projeto?.brasaoId || '',
-      dossieUrl: projeto?.dossieUrl || '',
-      dataMigracao: toDate(projeto?.dataMigracao),
-      anexo: projeto?.anexo || null,
-      implantacoes: projeto?.implantacoes
-        ? projeto.implantacoes.map(imp => ({
-            titulo: imp.titulo || '',
-            dataInicio: toDate(imp.dataInicio),
-            dataFim: toDate(imp.dataFim),
-            formadores: imp.formadores || [],
-            detalhes: imp.detalhes || '',
-            formacaoId: imp.formacaoId || '',
-            anexosIds: imp.anexosIds || [],
-          }))
-        : projeto?.dataInicioImplantacao || projeto?.dataFimImplantacao || projeto?.implantacaoDetalhes
-          ? [{
-              titulo: 'Implantação',
-              dataInicio: toDate(projeto?.dataInicioImplantacao),
-              dataFim: toDate(projeto?.dataFimImplantacao),
-              formadores: projeto?.implantacaoFormadores || [],
-              detalhes: projeto?.implantacaoDetalhes || '',
-              formacaoId: projeto?.implantacaoFormacaoId || '',
-              anexosIds: projeto?.implantacaoAnexosIds || [],
-            }]
-          : [],
-      responsavelId: projeto?.responsavelId || '',
-      qtdAlunos: projeto?.qtdAlunos || undefined,
-      qtdProfessores: projeto?.qtdProfessores || undefined,
-      formacoesPendentes: projeto?.formacoesPendentes || undefined,
-      formadoresIds: projeto?.formadoresIds || [],
-      diagnostica: { data: toDate(projeto?.diagnostica?.data), ok: projeto?.diagnostica?.ok || false, detalhes: projeto?.diagnostica?.detalhes || '', anexosIds: projeto?.diagnostica?.anexosIds || [] },
-      simulados: {
-        s1: { dataInicio: toDate(projeto?.simulados?.s1?.dataInicio), dataFim: toDate(projeto?.simulados?.s1?.dataFim), ok: projeto?.simulados?.s1?.ok || false, detalhes: projeto?.simulados?.s1?.detalhes || '', anexosIds: projeto?.simulados?.s1?.anexosIds || [] },
-        s2: { dataInicio: toDate(projeto?.simulados?.s2?.dataInicio), dataFim: toDate(projeto?.simulados?.s2?.dataFim), ok: projeto?.simulados?.s2?.ok || false, detalhes: projeto?.simulados?.s2?.detalhes || '', anexosIds: projeto?.simulados?.s2?.anexosIds || [] },
-        s3: { dataInicio: toDate(projeto?.simulados?.s3?.dataInicio), dataFim: toDate(projeto?.simulados?.s3?.dataFim), ok: projeto?.simulados?.s3?.ok || false, detalhes: projeto?.simulados?.s3?.detalhes || '', anexosIds: projeto?.simulados?.s3?.anexosIds || [] },
-        s4: { dataInicio: toDate(projeto?.simulados?.s4?.dataInicio), dataFim: toDate(projeto?.simulados?.s4?.dataFim), ok: projeto?.simulados?.s4?.ok || false, detalhes: projeto?.simulados?.s4?.detalhes || '', anexosIds: projeto?.simulados?.s4?.anexosIds || [] },
-      },
-      devolutivas: {
-        d1: { ...projeto?.devolutivas?.d1, dataInicio: toDate(projeto?.devolutivas?.d1?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d1?.dataFim), anexosIds: projeto?.devolutivas?.d1?.anexosIds || [] },
-        d2: { ...projeto?.devolutivas?.d2, dataInicio: toDate(projeto?.devolutivas?.d2?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d2?.dataFim), anexosIds: projeto?.devolutivas?.d2?.anexosIds || [] },
-        d3: { ...projeto?.devolutivas?.d3, dataInicio: toDate(projeto?.devolutivas?.d3?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d3?.dataFim), anexosIds: projeto?.devolutivas?.d3?.anexosIds || [] },
-        d4: { ...projeto?.devolutivas?.d4, dataInicio: toDate(projeto?.devolutivas?.d4?.dataInicio), dataFim: toDate(projeto?.devolutivas?.d4?.dataFim), anexosIds: projeto?.devolutivas?.d4?.anexosIds || [] },
-      },
-      reunioes: projeto?.reunioes?.map(r => ({
-          data: toDate(r.data),
-          links: r.links ? [...r.links, ...Array(4 - r.links.length).fill({ url: '', descricao: '' })].slice(0, 4) : Array(4).fill({ url: '', descricao: '' }),
-      })) || [],
-      eventosAdicionais: projeto?.eventosAdicionais?.map(e => ({
-          ...e,
-          data: toDate(e.data),
-      })) || [],
-    }
-  }, [projeto]);
+  // A instancia pode vir de fora: na pagina /agente o robo guiado e este
+  // formulario precisam operar o MESMO form. Sem a prop, o componente cria a
+  // sua propria - e por isso que as telas existentes nao mudam.
+  const formInterno = useProjetoForm(projeto);
+  const form = formExterno ?? formInterno;
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-  });
-  
   const { formState: { isDirty } } = form;
-
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [defaultValues, form]);
 
 
   useEffect(() => {
@@ -595,102 +433,81 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
     });
   };
 
-  async function onSubmit(values: FormValues) {
+  /**
+   * Grava o projeto no Firestore.
+   *
+   * `aguardarGravacao` existe por causa do robo guiado: o fluxo dele encadeia
+   * "salvar -> criar formacao -> salvar de novo", e cada passo precisa ter certeza
+   * de que o anterior chegou ao servidor. O submit normal do formulario continua
+   * disparando a escrita sem esperar (comportamento historico desta tela), para
+   * nao mudar o tempo de fechamento dos dialogos ja existentes.
+   *
+   * Retorna true se a gravacao foi aceita.
+   */
+  async function gravarProjeto(values: FormValues, aguardarGravacao = false): Promise<boolean> {
     if (!user) {
       toast({ variant: 'destructive', title: 'Erro de autenticação' });
-      return;
+      return false;
     }
     setLoading(true);
 
     const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
 
     try {
-      
-      const dataToSave = {
-          ...values,
-          responsavelNome: selectedAdmin?.nome || '',
-          dataMigracao: timestampOrNull(values.dataMigracao),
-          // Novo formato: array de implantações
-          implantacoes: (values.implantacoes || []).map(imp => ({
-            titulo: imp.titulo || '',
-            dataInicio: timestampOrNull(imp.dataInicio),
-            dataFim: timestampOrNull(imp.dataFim),
-            formadores: imp.formadores || [],
-            detalhes: imp.detalhes || '',
-            formacaoId: imp.formacaoId || '',
-            anexosIds: imp.anexosIds || [],
-          })),
-          // Campos legados (primeira implantação para retrocompatibilidade)
-          dataInicioImplantacao: timestampOrNull(values.implantacoes?.[0]?.dataInicio),
-          dataFimImplantacao: timestampOrNull(values.implantacoes?.[0]?.dataFim),
-          implantacaoFormadores: values.implantacoes?.[0]?.formadores || [],
-          implantacaoDetalhes: values.implantacoes?.[0]?.detalhes || '',
-          implantacaoFormacaoId: values.implantacoes?.[0]?.formacaoId || '',
-          implantacaoAnexosIds: values.implantacoes?.[0]?.anexosIds || [],
-          diagnostica: {
-            data: timestampOrNull(values.diagnostica.data),
-            ok: values.diagnostica.ok,
-            detalhes: values.diagnostica.detalhes,
-            anexosIds: values.diagnostica.anexosIds,
-          },
-          simulados: {
-            s1: { dataInicio: timestampOrNull(values.simulados.s1.dataInicio), dataFim: timestampOrNull(values.simulados.s1.dataFim), ok: values.simulados.s1.ok, detalhes: values.simulados.s1.detalhes, anexosIds: values.simulados.s1.anexosIds },
-            s2: { dataInicio: timestampOrNull(values.simulados.s2.dataInicio), dataFim: timestampOrNull(values.simulados.s2.dataFim), ok: values.simulados.s2.ok, detalhes: values.simulados.s2.detalhes, anexosIds: values.simulados.s2.anexosIds },
-            s3: { dataInicio: timestampOrNull(values.simulados.s3.dataInicio), dataFim: timestampOrNull(values.simulados.s3.dataFim), ok: values.simulados.s3.ok, detalhes: values.simulados.s3.detalhes, anexosIds: values.simulados.s3.anexosIds },
-            s4: { dataInicio: timestampOrNull(values.simulados.s4.dataInicio), dataFim: timestampOrNull(values.simulados.s4.dataFim), ok: values.simulados.s4.ok, detalhes: values.simulados.s4.detalhes, anexosIds: values.simulados.s4.anexosIds },
-          },
-           devolutivas: {
-            d1: { ...values.devolutivas.d1, dataInicio: timestampOrNull(values.devolutivas.d1.dataInicio), dataFim: timestampOrNull(values.devolutivas.d1.dataFim) },
-            d2: { ...values.devolutivas.d2, dataInicio: timestampOrNull(values.devolutivas.d2.dataInicio), dataFim: timestampOrNull(values.devolutivas.d2.dataFim) },
-            d3: { ...values.devolutivas.d3, dataInicio: timestampOrNull(values.devolutivas.d3.dataInicio), dataFim: timestampOrNull(values.devolutivas.d3.dataFim) },
-            d4: { ...values.devolutivas.d4, dataInicio: timestampOrNull(values.devolutivas.d4.dataInicio), dataFim: timestampOrNull(values.devolutivas.d4.dataFim) },
-          },
-          reunioes: values.reunioes?.map(reuniao => ({
-            data: timestampOrNull(reuniao.data),
-            links: reuniao.links?.filter(link => link && link.url) || []
-          })),
-          eventosAdicionais: values.eventosAdicionais?.map(evento => ({
-            ...evento,
-            data: timestampOrNull(evento.data),
-          }))
-      };
-
-      const cleanedData = cleanObject(dataToSave);
-      delete cleanedData.anexo; // Sempre remover o campo legado ao salvar
+      const cleanedData = buildProjetoPayload(values, selectedAdmin?.nome || '');
 
       if (isEditMode && projeto) {
-         const projetoRef = doc(db, 'projetos', projeto.id);
-         updateDoc(projetoRef, cleanedData)
-           .catch(async (serverError) => {
-             const permissionError = new FirestorePermissionError({
-               path: projetoRef.path,
-               operation: 'update',
-               requestResourceData: cleanedData,
-             });
-             errorEmitter.emit('permission-error', permissionError);
-           });
-         toast({ title: 'Sucesso!', description: 'Projeto atualizado com sucesso.' });
+        const projetoRef = doc(db, 'projetos', projeto.id);
+        const escrita = updateDoc(projetoRef, cleanedData)
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: projetoRef.path,
+              operation: 'update',
+              requestResourceData: cleanedData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw serverError;
+          });
+
+        if (aguardarGravacao) {
+          await escrita;
+        } else {
+          escrita.catch(() => { /* ja reportado via errorEmitter */ });
+        }
+        toast({ title: 'Sucesso!', description: 'Projeto atualizado com sucesso.' });
       } else {
         const newDocRef = doc(collection(db, 'projetos'));
-        setDoc(newDocRef, {
-            ...cleanedData,
-            id: newDocRef.id,
-            dataCriacao: serverTimestamp(),
+        const escrita = setDoc(newDocRef, {
+          ...cleanedData,
+          id: newDocRef.id,
+          dataCriacao: serverTimestamp(),
         })
-        .catch(async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: newDocRef.path,
-            operation: 'create',
-            requestResourceData: { ...cleanedData, id: newDocRef.id, dataCriacao: 'serverTimestamp' },
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: newDocRef.path,
+              operation: 'create',
+              requestResourceData: { ...cleanedData, id: newDocRef.id, dataCriacao: 'serverTimestamp' },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw serverError;
           });
-          errorEmitter.emit('permission-error', permissionError);
-        });
+
+        if (aguardarGravacao) {
+          await escrita;
+        } else {
+          escrita.catch(() => { /* ja reportado via errorEmitter */ });
+        }
         toast({ title: 'Sucesso!', description: 'Projeto criado com sucesso.' });
       }
 
       sincronizarFormacoesVinculadas(values);
 
+      // Zera o isDirty sem recarregar do banco: os valores em tela SAO os gravados.
+      // Sem isto, o robo nao consegue distinguir "ja salvei" de "falta salvar".
+      form.reset(values, { keepValues: true });
+
       onSuccess();
+      return true;
     } catch (error: any) {
       console.error('Submit error:', error);
       toast({
@@ -698,10 +515,25 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
         title: 'Erro ao salvar',
         description: 'Ocorreu um erro ao salvar o projeto. Verifique os campos e tente novamente.',
       });
+      return false;
     } finally {
       setLoading(false);
     }
   }
+
+  async function onSubmit(values: FormValues) {
+    await gravarProjeto(values, false);
+  }
+
+  /** Submit programatico do robo: valida, grava e so resolve depois de confirmar. */
+  const submitAndWait = useCallback(async (): Promise<boolean> => {
+    let gravou = false;
+    await form.handleSubmit(
+      async (values) => { gravou = await gravarProjeto(values, true); },
+      (errors) => { gravou = false; onInvalid?.(errors as Record<string, unknown>); }
+    )();
+    return gravou;
+  }, [form, onInvalid, admins, projeto, isEditMode, user]);
   
   const handleCreateFormation = async (title: string, dataInicio: Date | null | undefined, dataFim: Date | null | undefined, details: string | undefined, formadorNomes: string[]) => {
     const { municipio, uf, responsavelId } = form.getValues();
@@ -965,13 +797,37 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
 
   const brasaoAnexo = allAnexos.find(a => a.id === brasaoId);
 
+  /**
+   * Superficie imperativa para o robo guiado (/agente).
+   *
+   * Expoe SO acoes. Leitura de valores NAO passa por aqui: um ref nao dispara
+   * re-render, entao o robo leria estado congelado. Quem precisa ler assina o
+   * formulario via useWatch/useFormContext.
+   */
+  useImperativeHandle(
+    ref,
+    () => ({
+      submit: submitAndWait,
+      criarFormacaoDevolutiva: handleCreateDevolutivaFormation,
+      atualizarFormacaoDevolutiva: handleUpdateFormation,
+      criarFormacaoImplantacao: handleCreateImplantacaoFormation,
+      atualizarFormacaoImplantacao: handleUpdateImplantacaoFormation,
+      irParaSecao: (secao: SecaoProjeto) => {
+        document.getElementById('sec-' + secao)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+      formadores: allFormadores,
+      admins,
+    }),
+    [submitAndWait, allFormadores, admins]
+  );
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => onInvalid?.(errors as Record<string, unknown>))} className="space-y-6">
         
         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
         
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-dados-gerais" className="shadow-md shadow-primary/5 scroll-mt-20">
             <CardHeader>
                 <CardTitle>Dados Gerais do Projeto</CardTitle>
             </CardHeader>
@@ -1076,7 +932,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-implantacoes" className="shadow-md shadow-primary/5 scroll-mt-20">
              <CardHeader>
                 <CardTitle>Implementação e Métricas</CardTitle>
             </CardHeader>
@@ -1367,7 +1223,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
         
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-reunioes" className="shadow-md shadow-primary/5 scroll-mt-20">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Agendamento de Reuniões</CardTitle>
@@ -1416,7 +1272,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-eventos-adicionais" className="shadow-md shadow-primary/5 scroll-mt-20">
             <CardHeader>
                 <div className='flex justify-between items-center'>
                     <CardTitle>Eventos Adicionais</CardTitle>
@@ -1478,7 +1334,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-avaliacoes" className="shadow-md shadow-primary/5 scroll-mt-20">
             <CardHeader>
                 <CardTitle>Avaliações e Simulados</CardTitle>
             </CardHeader>
@@ -1584,7 +1440,7 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
             </CardContent>
         </Card>
 
-        <Card className="shadow-md shadow-primary/5">
+        <Card id="sec-devolutivas" className="shadow-md shadow-primary/5 scroll-mt-20">
             <CardHeader>
                 <CardTitle>Cronograma de Devolutivas</CardTitle>
                 <CardDescription>
@@ -1745,4 +1601,4 @@ export function FormProjeto({ projeto, onSuccess, onDirtyChange }: FormProjetoPr
       </form>
     </Form>
   );
-}
+});
