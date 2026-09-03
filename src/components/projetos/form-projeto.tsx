@@ -402,6 +402,67 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
   // acontecia no botão "Atualizar Formação", então quem preenchia os formadores depois de
   // criar a formação ficava com a ficha vazia. Só grava campo que tem valor no projeto —
   // nunca zera o que já existe na formação.
+  /**
+   * Cria as formações que faltam para etapas já datadas.
+   *
+   * Por que isto existe: o Acompanhamento (/quadro) lê a coleção `formacoes`, nunca
+   * `projetos.devolutivas`. Enquanto a etapa não virar formação, ela é invisível no
+   * quadro — era isso que obrigava a clicar em "Criar formação vinculada".
+   *
+   * Faz par com `sincronizarFormacoesVinculadas`: aqui CRIA o que falta, lá ATUALIZA
+   * o que existe. A guarda contra duplicata é o `formacaoId` já preenchido.
+   *
+   * Devolve os valores com os ids preenchidos, para quem chamou gravar o projeto
+   * uma vez só, já com o vínculo dentro.
+   */
+  const garantirFormacoesVinculadas = async (values: FormValues): Promise<FormValues> => {
+    if (!projeto?.id || !values.municipio || !values.uf) return values;
+
+    let mudou = false;
+    const novos: FormValues = {
+      ...values,
+      devolutivas: { ...values.devolutivas },
+      implantacoes: [...(values.implantacoes || [])],
+    };
+
+    for (const n of [1, 2, 3, 4] as const) {
+      const chave = `d${n}` as const;
+      const dev = novos.devolutivas?.[chave];
+      // Sem data não há o que acompanhar; com formacaoId já existe formação.
+      if (!dev?.dataInicio || dev.formacaoId) continue;
+
+      const titulo = `Devolutiva ${n}: ${novos.municipio}`;
+      const novoId = await handleCreateFormation(titulo, dev.dataInicio, dev.dataFim, dev.detalhes, dev.formadores || []);
+      if (novoId) {
+        novos.devolutivas[chave] = { ...dev, formacaoId: novoId, formacaoTitulo: titulo };
+        form.setValue(`devolutivas.${chave}.formacaoId`, novoId);
+        form.setValue(`devolutivas.${chave}.formacaoTitulo`, titulo);
+        mudou = true;
+      }
+    }
+
+    const implantacoes = novos.implantacoes || [];
+    for (let i = 0; i < implantacoes.length; i++) {
+      const imp = implantacoes[i];
+      if (!imp?.dataInicio || imp.formacaoId) continue;
+
+      const rotulo = imp.titulo || `Implantação ${i + 1}`;
+      const titulo = `${rotulo}: ${novos.municipio}`;
+      const nomes = imp.formadores && imp.formadores.length > 0
+        ? imp.formadores
+        : allFormadores.filter(f => novos.formadoresIds?.includes(f.id)).map(f => f.nomeCompleto);
+
+      const novoId = await handleCreateFormation(titulo, imp.dataInicio, imp.dataFim, imp.detalhes, nomes);
+      if (novoId) {
+        implantacoes[i] = { ...imp, formacaoId: novoId };
+        form.setValue(`implantacoes.${i}.formacaoId`, novoId);
+        mudou = true;
+      }
+    }
+
+    return mudou ? novos : values;
+  };
+
   const sincronizarFormacoesVinculadas = (values: FormValues) => {
     const alvos: { formacaoId: string; formadores?: string[] | null; dataInicio?: Date | null; dataFim?: Date | null }[] = [];
 
@@ -465,7 +526,10 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
     const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
 
     try {
-      const cleanedData = buildProjetoPayload(values, selectedAdmin?.nome || '');
+      // Cria as formacoes que faltam ANTES de montar o payload: assim o projeto e
+      // gravado uma vez so, ja com os formacaoId dentro.
+      const valuesFinais = await garantirFormacoesVinculadas(values);
+      const cleanedData = buildProjetoPayload(valuesFinais, selectedAdmin?.nome || '');
 
       if (isEditMode && projeto) {
         const projetoRef = doc(db, 'projetos', projeto.id);
@@ -511,11 +575,11 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
         toast({ title: 'Sucesso!', description: 'Projeto criado com sucesso.' });
       }
 
-      sincronizarFormacoesVinculadas(values);
+      sincronizarFormacoesVinculadas(valuesFinais);
 
       // Zera o isDirty sem recarregar do banco: os valores em tela SAO os gravados.
       // Sem isto, o robo nao consegue distinguir "ja salvei" de "falta salvar".
-      form.reset(values, { keepValues: true });
+      form.reset(valuesFinais, { keepValues: true });
 
       onSuccess();
       return true;
@@ -552,8 +616,14 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
       return false;
     }
 
-    const values = form.getValues();
-    const selectedAdmin = admins.find(admin => admin.id === values.responsavelId);
+    const brutos = form.getValues();
+    const selectedAdmin = admins.find(admin => admin.id === brutos.responsavelId);
+
+    // Mesma regra do submit: etapa datada vira formacao no Acompanhamento sozinha.
+    const values = etapas.some(e => e === 'devolutivas' || e === 'implantacoes')
+      ? await garantirFormacoesVinculadas(brutos)
+      : brutos;
+
     const payload = buildProjetoPayload(values, selectedAdmin?.nome || '');
     const recorte = recortarPayload(payload, etapas);
 
@@ -599,7 +669,7 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
     } finally {
       setLoading(false);
     }
-  }, [projeto, form, admins, toast]);
+  }, [projeto, form, admins, allFormadores, toast]);
 
   const adicionarImplantacao = useCallback((entrada: Record<string, unknown>): number => {
     const indice = (form.getValues('implantacoes') || []).length;
@@ -615,7 +685,7 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
       (errors) => { gravou = false; onInvalid?.(errors as Record<string, unknown>); }
     )();
     return gravou;
-  }, [form, onInvalid, admins, projeto, isEditMode, user]);
+  }, [form, onInvalid, admins, allFormadores, projeto, isEditMode, user]);
   
   const handleCreateFormation = async (title: string, dataInicio: Date | null | undefined, dataFim: Date | null | undefined, details: string | undefined, formadorNomes: string[]) => {
     const { municipio, uf, responsavelId } = form.getValues();

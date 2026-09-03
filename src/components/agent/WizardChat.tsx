@@ -166,13 +166,9 @@ function Menu({ wizard }: { wizard: Wizard }) {
 
 function AcoesFinais({ wizard }: { wizard: Wizard }) {
   return (
+    // Não há mais botão "criar formação": ela nasce sozinha ao salvar a etapa.
     <div className="flex flex-col gap-2">
-      {wizard.fluxo?.formacaoVinculada && (
-        <Button className={TOQUE} onClick={() => wizard.criarFormacaoVinculada()} disabled={wizard.salvando}>
-          📋 Criar formação vinculada
-        </Button>
-      )}
-      <Button variant="outline" className={TOQUE} onClick={wizard.irParaMenu} disabled={wizard.salvando}>
+      <Button className={TOQUE} onClick={wizard.irParaMenu} disabled={wizard.salvando}>
         🔙 Preencher outra coisa
       </Button>
     </div>

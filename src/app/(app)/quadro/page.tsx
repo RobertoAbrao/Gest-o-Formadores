@@ -36,7 +36,10 @@ import {
   Share,
   Copy,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
+import { alertasDaFormacao, pendenciasDoProjeto, resumirAlertas, CORES_GRAVIDADE } from '@/lib/alertas';
 import Link from 'next/link';
 import { isAfter, isBefore, isWithinInterval, startOfToday } from 'date-fns';
 
@@ -132,16 +135,21 @@ export default function QuadroPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const fetchAndCategorizeItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const formacoesQuery = query(collection(db, 'formacoes'), where('status', '!=', 'arquivado'));
-      const formacoesSnapshot = await getDocs(formacoesQuery);
+  // Ao vivo: um usuario salva, os outros veem sem recarregar.
+  const { dados: formacoesData, carregando: carregandoFormacoes } = useColecaoTempoReal<Formacao>(
+    () => query(collection(db, 'formacoes'), where('status', '!=', 'arquivado')),
+    []
+  );
 
-      const formacoesData = formacoesSnapshot.docs.map(
-        (doc) => ({ id: doc.id, ...doc.data() } as Formacao)
-      );
+  // Projetos entram so para as pendencias de planejamento: etapa sem data nunca
+  // vira formacao, entao seria invisivel no quadro se nao fosse listada a parte.
+  const { dados: projetosData } = useColecaoTempoReal<ProjetoImplatancao>(
+    () => collection(db, 'projetos'),
+    []
+  );
 
+  const categorizar = useCallback((formacoes: Formacao[]) => {
+      const formacoesData = formacoes;
       const newColumns: Columns = {
         preparacao: { ...columnConfig.preparacao, items: [] },
         'em-formacao': { ...columnConfig['em-formacao'], items: [] },
@@ -170,24 +178,22 @@ export default function QuadroPage() {
         }
       });
       setColumns(newColumns);
-    } catch (error) {
-      console.error('Error fetching items:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao buscar itens',
-        description: 'Não foi possível carregar o quadro.',
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
-    fetchAndCategorizeItems();
-  }, [fetchAndCategorizeItems]);
+    categorizar(formacoesData);
+    setLoading(carregandoFormacoes);
+  }, [formacoesData, carregandoFormacoes, categorizar]);
 
+  const resumo = useMemo(
+    () => resumirAlertas(formacoesData, projetosData),
+    [formacoesData, projetosData]
+  );
+
+  const pendencias = useMemo(() => projetosData.flatMap(pendenciasDoProjeto), [projetosData]);
+
+  // Com onSnapshot a lista se atualiza sozinha; sobrou so fechar os dialogos.
   const handleSuccess = () => {
-    fetchAndCategorizeItems();
     setIsFormDialogOpen(false);
     setIsProjectFormOpen(false);
     setSelectedFormacao(null);
@@ -249,7 +255,6 @@ export default function QuadroPage() {
         title: 'Sucesso!',
         description: 'Formação excluída com sucesso.',
       });
-      fetchAndCategorizeItems();
     } catch (error) {
       console.error('Error deleting formacao: ', error);
       toast({
@@ -268,7 +273,6 @@ export default function QuadroPage() {
     try {
       await changeFormacaoStatus(formacao, newStatus, user);
       toast({ title: "Sucesso", description: `Status alterado e ações automáticas criadas.` });
-      fetchAndCategorizeItems();
     } catch (error: any) {
        console.error("Erro ao alterar status:", error);
        toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível alterar o status." });
@@ -281,7 +285,6 @@ export default function QuadroPage() {
     setIsDetailDialogOpen(open);
     if (!open) {
       setSelectedFormacao(null);
-      fetchAndCategorizeItems();
     }
   };
 
@@ -316,6 +319,7 @@ export default function QuadroPage() {
               <p className="text-muted-foreground">
                 Crie e gerencie formações e devolutivas.
               </p>
+              <FaixaDeAlertas resumo={resumo} pendencias={pendencias} />
             </div>
             <DialogTrigger asChild>
               <Button>
@@ -425,6 +429,7 @@ export default function QuadroPage() {
                         onClick={() => openDetailDialog(item)}
                       >
                         <CardContent className="p-3 space-y-2 flex-grow">
+                            <SelosDeAlerta formacao={item} />
                             <div className="flex items-start justify-between">
                                 <h3 className="font-semibold text-sm flex items-center gap-2">
                                   {getIconForItem(item)}
@@ -594,5 +599,108 @@ export default function QuadroPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Alertas
+// ---------------------------------------------------------------------------
+
+/**
+ * Selos de atraso/atencao no card.
+ *
+ * Recalculado a cada render de proposito: "atrasado ha 3 dias" depende da data de
+ * hoje, nao de nada gravado. Guardar isso no banco criaria um campo que envelhece
+ * sozinho e precisa de rotina para atualizar.
+ */
+function SelosDeAlerta({ formacao }: { formacao: Formacao }) {
+  const alertas = alertasDaFormacao(formacao);
+  if (alertas.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {alertas.map((a) => (
+        <span
+          key={a.motivo}
+          className={cn(
+            'inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-tight',
+            CORES_GRAVIDADE[a.gravidade]
+          )}
+        >
+          {a.texto}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function FaixaDeAlertas({
+  resumo,
+  pendencias,
+}: {
+  resumo: ReturnType<typeof resumirAlertas>;
+  pendencias: ReturnType<typeof pendenciasDoProjeto>;
+}) {
+  const nada =
+    resumo.atrasadas === 0 &&
+    resumo.atencao === 0 &&
+    resumo.incompletas === 0 &&
+    pendencias.length === 0;
+
+  if (nada) {
+    return (
+      <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-500">
+        Tudo em dia — nenhuma formação atrasada e nenhuma etapa sem data.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      {resumo.atrasadas > 0 && (
+        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.atrasado)}>
+          {resumo.atrasadas} atrasada(s)
+        </span>
+      )}
+      {resumo.atencao > 0 && (
+        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.atencao)}>
+          {resumo.atencao} começa(m) em até 7 dias
+        </span>
+      )}
+      {resumo.incompletas > 0 && (
+        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.incompleto)}>
+          {resumo.incompletas} sem formadores
+        </span>
+      )}
+      {pendencias.length > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'rounded border px-2 py-1 font-medium underline-offset-2 hover:underline',
+                CORES_GRAVIDADE.incompleto
+              )}
+            >
+              {pendencias.length} etapa(s) sem data
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="max-h-80 w-80 overflow-y-auto">
+            <p className="mb-2 text-sm font-medium">Falta preencher</p>
+            <ul className="space-y-1 text-xs">
+              {pendencias.map((pd, i) => (
+                <li key={pd.projetoId + pd.etapa + i} className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{pd.projetoNome}</span>
+                  <span>
+                    {pd.etapa} <span className="text-muted-foreground">({pd.texto})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 }

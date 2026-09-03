@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList, CalendarPlus } from 'lucide-react';
-import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { ptBR } from 'date-fns/locale';
 import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday, startOfToday } from 'date-fns';
 import Link from 'next/link';
@@ -221,9 +221,32 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    if(user?.perfil === 'administrador'){
-        fetchData();
-    }
+    if (user?.perfil !== 'administrador') return;
+
+    fetchData();
+
+    // Assinaturas como GATILHO: quando qualquer uma destas colecoes muda, a
+    // derivacao completa (stats, eventos, logistica) roda de novo.
+    // Custo assumido: o listener ja entregou os documentos e o fetchData le
+    // outra vez, entao paga-se leitura em dobro por mudanca. A alternativa era
+    // reescrever 137 linhas de derivacao — mais risco do que a economia vale.
+    const colecoes = ['formacoes', 'demandas', 'projetos', 'lembretes'];
+    let primeiraEntrega = colecoes.length;
+
+    const cancelamentos = colecoes.map((nome) =>
+      onSnapshot(
+        collection(db, nome),
+        () => {
+          // O onSnapshot dispara uma vez logo ao assinar; esse disparo inicial
+          // duplicaria o fetchData que acabou de rodar acima.
+          if (primeiraEntrega > 0) { primeiraEntrega--; return; }
+          fetchData();
+        },
+        (e) => console.error('Assinatura do dashboard falhou:', nome, e)
+      )
+    );
+
+    return () => cancelamentos.forEach((cancelar) => cancelar());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 

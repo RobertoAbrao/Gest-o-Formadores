@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
 import {
   Timestamp,
   arrayUnion,
@@ -177,9 +178,26 @@ export default function DiarioPage() {
     [toast],
   );
 
+  // Ao vivo: demanda criada por outro usuario (ou pela automacao de formacao)
+  // aparece aqui sem ninguem recarregar.
+  const { dados: demandasAoVivo, carregando: carregandoDemandas } = useColecaoTempoReal<Demanda>(
+    () => query(collection(db, 'demandas'), orderBy('dataCriacao', 'desc')),
+    []
+  );
+
+  const { dados: adminsAoVivo } = useColecaoTempoReal<{ id: string; nome?: string }>(
+    () => query(collection(db, 'usuarios'), where('perfil', '==', 'administrador')),
+    []
+  );
+
   useEffect(() => {
-    buscarDados();
-  }, [buscarDados]);
+    setDemandas(demandasAoVivo);
+    setLoading(carregandoDemandas);
+  }, [demandasAoVivo, carregandoDemandas]);
+
+  useEffect(() => {
+    setResponsaveis(adminsAoVivo.map((d) => ({ id: d.id, nome: d.nome ?? 'Sem nome' })));
+  }, [adminsAoVivo]);
 
   /* ----------------------------------------------------------------------- */
   /* Recortes                                                                */

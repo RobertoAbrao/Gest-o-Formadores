@@ -195,7 +195,14 @@ export function useWizard({ acoes, todosFormadores, projetoSalvo }: Params) {
       const proximo = indicePasso + 1;
       if (proximo >= fluxo.passos.length) {
         setEstado('fim-fluxo');
-        dizer(`Pronto — ${fluxo.rotulo} ${fluxo.criarAlvo ? '' : alvoNovo || ''} salva.`.replace(/\s+/g, ' ').trim());
+        const nome = `${fluxo.rotulo} ${fluxo.criarAlvo ? '' : alvoNovo || ''}`.replace(/\s+/g, ' ').trim();
+        // A formação vinculada já nasceu no auto-save (garantirFormacoesVinculadas),
+        // então aqui é confirmação — não uma ação que ainda falta o usuário fazer.
+        dizer(
+          fluxo.formacaoVinculada
+            ? `Pronto — ${nome} salva e já no Acompanhamento, com a demanda para o responsável.`
+            : `Pronto — ${nome} salva.`
+        );
       } else {
         setIndicePasso(proximo);
         perguntarPasso(fluxo, proximo, { ...ctx, alvo: alvoNovo });

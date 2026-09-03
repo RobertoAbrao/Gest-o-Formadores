@@ -25,6 +25,7 @@ import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
 import { collection, getDocs, deleteDoc, doc, orderBy, query, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { FormProjeto } from '@/components/projetos/form-projeto';
@@ -66,41 +67,40 @@ export default function ProjetosPage() {
   const [isConfirmCloseOpen, setIsConfirmCloseOpen] = useState(false);
 
 
-  const fetchProjetosAndMateriais = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [projetosSnapshot, materiaisSnapshot] = await Promise.all([
-        getDocs(query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc'))),
-        getDocs(collection(db, 'materiais'))
-      ]);
+  // Assinaturas ao vivo: a lista reflete o que outro usuario acabou de salvar.
+  // So assina para administrador — para os demais a query nem e montada, evitando
+  // um listener que o Firestore recusaria por regra de seguranca.
+  const ehAdmin = user?.perfil === 'administrador';
 
-      const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
-      setProjetos(projetosData);
+  const { dados: projetosData, carregando: carregandoProjetos } = useColecaoTempoReal<ProjetoImplatancao>(
+    () => (ehAdmin ? query(collection(db, 'projetos'), orderBy('dataCriacao', 'desc')) : null),
+    [ehAdmin]
+  );
 
-      const materiaisMap = new Map<string, Material>();
-      materiaisSnapshot.docs.forEach(doc => {
-        materiaisMap.set(doc.id, { id: doc.id, ...doc.data() } as Material);
-      });
-      setMateriais(materiaisMap);
+  const { dados: materiaisData, carregando: carregandoMateriais } = useColecaoTempoReal<Material>(
+    () => (ehAdmin ? collection(db, 'materiais') : null),
+    [ehAdmin]
+  );
 
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar os dados.' });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  useEffect(() => {
+    setProjetos(projetosData);
+  }, [projetosData]);
+
+  useEffect(() => {
+    setMateriais(new Map(materiaisData.map((m) => [m.id, m])));
+  }, [materiaisData]);
+
+  useEffect(() => {
+    setLoading(carregandoProjetos || carregandoMateriais);
+  }, [carregandoProjetos, carregandoMateriais]);
 
   useEffect(() => {
     if (user && user.perfil !== 'administrador') {
       router.replace('/materiais');
-    } else if (user?.perfil === 'administrador') {
-        fetchProjetosAndMateriais();
     }
-  }, [user, router, fetchProjetosAndMateriais]);
+  }, [user, router]);
   
   const handleSuccess = () => {
-    fetchProjetosAndMateriais();
     setIsFormDirty(false); // Reset dirty state on success
     setIsFormDialogOpen(false);
     setSelectedProjeto(null);
@@ -113,7 +113,6 @@ export default function ProjetosPage() {
     try {
         await deleteDoc(doc(db, "projetos", projetoId));
         toast({ title: 'Sucesso!', description: 'Projeto excluído com sucesso.' });
-        fetchProjetosAndMateriais();
     } catch (error) {
         console.error("Error deleting projeto: ", error);
         toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir o projeto.' });
