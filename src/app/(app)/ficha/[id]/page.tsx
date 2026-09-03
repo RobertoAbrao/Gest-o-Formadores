@@ -40,6 +40,15 @@ const DIAS_DA_SEMANA = [
     'Domingo',
 ];
 
+// Texto padrão da introdução. Fica no escopo do módulo para que o botão de troca de
+// modalidade consiga comparar o texto atual com o padrão e só reescrever o que ainda
+// não foi editado à mão.
+const montarIntroducao = (titulo: string, modalidade: 'online' | 'presencial') => {
+    const textoModalidade = modalidade === 'online' ? ' e os links de acesso' : '';
+    return `Prezadas Diretoria de Formação e Equipe Pedagógica,
+Informamos a agenda${textoModalidade} para a formação "${titulo}", conforme o cronograma abaixo.`;
+};
+
 // Componente para renderizar texto com links
 const LinkifiedText = ({ text }: { text: string }) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -88,9 +97,8 @@ export default function FichaDevolutivaPage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  const initializeDefaultState = (formacaoData: Formacao, formadoresData: Formador[]) => {
-      const textoModalidade = modalidade === 'online' ? ' e os links de acesso' : '';
-      setIntroducao(`Prezadas Diretoria de Formação e Equipe Pedagógica,\nInformamos a agenda${textoModalidade} para a formação "${formacaoData.titulo}", conforme o cronograma abaixo.`);
+  const initializeDefaultState = (formacaoData: Formacao, formadoresData: Formador[], modalidadeInicial: 'online' | 'presencial') => {
+      setIntroducao(montarIntroducao(formacaoData.titulo, modalidadeInicial));
       setEndereco('Endereço (Anos Iniciais): Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA\nEndereço (Anos Finais): Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA');
 
       const initialAgendas: AgendasState = {};
@@ -166,7 +174,7 @@ export default function FichaDevolutivaPage() {
             setAgendasGenericas(fichaData.agendasGenericas || {});
         } else {
             // Se não existir, inicializa com os padrões
-            initializeDefaultState(formacaoData, formadoresData);
+            initializeDefaultState(formacaoData, formadoresData, modalidade);
         }
 
     } catch (error: any) {
@@ -175,7 +183,12 @@ export default function FichaDevolutivaPage() {
     } finally {
         setLoading(false);
     }
-  }, [formacaoId, modalidade]);
+    // 'modalidade' fica DE PROPÓSITO fora das deps: ela só alimenta o estado inicial de
+    // uma ficha nova. Se entrasse aqui, alternar online/presencial dispararia um refetch
+    // que sobrescreveria a escolha com o valor já salvo no Firestore (linha do setModalidade
+    // acima) e ainda descartaria as edições não salvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formacaoId]);
 
   useEffect(() => {
     fetchData();
@@ -211,6 +224,21 @@ export default function FichaDevolutivaPage() {
     }
   };
   
+  // Alterna online <-> presencial apenas no estado local; gravar continua sendo trabalho do
+  // botão "Salvar Alterações". Se a introdução ainda for exatamente o texto automático da
+  // modalidade antiga, ela é reescrita para a nova (texto editado à mão é preservado).
+  const handleToggleModalidade = () => {
+    const nova = modalidade === 'online' ? 'presencial' : 'online';
+    setModalidade(nova);
+    if (formacao && introducao === montarIntroducao(formacao.titulo, modalidade)) {
+      setIntroducao(montarIntroducao(formacao.titulo, nova));
+    }
+    toast({
+      title: `Modalidade alterada para ${nova === 'online' ? 'On-line' : 'Presencial'}`,
+      description: 'Clique em "Salvar Alterações" para gravar a mudança na ficha.',
+    });
+  };
+
   const handleAddRow = (formadorId: string, isGeneric = false) => {
     const setState = isGeneric ? setAgendasGenericas : setAgendas;
     setState(prev => ({
@@ -430,7 +458,7 @@ export default function FichaDevolutivaPage() {
                             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                             Salvar Alterações
                         </Button>
-                        <Button variant="outline" onClick={() => setModalidade(modalidade === 'online' ? 'presencial' : 'online')}>
+                        <Button variant="outline" onClick={handleToggleModalidade}>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Alterar para {modalidade === 'online' ? 'Presencial' : 'Online'}
                         </Button>
