@@ -104,6 +104,57 @@ type Columns = {
   };
 };
 
+/**
+ * Ordem dos cards dentro de uma coluna.
+ *
+ * Princípio único: **o mais próximo de hoje fica no topo**. Nas colunas de futuro
+ * isso é ordem crescente de data; nas de passado é decrescente. Sem isso, o quadro
+ * saía na ordem que o Firestore devolvia — e uma devolutiva de dezembro aparecia
+ * antes de uma da semana que vem.
+ *
+ * Efeito colateral desejado em "Preparação": o que já deveria ter começado tem data
+ * no passado, então sobe sozinho para o topo. Atrasado é o primeiro que se vê.
+ *
+ * Sem data vai para o fim — não há como ordenar, e é justamente o card incompleto.
+ */
+const ORDEM_POR_COLUNA: Record<FormadorStatus, 'proximas-primeiro' | 'recentes-primeiro'> = {
+  preparacao: 'proximas-primeiro',
+  'em-formacao': 'proximas-primeiro',
+  'pos-formacao': 'recentes-primeiro',
+  concluido: 'recentes-primeiro',
+  arquivado: 'recentes-primeiro',
+};
+
+const emMilissegundos = (t: Timestamp | null | undefined): number | null => {
+  if (!t) return null;
+  try {
+    return t.toDate().getTime();
+  } catch {
+    return null;
+  }
+};
+
+function ordenarColuna(items: Formacao[], status: FormadorStatus): Formacao[] {
+  const modo = ORDEM_POR_COLUNA[status];
+  // Coluna de futuro se guia pelo início; a de passado, pelo fim (com o início
+  // como reserva, para o card não cair no fim só por não ter data de término).
+  const dataDe = (f: Formacao) =>
+    modo === 'proximas-primeiro'
+      ? emMilissegundos(f.dataInicio) ?? emMilissegundos(f.dataFim)
+      : emMilissegundos(f.dataFim) ?? emMilissegundos(f.dataInicio);
+
+  return [...items].sort((a, b) => {
+    const da = dataDe(a);
+    const db_ = dataDe(b);
+
+    if (da === null && db_ === null) return a.titulo.localeCompare(b.titulo);
+    if (da === null) return 1;
+    if (db_ === null) return -1;
+
+    return modo === 'proximas-primeiro' ? da - db_ : db_ - da;
+  });
+}
+
 const columnConfig: { [key in FormadorStatus]: { title: string, colorClass: string } } = {
   preparacao: { title: 'Preparação', colorClass: 'bg-green-500 border-green-500' },
   'em-formacao': { title: 'Em Formação', colorClass: 'bg-blue-500 border-blue-500' },
@@ -177,6 +228,11 @@ export default function QuadroPage() {
           newColumns[status].items.push(item);
         }
       });
+
+      (Object.keys(newColumns) as FormadorStatus[]).forEach((status) => {
+        newColumns[status].items = ordenarColuna(newColumns[status].items, status);
+      });
+
       setColumns(newColumns);
   }, []);
 
