@@ -66,6 +66,7 @@ const materiaisTema = [
     { id: 'inteligenios', label: 'Inteligênios' },
     { id: 'afro', label: 'Afro' },
     { id: 'lumina', label: 'Lúmina' },
+    { id: 'povos_do_brasil', label: 'Povos do Brasil' },
 ];
 
 const avaliacaoSchema = z.object({
