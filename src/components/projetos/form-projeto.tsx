@@ -138,6 +138,72 @@ const fileToDataURL = (file: File): Promise<string> => {
   });
 };
 
+/**
+ * Campo de data que também sabe ficar VAZIO.
+ *
+ * O calendário sozinho só escolhe. Tecnicamente o react-day-picker desmarca ao
+ * clicar de novo no dia selecionado, mas ninguém descobre isso — e um simulado
+ * cancelado pelo cliente precisa voltar a "sem data".
+ *
+ * O ✕ fica AO LADO do gatilho, não dentro: o gatilho já é um <button>, e botão
+ * dentro de botão é HTML inválido (o clique também abriria o calendário).
+ *
+ * Grava `null`, não `undefined`: o schema aceita null, o `timestampOrNull` mantém
+ * null, e o Firestore recebe o campo explicitamente vazio.
+ *
+ * NÃO usar em devolutiva/implantação sem antes ajustar `sincronizarFormacoesVinculadas`:
+ * ela ignora data vazia, então a formação no quadro ficaria com a data antiga.
+ */
+function CampoDataRemovivel({
+  value,
+  onChange,
+  className,
+}: {
+  value: Date | null | undefined;
+  onChange: (valor: Date | null) => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex gap-2', className)}>
+      <Popover>
+        <PopoverTrigger asChild>
+          <FormControl>
+            <Button
+              variant="outline"
+              className={cn('min-w-0 flex-1 pl-3 text-left font-normal', !value && 'text-muted-foreground')}
+            >
+              {value ? format(value, 'PPP', { locale: ptBR }) : <span>Selecione uma data</span>}
+              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            </Button>
+          </FormControl>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value ?? undefined}
+            onSelect={(dia) => onChange(dia ?? null)}
+            initialFocus
+            locale={ptBR}
+          />
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
+          onClick={() => onChange(null)}
+          aria-label="Remover data"
+          title="Remover data"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 
 export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(function FormProjeto(
   { projeto, onSuccess, onDirtyChange, form: formExterno, onInvalid },
@@ -1501,14 +1567,9 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
                         <div className='flex flex-wrap items-end gap-4'>
                             <FormField control={form.control} name="diagnostica.data" render={({ field }) => (
                             <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                                <Popover><PopoverTrigger asChild><FormControl>
-                                <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                </PopoverContent></Popover><FormMessage />
+                                {/* 288px = os 240px do campo antigo + o ✕; max-w-full protege o celular */}
+                                <CampoDataRemovivel value={field.value} onChange={field.onChange} className="w-[288px] max-w-full" />
+                                <FormMessage />
                             </FormItem>
                             )}/>
                             <FormField control={form.control} name="diagnostica.ok" render={({ field }) => (
@@ -1544,26 +1605,14 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
                             <CardContent className="p-0 space-y-4">
                                 <FormField control={form.control} name={`${etapaKey}.dataInicio`} render={({ field }) => (
                                     <FormItem className="flex flex-col"><FormLabel>Data Início</FormLabel>
-                                    <Popover><PopoverTrigger asChild><FormControl>
-                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                    </PopoverContent></Popover><FormMessage />
+                                    <CampoDataRemovivel value={field.value} onChange={field.onChange} className="w-full" />
+                                    <FormMessage />
                                     </FormItem>
                                 )}/>
                                 <FormField control={form.control} name={`${etapaKey}.dataFim`} render={({ field }) => (
                                     <FormItem className="flex flex-col"><FormLabel>Data Fim</FormLabel>
-                                    <Popover><PopoverTrigger asChild><FormControl>
-                                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                    </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar mode="single" selected={field.value ?? undefined} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                    </PopoverContent></Popover><FormMessage />
+                                    <CampoDataRemovivel value={field.value} onChange={field.onChange} className="w-full" />
+                                    <FormMessage />
                                     </FormItem>
                                 )}/>
                                 <div className="flex items-center justify-between gap-4">
