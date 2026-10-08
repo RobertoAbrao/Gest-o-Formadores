@@ -104,6 +104,13 @@ const avaliacaoSchema = z.object({
         required_error: 'Avalie a formação da Editora LT.'
     }),
     observacoes: z.string().optional(),
+    // Consentimento para contato por e-mail.
+    // É obrigatório RESPONDER, mas "Não" é uma resposta válida: consentimento
+    // precisa ser uma escolha livre — forçar o "Sim" o tornaria inválido e ainda
+    // travaria o envio de quem não quer receber.
+    aceiteComunicacoes: z.enum(['Sim', 'Não'], {
+        required_error: 'Informe se você aceita receber informações por e-mail.',
+    }),
 }).refine(data => data.email === data.confirmarEmail, {
     message: "Os emails não correspondem.",
     path: ["confirmarEmail"],
@@ -203,6 +210,10 @@ export default function AvaliacaoPage() {
 
       await addDoc(collection(db, 'avaliacoes'), {
         ...dataToSave,
+        // `aceiteComunicacoes` guarda a resposta como ela foi dada ("Sim"/"Não").
+        // Este booleano é o que a consulta da lista de e-mails vai usar: filtrar por
+        // texto exigiria acertar acento e maiúscula de "Não" e falharia em silêncio.
+        aceitaComunicacoes: data.aceiteComunicacoes === 'Sim',
         formacaoId: formacaoId,
         formacaoTitulo: formacao?.titulo,
         formadorNome: formador?.nomeCompleto || 'N/A',
@@ -637,6 +648,38 @@ export default function AvaliacaoPage() {
                                         <FormMessage />
                                     </FormItem>
                                 )} />
+                            </div>
+
+                            <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className='font-semibold text-lg'>17. Autorização para contato por e-mail.</h3>
+                                <Separator />
+                                <FormField control={form.control} name="aceiteComunicacoes" render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                        <FormDescription>
+                                            Resposta obrigatória. O e-mail usado será o que você informou no item 1.
+                                            Você pode pedir o descadastramento a qualquer momento.
+                                        </FormDescription>
+                                        <FormControl>
+                                            {/* Sem defaultValue de propósito: nada vem marcado. O "Sim" tem de ser
+                                                um ato da pessoa, não uma caixa que já veio preenchida. */}
+                                            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                                <FormItem className="flex items-start space-x-3 space-y-0">
+                                                    <FormControl><RadioGroupItem value="Sim" className="mt-1" /></FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        Sim, eu concordo em receber informações, materiais e convites da Editora LT por e-mail.
+                                                    </FormLabel>
+                                                </FormItem>
+                                                <FormItem className="flex items-start space-x-3 space-y-0">
+                                                    <FormControl><RadioGroupItem value="Não" className="mt-1" /></FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        Não, eu não desejo receber esses e-mails.
+                                                    </FormLabel>
+                                                </FormItem>
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
                             </div>
 
                             <Button type="submit" disabled={form.formState.isSubmitting}>
