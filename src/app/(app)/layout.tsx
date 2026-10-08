@@ -12,6 +12,7 @@ import {
   Loader2,
   PanelLeft,
   KanbanSquare,
+  Mail,
   Archive,
   DollarSign,
   Briefcase,
@@ -85,6 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
           { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
           { href: '/calendario', label: 'Calendário', icon: CalendarDays },
+          { href: '/avaliacoes', label: 'E-mails das Avaliações', icon: Mail },
           { href: '/agente', label: 'Assistente', icon: Sparkles },
         ]
       : [

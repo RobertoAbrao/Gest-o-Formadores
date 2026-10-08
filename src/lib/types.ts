@@ -198,6 +198,10 @@ export interface Avaliacao {
     avaliacaoEditora: '1' | '2' | '3' | '4' | '5';
     avaliacaoFormador?: '1' | '2' | '3' | '4' | '5';
     observacoes?: string;
+    /** Item 17 do formulário. Opcional: avaliações anteriores a out/2026 não têm. */
+    aceiteComunicacoes?: 'Sim' | 'Não';
+    /** Mesmo dado como booleano — é por ele que a lista de e-mails filtra. */
+    aceitaComunicacoes?: boolean;
     dataCriacao: Timestamp;
 }
 
