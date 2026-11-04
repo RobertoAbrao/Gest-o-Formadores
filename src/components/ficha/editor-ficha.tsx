@@ -20,6 +20,7 @@ import {
   linkInvalido,
   montarIntroducao,
   novaChaveExtra,
+  normalizarLink,
   semLinha,
   type DiaDoPeriodo,
   type FichaEditavel,
@@ -313,8 +314,13 @@ function CartaoFormador({
               type="url"
               inputMode="url"
               value={p.linkUrl}
-              placeholder="https://meet.google.com/..."
+              placeholder="meet.google.com/abc-defg-hij"
               onChange={(e) => atualizar((f) => comParticipante(f, p.key, { linkUrl: e.target.value }))}
+              // Ao sair do campo, mostra o link completo, igual ao que vai para o PDF.
+              onBlur={(e) => {
+                const completo = normalizarLink(e.target.value);
+                if (completo !== e.target.value) atualizar((f) => comParticipante(f, p.key, { linkUrl: completo }));
+              }}
             />
             {linkInvalido(p.linkUrl) && (
               <p className="mt-1.5 flex items-start gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400">

@@ -373,7 +373,7 @@ export function paraFichaSalva(f: FichaEditavel, formacaoId: string): Omit<Ficha
   const extras = f.participantes.filter((p) => p.tipo === 'extra');
 
   const links: LinkSalvo[] = f.participantes.map((p) => {
-    const link: LinkSalvo = { formadorNome: p.nome, anoArea: p.anoArea, linkUrl: p.linkUrl };
+    const link: LinkSalvo = { formadorNome: p.nome, anoArea: p.anoArea, linkUrl: normalizarLink(p.linkUrl) };
     if (p.tipo === 'extra') link.extraId = p.key;
     else if (p.formadorId) link.formadorId = p.formadorId;
     return link;
@@ -524,7 +524,34 @@ export function cronogramaGeral(f: FichaEditavel, periodo: DiaDoPeriodo[]): DiaD
 }
 
 const pareceLink = (v: string) => /^https?:\/\/\S+$/.test(v.trim());
-export const linkInvalido = (v: string) => !!v.trim() && !pareceLink(v);
+
+/**
+ * Formato do link do Meet no documento, pedido pela coordenação e testado em 04/11/2026
+ * (https://meet.google.com/meet/<código> abre a tela "Pronto para participar?").
+ * O link que o próprio Meet gera não tem "/meet/" no meio; os dois abrem a reunião hoje.
+ * Se o Google mudar isso e os links pararem de abrir, troque só esta constante.
+ */
+const MEET_BASE = 'https://meet.google.com/meet/';
+/** Código de reunião do Meet (abc-defg-hij), com ou sem domínio, protocolo ou "/meet/". */
+const MEET_CODIGO = /^(?:https?:\/\/)?(?:www\.)?(?:meet\.google\.com\/)?(?:meet\/)?([a-z]{3}-[a-z]{4}-[a-z]{3})(?:[/?#]\S*)?$/i;
+
+/**
+ * A equipe costuma digitar "meet.google.com/abc-defg-hij" (ou só o código). No PDF isso
+ * sai como texto comum: o leitor de PDF só torna clicável endereço que começa com https://.
+ * Todo link do Meet é reescrito em MEET_BASE + código; outro endereço sem protocolo
+ * ("zoom.us/j/123") só ganha o https://. Texto que não parece endereço fica como está.
+ */
+export function normalizarLink(valor: string): string {
+  const v = valor.trim();
+  if (!v) return '';
+  const meet = v.match(MEET_CODIGO);
+  if (meet) return `${MEET_BASE}${meet[1].toLowerCase()}`;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^[^\s/]+\.[^\s/]+(\/\S*)?$/.test(v)) return `https://${v}`;
+  return v;
+}
+
+export const linkInvalido = (v: string) => !!v.trim() && !pareceLink(normalizarLink(v));
 
 /** O que falta antes de enviar. Recalculado a cada edição; nada disso é gravado. */
 export function pendenciasDaFicha(f: FichaEditavel, formacao: Formacao, periodo: DiaDoPeriodo[]): Pendencia[] {
@@ -589,7 +616,7 @@ export function pendenciasDaFicha(f: FichaEditavel, formacao: Formacao, periodo:
   } else {
     for (const p of ativos) {
       if (!p.linkUrl.trim()) out.push({ gravidade: 'falta', texto: `Link do Meet vazio: ${nomeDe(p)}`, alvo: ID.link(p.key) });
-      else if (!pareceLink(p.linkUrl))
+      else if (linkInvalido(p.linkUrl))
         out.push({ gravidade: 'falta', texto: `O link de ${nomeDe(p)} não parece um endereço`, alvo: ID.link(p.key) });
       if (!p.anoArea.trim()) out.push({ gravidade: 'falta', texto: `Ano/Área vazio: ${nomeDe(p)}`, alvo: ID.anoArea(p.key) });
     }

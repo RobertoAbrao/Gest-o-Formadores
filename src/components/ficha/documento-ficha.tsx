@@ -7,6 +7,7 @@ import type { Formacao } from '@/lib/types';
 import {
   cronogramaGeral,
   dataDoDia,
+  normalizarLink,
   participantesAtivos,
   type DiaDoPeriodo,
   type FichaEditavel,
@@ -183,7 +184,9 @@ function Online({ ficha }: { ficha: FichaEditavel }) {
         <Tabela cabecalho={['Ano/Área', 'Formador(a)', 'Link da videochamada']}>
           {ativos.length > 0 ? (
             ativos.map((p) => {
-              const link = p.linkUrl.trim();
+              // Normalizado também aqui: fichas salvas antes desta regra têm "meet.google.com/..."
+              // sem https://, que no PDF não seria clicável.
+              const link = normalizarLink(p.linkUrl);
               return (
                 <tr key={p.key}>
                   <Celula>{p.anoArea.trim() ? p.anoArea : <Falta>ano/área</Falta>}</Celula>
