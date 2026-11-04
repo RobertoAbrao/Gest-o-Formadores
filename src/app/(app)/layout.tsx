@@ -96,8 +96,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
         ];
         
-  // Conditionally render layout for the material viewer page
-  if (pathname.startsWith('/materiais/')) {
+  // Telas em tela cheia, sem menu lateral (o login acima continua valendo para elas):
+  // o visualizador de material e a ficha de divulgação, que o quadro abre numa aba própria.
+  if (pathname.startsWith('/materiais/') || pathname.startsWith('/ficha/')) {
     return <>{children}</>;
   }
 

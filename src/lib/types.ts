@@ -348,10 +348,15 @@ export type LinkOnline = {
     anoArea: string;
     formadorNome: string;
     linkUrl: string;
+    /** Identifica o dono do link. Fichas antigas não têm: lá o casamento era pelo nome. */
+    formadorId?: string;
+    /** Id do "formador a definir" (formadoresGenericos[].id) dono do link. */
+    extraId?: string;
 };
 
 export interface FichaDevolutiva {
-    id: string;
+    /** Nunca foi gravado no documento; o id é o da formação (fichas_devolutivas/{formacaoId}). */
+    id?: string;
     formacaoId: string;
     modalidade: 'online' | 'presencial';
     introducao: string;

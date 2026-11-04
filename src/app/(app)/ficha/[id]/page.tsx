@@ -1,792 +1,470 @@
-
-
 'use client';
 
-import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  setDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { Formacao, Formador, FichaDevolutiva, AgendasState, AgendaRow, LinkOnline } from '@/lib/types';
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { Loader2, Printer, ArrowLeft, RefreshCw, PlusCircle, User, Save, Users, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import AppLogo from '@/components/AppLogo';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { format, isValid, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useParams, useRouter } from 'next/navigation';
+import { format, isToday } from 'date-fns';
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Loader2, Lock, Printer, Save } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { DocumentoFicha } from '@/components/ficha/documento-ficha';
+import { EditorFicha } from '@/components/ficha/editor-ficha';
+import { useFicha } from '@/components/ficha/use-ficha';
+import {
+  comModalidade,
+  comParticipanteDeVolta,
+  diasDoPeriodo,
+  formatarQuando,
+  pendenciasDaFicha,
+  semParticipante,
+  type FichaEditavel,
+  type Modalidade,
+  type Pendencia,
+} from '@/components/ficha/ficha-modelo';
 
+/**
+ * Impressão. O documento é desenhado uma segunda vez num portal direto no <body>
+ * (`.ficha-print-root`), e na impressão tudo que não é ele some com `display: none`.
+ *
+ * Por que não a técnica antiga (`body * { visibility: hidden }` + `.printable-area` em
+ * position:absolute, que ainda está no globals.css para as outras telas): visibility não tira
+ * o resto do layout do fluxo e o absolute tira o documento dele — o navegador podia cortar o
+ * que passava da 1ª página ou gerar página em branco. Aqui o documento fica no fluxo normal
+ * e pagina sozinho. As regras com !important existem para vencer as do globals.css.
+ */
+const CSS_FICHA = `
+.ficha-print-root { display: none; }
+[data-destaque].ficha-destaque { box-shadow: 0 0 0 3px hsl(var(--accent)); }
+@page { size: A4; margin: 14mm 12mm; }
+@media print {
+  html, body { background: #fff !important; }
+  body > *:not(.ficha-print-root) { display: none !important; }
+  .ficha-print-root { display: block !important; }
+  .ficha-print-root, .ficha-print-root * { visibility: visible !important; }
+  .ficha-print-root .doc-folha { box-shadow: none !important; padding: 0 !important; max-width: none !important; }
+  .ficha-print-root .doc-falta { display: none !important; }
+  .ficha-print-root thead { display: table-header-group; }
+  .ficha-print-root tr, .ficha-print-root .doc-bloco { break-inside: avoid; page-break-inside: avoid; }
+  .ficha-print-root h2, .ficha-print-root h3 { break-after: avoid; page-break-after: avoid; }
+  .ficha-print-root a { color: inherit !important; }
+}
+`;
 
-const DIAS_DA_SEMANA = [
-    'Segunda-feira',
-    'Terça-feira',
-    'Quarta-feira',
-    'Quinta-feira',
-    'Sexta-feira',
-    'Sábado',
-    'Domingo',
-];
+type Aba = 'editar' | 'documento';
 
-// Texto padrão da introdução. Fica no escopo do módulo para que o botão de troca de
-// modalidade consiga comparar o texto atual com o padrão e só reescrever o que ainda
-// não foi editado à mão.
-const montarIntroducao = (titulo: string, modalidade: 'online' | 'presencial') => {
-    const textoModalidade = modalidade === 'online' ? ' e os links de acesso' : '';
-    return `Prezadas Diretoria de Formação e Equipe Pedagógica,
-Informamos a agenda${textoModalidade} para a formação "${titulo}", conforme o cronograma abaixo.`;
-};
-
-// Componente para renderizar texto com links
-const LinkifiedText = ({ text }: { text: string }) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-
-    return (
-        <>
-            {parts.map((part, i) =>
-                urlRegex.test(part) ? (
-                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        {part}
-                    </a>
-                ) : (
-                    <span key={i}>{part}</span>
-                )
-            )}
-        </>
-    );
-};
-
-
-export default function FichaDevolutivaPage() {
+export default function FichaDivulgacaoPage() {
   const params = useParams();
   const formacaoId = params.id as string;
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
+  const { formacao, ficha, setFicha, sujo, salvaEm, carregando, erro, salvando, salvar } = useFicha(formacaoId);
 
-  // Dados da Formação
-  const [formacao, setFormacao] = useState<Formacao | null>(null);
-  const [formadores, setFormadores] = useState<Formador[]>([]);
-  
-  // Estado da Ficha (dados que podem ser salvos)
-  const [fichaId, setFichaId] = useState<string | null>(null);
-  const [modalidade, setModalidade] = useState<'online' | 'presencial'>('online');
-  const [introducao, setIntroducao] = useState('');
-  const [horario, setHorario] = useState('19h00 às 20h30');
-  const [endereco, setEndereco] = useState('');
-  const [agendas, setAgendas] = useState<AgendasState>({});
-  const [linksOnline, setLinksOnline] = useState<LinkOnline[]>([]);
-  
-  // Estado para formadores genéricos
-  const [formadoresGenericos, setFormadoresGenericos] = useState<{id: string, nome: string}[]>([]);
-  const [agendasGenericas, setAgendasGenericas] = useState<AgendasState>({});
+  const [aba, setAba] = useState<Aba>('editar');
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const [confirmarImpressao, setConfirmarImpressao] = useState(false);
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
 
-
-  const [error, setError] = useState<string | null>(null);
-
-  const initializeDefaultState = (formacaoData: Formacao, formadoresData: Formador[], modalidadeInicial: 'online' | 'presencial') => {
-      setIntroducao(montarIntroducao(formacaoData.titulo, modalidadeInicial));
-      setEndereco('Endereço (Anos Iniciais): Escola Municipal Pedro Paulo Corte Filho – Av. Salvador, Cidade Universitária, 221 - Jardim Universitário, Luís Eduardo Magalhães – BA\nEndereço (Anos Finais): Colégio Municipal Ângelo Bosa - R. Morro do Chapéu, 1298 - Bairro Floraes Lea III, Luís Eduardo Magalhães - BA');
-
-      const initialAgendas: AgendasState = {};
-      formadoresData.forEach(f => {
-          initialAgendas[f.id] = [{ dia: '', horario: '', area: '', participantes: 0 }];
-      });
-      setAgendas(initialAgendas);
-      
-      setAgendasGenericas({});
-      setFormadoresGenericos([]);
-
-      const initialLinks: LinkOnline[] = formadoresData.map(f => ({
-          id: f.id,
-          formadorNome: f.nomeCompleto,
-          anoArea: '',
-          linkUrl: '',
-      }));
-      setLinksOnline(initialLinks);
-  };
-
-  const fetchData = useCallback(async () => {
-    if (!formacaoId) return;
-    setLoading(true);
-    try {
-        const formacaoRef = doc(db, 'formacoes', formacaoId);
-        const formacaoSnap = await getDoc(formacaoRef);
-        if (!formacaoSnap.exists()) throw new Error("Formação não encontrada.");
-        
-        const formacaoData = { id: formacaoSnap.id, ...formacaoSnap.data() } as Formacao;
-        setFormacao(formacaoData);
-
-        let formadoresData: Formador[] = [];
-        if (formacaoData.formadoresIds && formacaoData.formadoresIds.length > 0) {
-            const qFormadores = query(collection(db, 'formadores'), where('__name__', 'in', formacaoData.formadoresIds));
-            const formadoresSnap = await getDocs(qFormadores);
-            formadoresData = formadoresSnap.docs.map(d => ({ id: d.id, ...d.data() } as Formador));
-            setFormadores(formadoresData);
-        } else {
-            setFormadores([]);
-        }
-
-        // Tenta buscar a ficha salva
-        const fichaRef = doc(db, 'fichas_devolutivas', formacaoId);
-        const fichaSnap = await getDoc(fichaRef);
-
-        if (fichaSnap.exists()) {
-            const fichaData = fichaSnap.data() as FichaDevolutiva;
-            setFichaId(fichaData.id);
-            setModalidade(fichaData.modalidade);
-            setIntroducao(fichaData.introducao);
-            setHorario(fichaData.horario);
-            setEndereco(fichaData.endereco);
-            // A ficha pode ter sido salva antes de a formação receber os formadores (ou depois
-            // de a equipe mudar). Reconcilia o que está salvo com a equipe atual em vez de
-            // exibir a tabela vazia: mantém o que já foi preenchido e acrescenta quem falta.
-            const agendasSalvas = fichaData.agendas || {};
-            const agendasReconciliadas: AgendasState = { ...agendasSalvas };
-            formadoresData.forEach(formador => {
-                if (!agendasReconciliadas[formador.id]) {
-                    agendasReconciliadas[formador.id] = [{ dia: '', horario: '', area: '', participantes: 0 }];
-                }
-            });
-            setAgendas(agendasReconciliadas);
-
-            const linksSalvos: LinkOnline[] = (fichaData.links || []).map((l, i) => ({ ...l, id: `loaded_${i}` }));
-            const nomesComLink = new Set(linksSalvos.map(l => l.formadorNome));
-            const linksFaltantes: LinkOnline[] = formadoresData
-                .filter(formador => !nomesComLink.has(formador.nomeCompleto))
-                .map(formador => ({ id: formador.id, formadorNome: formador.nomeCompleto, anoArea: '', linkUrl: '' }));
-            setLinksOnline([...linksSalvos, ...linksFaltantes]);
-
-            setFormadoresGenericos(fichaData.formadoresGenericos || []);
-            setAgendasGenericas(fichaData.agendasGenericas || {});
-        } else {
-            // Se não existir, inicializa com os padrões
-            initializeDefaultState(formacaoData, formadoresData, modalidade);
-        }
-
-    } catch (error: any) {
-        console.error('Erro ao buscar detalhes da ficha: ', error);
-        setError(error.message);
-    } finally {
-        setLoading(false);
-    }
-    // 'modalidade' fica DE PROPÓSITO fora das deps: ela só alimenta o estado inicial de
-    // uma ficha nova. Se entrasse aqui, alternar online/presencial dispararia um refetch
-    // que sobrescreveria a escolha com o valor já salvo no Firestore (linha do setModalidade
-    // acima) e ainda descartaria as edições não salvas.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formacaoId]);
-
+  // Fechar a aba (ou recarregar) com alteração pendente: o navegador pergunta.
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSaveChanges = async () => {
-    if (!formacao) return;
-    setSaving(true);
-    try {
-      const fichaData: Partial<FichaDevolutiva> = {
-        formacaoId: formacao.id,
-        modalidade,
-        introducao,
-        horario,
-        endereco,
-        agendas,
-        links: linksOnline.map(({ id, ...rest }) => rest), // Strip out the id before saving
-        agendasGenericas,
-        formadoresGenericos,
-      };
-
-      const fichaRef = doc(db, 'fichas_devolutivas', formacao.id);
-      await setDoc(fichaRef, { ...fichaData, lastUpdated: serverTimestamp() }, { merge: true });
-
-      if(!fichaId) setFichaId(formacao.id);
-
-      toast({ title: 'Sucesso!', description: 'Ficha salva com sucesso.' });
-    } catch (error) {
-      console.error("Erro ao salvar a ficha: ", error);
-      toast({ variant: 'destructive', title: 'Erro ao salvar', description: 'Não foi possível salvar as alterações da ficha.' });
-    } finally {
-      setSaving(false);
-    }
-  };
-  
-  // Alterna online <-> presencial apenas no estado local; gravar continua sendo trabalho do
-  // botão "Salvar Alterações". Se a introdução ainda for exatamente o texto automático da
-  // modalidade antiga, ela é reescrita para a nova (texto editado à mão é preservado).
-  const handleToggleModalidade = () => {
-    const nova = modalidade === 'online' ? 'presencial' : 'online';
-    setModalidade(nova);
-    if (formacao && introducao === montarIntroducao(formacao.titulo, modalidade)) {
-      setIntroducao(montarIntroducao(formacao.titulo, nova));
-    }
-    toast({
-      title: `Modalidade alterada para ${nova === 'online' ? 'On-line' : 'Presencial'}`,
-      description: 'Clique em "Salvar Alterações" para gravar a mudança na ficha.',
-    });
-  };
-
-  const handleAddRow = (formadorId: string, isGeneric = false) => {
-    const setState = isGeneric ? setAgendasGenericas : setAgendas;
-    setState(prev => ({
-        ...prev,
-        [formadorId]: [...(prev[formadorId] || []), { dia: '', horario: '', area: '', participantes: 0 }]
-    }));
-  };
-  
-  const handleAgendaChange = (formadorId: string, rowIndex: number, field: keyof AgendaRow, value: string, isGeneric = false) => {
-      const setState = isGeneric ? setAgendasGenericas : setAgendas;
-      setState(prev => {
-          const newAgendas = { ...prev };
-          const formadorAgenda = [...(newAgendas[formadorId] || [])];
-          if (formadorAgenda[rowIndex]) {
-              const updatedRow = { ...formadorAgenda[rowIndex] };
-              if (field === 'participantes') {
-                  const numValue = parseInt(value, 10);
-                  (updatedRow[field] as any) = isNaN(numValue) ? 0 : numValue;
-              } else {
-                  (updatedRow[field] as any) = value;
-              }
-              formadorAgenda[rowIndex] = updatedRow;
-          }
-          newAgendas[formadorId] = formadorAgenda;
-          return newAgendas;
-      });
-  };
-
-  const handleRemoveRow = (formadorId: string, rowIndex: number, isGeneric = false) => {
-      const setState = isGeneric ? setAgendasGenericas : setAgendas;
-      setState(prev => {
-          const newAgendas = { ...prev };
-          const formadorAgenda = [...(newAgendas[formadorId] || [])];
-          formadorAgenda.splice(rowIndex, 1);
-          newAgendas[formadorId] = formadorAgenda;
-          return newAgendas;
-      });
-  };
-
-  const handleLinkChange = (index: number, field: keyof Omit<LinkOnline, 'id'>, value: string) => {
-      const newLinks = [...linksOnline];
-      if (newLinks[index]) {
-          (newLinks[index] as any)[field] = value;
-          setLinksOnline(newLinks);
-      }
-  };
-  
-    const handleAddGenericFormador = () => {
-        const newId = `generico_${Date.now()}`;
-        // Find the highest number used in existing generic formador names
-        const existingNumbers = formadoresGenericos.map(f => {
-            const match = f.nome.match(/Formador (\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        });
-        const nextNumber = existingNumbers.length > 0 ? Math.max(0, ...existingNumbers) + 1 : 1;
-        const newName = `Formador ${nextNumber}`;
-
-        setFormadoresGenericos(prev => [...prev, { id: newId, nome: newName }]);
-        setAgendasGenericas(prev => ({ ...prev, [newId]: [{ dia: '', horario: '', area: '', participantes: 0 }] }));
-    }
-
-    const handleAddGenericLink = () => {
-        // Find the highest number used in existing generic formador names
-        const existingGenericNames = linksOnline.filter(l => l.formadorNome.startsWith('Formador '));
-        const existingNumbers = existingGenericNames.map(l => {
-            const match = l.formadorNome.match(/Formador (\d+)/);
-            return match ? parseInt(match[1], 10) : 0;
-        });
-        const nextNumber = existingNumbers.length > 0 ? Math.max(0, ...existingNumbers) + 1 : 1;
-        const newName = `Formador ${nextNumber}`;
-
-        const newLink: LinkOnline = {
-            id: `generico_link_${Date.now()}`,
-            formadorNome: newName,
-            anoArea: '',
-            linkUrl: '',
-        };
-
-        setLinksOnline(prev => [...prev, newLink]);
-    }
-  
-  const handleRemoveGenericFormador = (idToRemove: string) => {
-    setFormadoresGenericos(prev => prev.filter(f => f.id !== idToRemove));
-    setAgendasGenericas(prev => {
-        const newAgendas = { ...prev };
-        delete newAgendas[idToRemove];
-        return newAgendas;
-    });
-  }
-
-  const handleRemoveGenericLink = (idToRemove: string) => {
-    setLinksOnline(prev => prev.filter(l => l.id !== idToRemove));
-  };
-
-
-  const generalSchedule = useMemo(() => {
-    const allEntries: (AgendaRow & { formadorNome: string })[] = [];
-
-    const processAgendas = (agendaState: AgendasState, formadorList: { id: string, nomeCompleto: string }[] | { id: string, nome: string }[]) => {
-        for (const formadorId in agendaState) {
-            const formador = formadorList.find(f => f.id === formadorId);
-            if (formador) {
-                agendaState[formadorId].forEach(row => {
-                    if (row.dia && row.horario) {
-                        allEntries.push({
-                            ...row,
-                            formadorNome: (formador as any).nomeCompleto || (formador as any).nome,
-                        });
-                    }
-                });
-            }
-        }
+    if (!sujo) return;
+    const aoSair = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
     };
-    
-    processAgendas(agendas, formadores);
-    processAgendas(agendasGenericas, formadoresGenericos);
+    window.addEventListener('beforeunload', aoSair);
+    return () => window.removeEventListener('beforeunload', aoSair);
+  }, [sujo]);
 
-    const groupedByDay = allEntries.reduce((acc, entry) => {
-        if (!acc[entry.dia]) {
-            acc[entry.dia] = [];
-        }
-        acc[entry.dia].push(entry);
-        return acc;
-    }, {} as Record<string, (AgendaRow & { formadorNome: string })[]>);
+  const periodo = useMemo(() => (formacao ? diasDoPeriodo(formacao) : []), [formacao]);
+  const quando = useMemo(() => (formacao ? formatarQuando(formacao) : ''), [formacao]);
+  const pendencias = useMemo(
+    () => (formacao && ficha ? pendenciasDaFicha(ficha, formacao, periodo) : []),
+    [ficha, formacao, periodo]
+  );
+  const faltas = pendencias.filter((p) => p.gravidade === 'falta');
 
-    const sortedDays = DIAS_DA_SEMANA.filter(day => groupedByDay[day]);
-    
-    return sortedDays.map(day => ({
-        day,
-        entries: groupedByDay[day].sort((a,b) => a.horario.localeCompare(b.horario))
-    }));
+  const atualizar = useCallback(
+    (fn: (f: FichaEditavel) => FichaEditavel) => setFicha((f) => (f ? fn(f) : f)),
+    [setFicha]
+  );
 
-  }, [agendas, agendasGenericas, formadores, formadoresGenericos]);
-
-
-  if (loading) {
+  if (carregando) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Carregando ficha...</p>
+      <div className="flex h-screen w-full items-center justify-center gap-2 bg-background text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        Carregando a ficha…
       </div>
     );
   }
 
-  if (error) {
-    return <div className="flex h-screen w-full items-center justify-center text-red-500">{error}</div>;
+  if (erro || !formacao || !ficha) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+        <p className="max-w-md text-destructive">{erro ?? 'Não foi possível carregar a ficha.'}</p>
+        <Button variant="outline" asChild>
+          <Link href="/quadro">
+            <ArrowLeft /> Voltar ao quadro
+          </Link>
+        </Button>
+      </div>
+    );
   }
-  
-  if (!formacao) {
-     return <div className="flex h-screen w-full items-center justify-center">Formação não encontrada.</div>;
-  }
 
-  const formattedPeriod = (() => {
-    const startDate = formacao.dataInicio?.toDate();
-    const endDate = formacao.dataFim?.toDate();
+  const handleSalvar = async () => {
+    const ok = await salvar();
+    toast(
+      ok
+        ? { title: 'Ficha salva.' }
+        : { variant: 'destructive', title: 'Não foi possível salvar', description: 'Verifique a conexão e tente de novo.' }
+    );
+    return ok;
+  };
 
-    if (!startDate || !isValid(startDate)) {
-      return 'Data a confirmar';
-    }
+  const imprimir = () => {
+    if (faltas.length > 0) setConfirmarImpressao(true);
+    else window.print();
+  };
 
-    if (!endDate || !isValid(endDate) || isSameDay(startDate, endDate)) {
-      return format(startDate, "EEEE, dd 'de' MMMM", { locale: ptBR });
-    }
+  const voltar = () => {
+    if (sujo) setConfirmarSaida(true);
+    else router.push('/quadro');
+  };
 
-    return `De ${format(startDate, 'dd', { locale: ptBR })} a ${format(endDate, "dd 'de' MMMM", { locale: ptBR })}`;
-  })();
+  const trocarModalidade = (m: Modalidade) => atualizar((f) => comModalidade(f, m, formacao.titulo));
 
-  const dynamicTitle = modalidade === 'online' 
-    ? `Divulgação de Links - ${formacao.titulo}` 
-    : `Divulgação - ${formacao.titulo}`;
+  const remover = (key: string) => {
+    const r = semParticipante(ficha, key);
+    if (!r.removido) return;
+    const removido = r.removido;
+    setFicha(r.ficha);
+    toast({
+      title: removido.tipo === 'fora' ? `${removido.nome} foi removido da ficha.` : 'Formador removido.',
+      action: (
+        <ToastAction altText="Desfazer" onClick={() => atualizar((f) => comParticipanteDeVolta(f, removido, r.indice))}>
+          Desfazer
+        </ToastAction>
+      ),
+    });
+  };
 
-  const dynamicFooter = modalidade === 'online'
-    ? 'Pedimos a gentileza de acessar o link correspondente ao seu ano/área de atuação.'
-    : 'Pedimos a gentileza de se dirigir ao local correspondente ao seu ano/área de atuação.';
-  
-  const editableFieldClass = "bg-yellow-100/50 dark:bg-yellow-900/20 border-yellow-400/80 dark:border-yellow-700/60 shadow-md shadow-yellow-400/40 focus:bg-background focus:border-input focus:shadow-none focus:ring-2 focus:ring-ring transition-all duration-200";
+  // Leva ao campo que resolve a pendência e o destaca por um instante.
+  const irPara = (alvo?: string) => {
+    if (!alvo) return;
+    setAba('editar');
+    window.setTimeout(() => {
+      const el = document.getElementById(alvo);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      if (el.matches('input, textarea, button')) el.focus({ preventScroll: true });
+      const caixa = (el.closest('[data-destaque]') as HTMLElement | null) ?? el;
+      caixa.classList.add('ficha-destaque');
+      window.setTimeout(() => caixa.classList.remove('ficha-destaque'), 1600);
+    }, 60);
+  };
+
+  const documento = <DocumentoFicha ficha={ficha} formacao={formacao} periodo={periodo} quando={quando} />;
 
   return (
     <>
-      <style jsx global>{`
-        @media print {
-          body {
-            background-color: #fff !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .print-container { padding: 0; margin: 0; }
-          body * { visibility: hidden; }
-          .printable-area, .printable-area * { visibility: visible; }
-          .printable-area { position: absolute; left: 0; top: 0; width: 100%; height: auto; padding: 1rem; margin: 0; }
-          .no-print { display: none !important; }
-          .print-only { visibility: visible !important; display: inline !important; }
-          .editable-textarea {
-             padding: 8px;
-             width: 100%;
-             white-space: pre-wrap; /* Preserve line breaks */
-          }
-          .print-table th, .print-table td { border: 1px solid #ddd; padding: 8px; }
-          .print-table { border-collapse: collapse; width: 100%; }
-        }
-      `}</style>
-        <div className="bg-muted/30 min-h-screen p-4 sm:p-8 print-container">
-            <div className="max-w-4xl mx-auto bg-card p-6 rounded-lg shadow-sm">
-                <div className="flex flex-wrap justify-between items-center gap-4 mb-8 no-print">
-                    <div>
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href="/quadro">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Voltar ao Quadro
-                            </Link>
-                        </Button>
-                        <p className="text-muted-foreground mt-2 text-sm">Pré-visualização da Ficha de Devolutiva</p>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleSaveChanges} disabled={saving}>
-                            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
-                            Salvar Alterações
-                        </Button>
-                        <Button variant="outline" onClick={handleToggleModalidade}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Alterar para {modalidade === 'online' ? 'Presencial' : 'Online'}
-                        </Button>
-                        <Button onClick={() => window.print()}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Imprimir / Salvar PDF
-                        </Button>
-                    </div>
-                </div>
-                <div className="printable-area bg-white text-black font-sans space-y-6">
-                    <header className="flex justify-between items-center pb-4 border-b-2">
-                        <AppLogo textClassName='text-2xl' iconClassName='h-10 w-10' />
-                        <h2 className="text-xl font-bold text-right">
-                          {dynamicTitle}
-                        </h2>
-                    </header>
-                    
-                    <section>
-                         <Textarea
-                           value={introducao}
-                           onChange={(e) => setIntroducao(e.target.value)}
-                           className={`w-full text-sm no-print ${editableFieldClass}`}
-                           rows={3}
-                         />
-                         <div className="hidden print-only editable-textarea">{introducao}</div>
-                    </section>
+      <style dangerouslySetInnerHTML={{ __html: CSS_FICHA }} />
 
-                    <section className='bg-gray-100 p-4 rounded-md text-sm'>
-                        <h3 className="font-bold mb-2">Data e Horário Comum para Todas as Formações:</h3>
-                         <p className="flex items-center gap-2">
-                            • <strong>Quando:</strong> {formattedPeriod}
-                        </p>
-                        <p className="flex items-center gap-2">
-                            • <strong>Horário:</strong> 
-                            <Input
-                                value={horario}
-                                onChange={e => setHorario(e.target.value)}
-                                className={`w-48 text-sm p-1 h-8 no-print ${editableFieldClass}`}
-                            />
-                            <span className="hidden print-only">{horario}</span>
-                        </p>
-                        <p className="mt-2 text-xs">
-                          {dynamicFooter}
-                        </p>
-                    </section>
-                    
-                     {modalidade === 'presencial' && (
-                        <section>
-                             <h3 className="text-lg font-bold mb-2">Endereço do Evento</h3>
-                              <Textarea
-                                value={endereco}
-                                onChange={(e) => setEndereco(e.target.value)}
-                                className={`w-full text-sm no-print ${editableFieldClass}`}
-                                rows={4}
-                              />
-                               <div className="hidden print-only editable-textarea">{endereco}</div>
-                        </section>
-                    )}
-
-                    {modalidade === 'presencial' && (
-                        <section>
-                             <h3 className="text-lg font-bold mb-2">Cronograma Geral do Evento</h3>
-                             <div className="border rounded-lg overflow-hidden">
-                                <Table className="print-table">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className='w-[20%]'>Dia</TableHead>
-                                            <TableHead className='w-[15%]'>Horário</TableHead>
-                                            <TableHead>Ano/Área</TableHead>
-                                            <TableHead className='w-[25%]'>Formador(a)</TableHead>
-                                            <TableHead className='w-[15%] text-right'>Participantes</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {generalSchedule.length > 0 ? (
-                                            generalSchedule.map(({ day, entries }) => (
-                                                entries.map((entry, index) => (
-                                                    <TableRow key={`${day}-${index}`}>
-                                                        {index === 0 && <TableCell rowSpan={entries.length} className="font-medium align-top">{day}</TableCell>}
-                                                        <TableCell>{entry.horario}</TableCell>
-                                                        <TableCell>{entry.area}</TableCell>
-                                                        <TableCell>{entry.formadorNome}</TableCell>
-                                                        <TableCell className="text-right">{entry.participantes || 0}</TableCell>
-                                                    </TableRow>
-                                                ))
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={5} className="text-center h-24">Nenhuma atividade agendada. Preencha as agendas individuais.</TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                             </div>
-                        </section>
-                    )}
-
-                    <section>
-                        <div className="flex justify-between items-center mb-2">
-                             <h3 className="text-lg font-bold">
-                                {modalidade === 'online' ? 'Links de Acesso à Formação (Google Meet)' : 'Agenda Individual da Formação'}
-                            </h3>
-                             <Button size="sm" variant="outline" className="no-print" onClick={modalidade === 'online' ? handleAddGenericLink : handleAddGenericFormador}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Formador Genérico
-                            </Button>
-                        </div>
-                        {modalidade === 'online' ? (
-                            <div className="space-y-6">
-                                <div className="border rounded-lg overflow-hidden">
-                                    <Table className="print-table">
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-[25%]">Ano/Área</TableHead>
-                                                <TableHead className="w-[25%]">Formador(a)</TableHead>
-                                                <TableHead>Link da Videochamada (Google Meet)</TableHead>
-                                                <TableHead className="w-[50px] no-print"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {linksOnline.map((link, index) => (
-                                                <TableRow key={link.id || index}>
-                                                    <TableCell>
-                                                      <Input
-                                                          value={link.anoArea}
-                                                          onChange={(e) => handleLinkChange(index, 'anoArea', e.target.value)}
-                                                          className={`w-full text-sm no-print h-9 ${editableFieldClass}`}
-                                                      />
-                                                      <span className="hidden print-only">{link.anoArea}</span>
-                                                    </TableCell>
-                                                    <TableCell>{link.formadorNome}</TableCell>
-                                                    <TableCell>
-                                                        <Textarea
-                                                            value={link.linkUrl}
-                                                            onChange={(e) => handleLinkChange(index, 'linkUrl', e.target.value)}
-                                                            className={`w-full text-sm no-print min-h-[60px] ${editableFieldClass}`}
-                                                            rows={2}
-                                                        />
-                                                        <div className="hidden print-only whitespace-pre-wrap">
-                                                            <LinkifiedText text={link.linkUrl} />
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="no-print">
-                                                        {link.formadorNome.startsWith('Formador ') && (
-                                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveGenericLink(link.id!)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                                <div>
-                                     <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                                        <User className="h-5 w-5" />
-                                        Equipe de Formadores
-                                     </h3>
-                                     <div className="border rounded-lg overflow-hidden">
-                                        <Table className="print-table">
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[30%]">Formador(a)</TableHead>
-                                                    <TableHead>Currículo</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                 {formadores.map((formador) => (
-                                                    <TableRow key={formador.id}>
-                                                        <TableCell className='font-semibold'>{formador.nomeCompleto}</TableCell>
-                                                        <TableCell className="text-xs text-gray-600 whitespace-pre-wrap">{formador.curriculo || 'Currículo não informado.'}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                     </div>
-                                </div>
-                            </div>
-                           ) : (
-                            <div className="space-y-6">
-                                {formadores.map(formador => (
-                                    <Card key={formador.id}>
-                                        <CardHeader>
-                                            <CardTitle>{formador.nomeCompleto}</CardTitle>
-                                            {formador.curriculo && (
-                                                <CardDescription className="text-xs text-muted-foreground whitespace-pre-wrap pt-1">
-                                                    {formador.curriculo}
-                                                </CardDescription>
-                                            )}
-                                        </CardHeader>
-                                        <CardContent>
-                                            <Table className="print-table">
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className='w-[25%]'>Dia da Semana</TableHead>
-                                                        <TableHead className='w-[20%]'>Horário</TableHead>
-                                                        <TableHead>Ano/Área</TableHead>
-                                                        <TableHead className='w-[20%]'>Participantes</TableHead>
-                                                        <TableHead className='w-[50px] no-print'></TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {(agendas[formador.id] || []).map((agendaRow, rowIndex) => (
-                                                        <TableRow key={`agenda-row-${formador.id}-${rowIndex}`}>
-                                                            <TableCell>
-                                                                <Select
-                                                                    value={agendaRow.dia || ''}
-                                                                    onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value)}
-                                                                >
-                                                                    <SelectTrigger className={`w-full no-print ${editableFieldClass}`}>
-                                                                        <SelectValue placeholder="Selecione..." />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {DIAS_DA_SEMANA.map(dia => (
-                                                                            <SelectItem key={dia} value={dia}>{dia}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <span className="hidden print-only">{agendaRow.dia}</span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="08h00-12h00" />
-                                                                <span className="hidden print-only">{agendaRow.horario}</span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="Anos Iniciais" />
-                                                                <span className="hidden print-only">{agendaRow.area}</span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
-                                                                <span className="hidden print-only">{agendaRow.participantes || ''}</span>
-                                                            </TableCell>
-                                                            <TableCell className="no-print">
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveRow(formador.id, rowIndex)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                            <div className="pt-4 text-right no-print">
-                                                <Button size="sm" variant="outline" onClick={() => handleAddRow(formador.id)}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                                {formadoresGenericos.map(formador => (
-                                    <Card key={formador.id} className="border-dashed">
-                                        <CardHeader>
-                                            <div className='flex justify-between items-center'>
-                                                <CardTitle>{formador.nome}</CardTitle>
-                                                <Button size="sm" variant="ghost" className="text-destructive h-8 w-8 p-0" onClick={() => handleRemoveGenericFormador(formador.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <Table className="print-table">
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className='w-[25%]'>Dia da Semana</TableHead>
-                                                        <TableHead className='w-[20%]'>Horário</TableHead>
-                                                        <TableHead>Ano/Área</TableHead>
-                                                        <TableHead className='w-[20%]'>Participantes</TableHead>
-                                                        <TableHead className='w-[50px] no-print'></TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {(agendasGenericas[formador.id] || []).map((agendaRow, rowIndex) => (
-                                                        <TableRow key={`agenda-row-${formador.id}-${rowIndex}`}>
-                                                            <TableCell>
-                                                                <Select
-                                                                    value={agendaRow.dia || ''}
-                                                                    onValueChange={(value) => handleAgendaChange(formador.id, rowIndex, 'dia', value, true)}
-                                                                >
-                                                                    <SelectTrigger className={`w-full no-print ${editableFieldClass}`}>
-                                                                        <SelectValue placeholder="Selecione..." />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {DIAS_DA_SEMANA.map(dia => (
-                                                                            <SelectItem key={dia} value={dia}>{dia}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <span className="hidden print-only">{agendaRow.dia}</span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Input value={agendaRow.horario} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'horario', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="08h00-12h00" />
-                                                                <span className="hidden print-only">{agendaRow.horario}</span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <Input value={agendaRow.area} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'area', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="Anos Finais" />
-                                                                <span className="hidden print-only">{agendaRow.area}</span>
-                                                            </TableCell>
-                                                             <TableCell>
-                                                                <Input type="number" value={agendaRow.participantes || ''} onChange={(e) => handleAgendaChange(formador.id, rowIndex, 'participantes', e.target.value, true)} className={`w-full text-sm no-print h-9 ${editableFieldClass}`} placeholder="0"/>
-                                                                <span className="hidden print-only">{agendaRow.participantes || ''}</span>
-                                                            </TableCell>
-                                                            <TableCell className="no-print">
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveRow(formador.id, rowIndex, true)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                            <div className="pt-4 text-right no-print">
-                                                <Button size="sm" variant="outline" onClick={() => handleAddRow(formador.id, true)}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Horário
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                           )}
-                    </section>
-                    
-                    <footer className="text-xs text-gray-500 pt-4 border-t">
-                        <strong className='text-gray-600'>Atenção:</strong> A Editora LT informa que não se responsabiliza pela divulgação indevida dos links gerados para a participação do encontro, tampouco com eventuais invasões virtuais que possam comprometer a formação da equipe gestora da rede de ensino do Município.
-                    </footer>
-                </div>
+      <div className="flex min-h-screen flex-col bg-background lg:h-screen">
+        <header className="sticky top-0 z-20 border-b bg-card">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 lg:flex-nowrap lg:px-6">
+            <Button variant="ghost" size="sm" className="px-2" onClick={voltar} aria-label="Voltar ao quadro">
+              <ArrowLeft />
+              <span className="hidden lg:inline">Quadro</span>
+            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Comunicado de divulgação</p>
+              <p className="truncate font-bold">
+                {formacao.titulo}{' '}
+                {formacao.codigo && <span className="font-mono text-xs font-normal text-muted-foreground">#{formacao.codigo}</span>}
+              </p>
             </div>
+            <StatusSalvo sujo={sujo} salvaEm={salvaEm} />
+            <div className="flex w-full items-center gap-2 lg:w-auto">
+              <SeletorModalidade valor={ficha.modalidade} onChange={trocarModalidade} className="flex-1 lg:flex-none" />
+              <div className="hidden gap-2 lg:flex">
+                <BotaoSalvar sujo={sujo} salvando={salvando} onClick={handleSalvar} />
+                <Button variant="outline" onClick={imprimir}>
+                  <Printer /> Imprimir / PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div role="tablist" aria-label="Partes da ficha" className="flex border-t lg:hidden">
+            {(['editar', 'documento'] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                role="tab"
+                aria-selected={aba === a}
+                onClick={() => setAba(a)}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2.5 text-sm font-bold',
+                  aba === a ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+                )}
+              >
+                {a === 'editar' ? 'Editar' : 'Documento'}
+                {a === 'documento' && faltas.length > 0 && (
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full border border-amber-300 bg-amber-50 px-1.5 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    {faltas.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <div className="flex-1 lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <section
+            aria-label="Editar"
+            className={cn('p-4 lg:overflow-y-auto lg:border-r lg:p-6', aba !== 'editar' && 'hidden lg:block')}
+          >
+            <EditorFicha
+              ficha={ficha}
+              formacao={formacao}
+              periodo={periodo}
+              quando={quando}
+              atualizar={atualizar}
+              onRemover={remover}
+            />
+          </section>
+
+          <section
+            aria-label="Documento"
+            className={cn('bg-muted/40 p-4 lg:overflow-y-auto lg:p-6', aba !== 'documento' && 'hidden lg:block')}
+          >
+            <div className="mx-auto flex max-w-[860px] flex-col gap-3">
+              <PainelPendencias pendencias={pendencias} onIr={irPara} />
+              <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" aria-hidden /> Documento · somente leitura, igual ao PDF
+              </p>
+              {documento}
+            </div>
+          </section>
         </div>
+
+        <div className="sticky bottom-0 z-20 flex gap-2 border-t bg-card px-4 py-3 lg:hidden">
+          <BotaoSalvar sujo={sujo} salvando={salvando} onClick={handleSalvar} className="flex-1" />
+          <Button variant="outline" onClick={imprimir} className="flex-1">
+            <Printer /> Imprimir / PDF
+          </Button>
+        </div>
+      </div>
+
+      {montado && createPortal(<div className="ficha-print-root">{documento}</div>, document.body)}
+
+      <AlertDialog open={confirmarSaida} onOpenChange={setConfirmarSaida}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações que ainda não foram salvas. Se sair agora, elas se perdem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => router.push('/quadro')}
+            >
+              Sair sem salvar
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={async () => {
+                if (await handleSalvar()) router.push('/quadro');
+              }}
+            >
+              Salvar e sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmarImpressao} onOpenChange={setConfirmarImpressao}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ainda falta preencher</AlertDialogTitle>
+            <AlertDialogDescription>
+              {faltas.length === 1 ? 'Há 1 item' : `Há ${faltas.length} itens`} na lista &quot;Antes de enviar&quot;. No PDF, o
+              que estiver vazio sai em branco.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel onClick={() => irPara(faltas[0]?.alvo)}>Revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => window.setTimeout(() => window.print(), 150)}>Imprimir mesmo assim</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function StatusSalvo({ sujo, salvaEm }: { sujo: boolean; salvaEm: Date | null }) {
+  const base = 'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold';
+  if (sujo) {
+    return (
+      <span
+        role="status"
+        className={cn(base, 'border border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300')}
+      >
+        <span className="h-2 w-2 rounded-full bg-current" aria-hidden />
+        <span className="hidden sm:inline">Alterações não salvas</span>
+        <span className="sm:hidden">Não salvo</span>
+      </span>
+    );
+  }
+  if (!salvaEm) {
+    return (
+      <span role="status" className={cn(base, 'border text-muted-foreground')}>
+        Ainda não salva
+      </span>
+    );
+  }
+  return (
+    <span role="status" className={cn(base, 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300')}>
+      <Check className="h-3.5 w-3.5" aria-hidden />
+      {isToday(salvaEm) ? `Salvo às ${format(salvaEm, 'HH:mm')}` : `Salvo em ${format(salvaEm, 'dd/MM')}`}
+    </span>
+  );
+}
+
+function SeletorModalidade({
+  valor,
+  onChange,
+  className,
+}: {
+  valor: Modalidade;
+  onChange: (m: Modalidade) => void;
+  className?: string;
+}) {
+  const opcoes: { valor: Modalidade; rotulo: string }[] = [
+    { valor: 'online', rotulo: 'Online' },
+    { valor: 'presencial', rotulo: 'Presencial' },
+  ];
+  return (
+    <div role="group" aria-label="Modalidade" className={cn('inline-flex gap-0.5 rounded-lg border bg-muted/50 p-1', className)}>
+      {opcoes.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          aria-pressed={valor === o.valor}
+          onClick={() => onChange(o.valor)}
+          className={cn(
+            'flex-1 rounded-md px-4 py-1.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            valor === o.valor ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {o.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BotaoSalvar({
+  sujo,
+  salvando,
+  onClick,
+  className,
+}: {
+  sujo: boolean;
+  salvando: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <Button variant={sujo ? 'default' : 'outline'} onClick={onClick} disabled={salvando} className={className}>
+      {salvando ? <Loader2 className="animate-spin" /> : <Save />}
+      {sujo ? 'Salvar' : 'Salvo'}
+    </Button>
+  );
+}
+
+function PainelPendencias({ pendencias, onIr }: { pendencias: Pendencia[]; onIr: (alvo?: string) => void }) {
+  if (pendencias.length === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" aria-hidden />
+        <span>
+          <strong>Tudo preenchido.</strong> Pode gerar o PDF e enviar.
+        </span>
+      </div>
+    );
+  }
+
+  const faltas = pendencias.filter((p) => p.gravidade === 'falta').length;
+  const avisos = pendencias.length - faltas;
+  const contagem = [faltas ? `${faltas} para preencher` : '', avisos ? `${avisos} ${avisos > 1 ? 'avisos' : 'aviso'}` : '']
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border px-4 py-3',
+        faltas
+          ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'
+          : 'bg-card'
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {faltas ? (
+          <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400" aria-hidden />
+        ) : (
+          <Info className="h-4 w-4 text-muted-foreground" aria-hidden />
+        )}
+        <strong className="text-sm">Antes de enviar</strong>
+        <span className="ml-auto text-xs font-bold text-amber-800 dark:text-amber-300">{contagem}</span>
+      </div>
+      <ul className="mt-2 flex flex-col gap-0.5">
+        {pendencias.map((p, i) => (
+          <li key={i}>
+            <button
+              type="button"
+              disabled={!p.alvo}
+              onClick={() => onIr(p.alvo)}
+              className={cn(
+                'relative w-full rounded-md py-1.5 pl-6 pr-2 text-left text-sm enabled:hover:bg-card',
+                p.gravidade === 'aviso' && 'text-muted-foreground'
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute left-2 top-3 h-1.5 w-1.5 rounded-full',
+                  p.gravidade === 'falta' ? 'bg-amber-600' : 'bg-muted-foreground'
+                )}
+              />
+              {p.texto}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {faltas > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Clique num item para ir ao campo. No PDF, o que estiver vazio sai em branco.
+        </p>
+      )}
+    </div>
   );
 }

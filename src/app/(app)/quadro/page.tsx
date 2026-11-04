@@ -29,7 +29,7 @@ import {
   ClipboardList,
   Archive,
   CheckCircle,
-  FileSignature,
+  Megaphone,
   QrCode,
   FolderOpen,
   Calendar,
@@ -513,13 +513,13 @@ export default function QuadroPage() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 p-0" asChild onClick={(e) => { e.stopPropagation(); }}>
-                                                    <Link href={`/ficha/${item.id}`} target="_blank">
-                                                        <FileSignature className="h-4 w-4" />
+                                                    <Link href={`/ficha/${item.id}`} target="_blank" rel="noopener" aria-label="Gerar ficha de divulgação">
+                                                        <Megaphone className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                <p>Gerar Ficha</p>
+                                                <p>Gerar ficha de divulgação</p>
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
