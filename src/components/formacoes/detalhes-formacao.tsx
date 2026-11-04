@@ -17,16 +17,20 @@ import {
     limit,
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
+import { differenceInCalendarDays } from 'date-fns';
 import { db } from '@/lib/firebase';
 import type { Formacao, Formador, Material, Anexo, FormadorStatus, Despesa, TipoDespesa, Avaliacao, AvaliacaoSecretaria, LogisticaViagem, ChecklistItem } from '@/lib/types';
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType, Sparkles, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy, Mail } from 'lucide-react';
+import { Loader2, User, MapPin, Calendar, Paperclip, UploadCloud, File as FileIcon, Trash2, Archive, DollarSign, Info, Eye, Utensils, Car, Building, Book, Grip, Hash, Users, Star, ClipboardCheck, FileText, FileType, Sparkles, ToggleLeft, ToggleRight, PlaneTakeoff, PlaneLanding, Hotel, CalendarCheck2, Image as ImageIcon, Download, Printer, RotateCcw, ListChecks, MessageSquare, MessageSquareText, Copy, Mail, CheckCircle, Pencil, Megaphone } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { ScrollArea } from '../ui/scroll-area';
 import { Separator } from '../ui/separator';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useAuth } from '@/hooks/use-auth';
+import { changeFormacaoStatus } from '@/lib/formacao-actions';
+import { FASES, faseDaFormacao, podeConcluir } from '@/lib/fase-formacao';
+import { CHECKLIST_ITENS, itemMarcado, progressoChecklist, type FaseChecklist } from '@/lib/checklist-formacao';
+import { tituloDaFormacao } from '@/components/quadro/quadro-modelo';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
@@ -43,65 +47,36 @@ import { Textarea } from '../ui/textarea';
 import { cn } from '@/lib/utils';
 
 
+/**
+ * Detalhe de uma formação, aberto dentro de um <DialogContent> (quadro, Dashboard,
+ * Arquivados). O cabeçalho — título, fase, datas, formadores, checklist e ações —
+ * é renderizado AQUI, para as três telas mostrarem o mesmo; quem abre não deve
+ * colocar outro DialogHeader em volta.
+ *
+ * Layout: cabeçalho e abas fixos, só o conteúdo da aba rola. Para isso o
+ * DialogContent de quem abre precisa ser `flex flex-col p-0 overflow-hidden` com
+ * altura máxima (ver /quadro).
+ */
 interface DetalhesFormacaoProps {
     formacaoId: string;
     onClose: () => void;
     isArchived?: boolean;
+    /** Sem esta prop, o botão Editar não aparece (Dashboard e Arquivados não editam daqui). */
+    onEditar?: () => void;
 }
 
 // Estendendo o tipo Anexo para incluir um ID opcional, para diferenciar os novos dos antigos
 type DisplayAnexo = Anexo & { id?: string };
 
-const checklistItems = [
-    // 1. Definições Iniciais (O esqueleto do evento)
-    { id: 'antes_levantarParticipantes', label: 'Levantar o quantitativo de participantes', phase: 'antes' },
-    { id: 'antes_marcarData', label: 'Marcar data da formação (quantos dias são necessários)', phase: 'antes' },
-    { id: 'antes_verificarLocal', label: 'Verificar o local de curso', phase: 'antes' },
-    { id: 'antes_elaborarProgramacao', label: 'Elaborar a programação e a ficha de curso para o município', phase: 'antes' },
-    { id: 'antes_levantarFormadores', label: 'Levantar o número de formadores necessários', phase: 'antes' },
-    { id: 'antes_definirAssessor', label: 'Definir um assessor para acompanhar o evento', phase: 'antes' },
-    { id: 'antes_contatoFormadores', label: 'Entrar em contato com os formadores', phase: 'antes' },
-    { id: 'antes_enviarFichaCurso', label: 'Enviar ficha de curso', phase: 'antes' },
-    { id: 'antes_solicitarBrindes', label: 'Solicitar brindes para a logística', phase: 'antes' },
-    { id: 'antes_verificarCoffee', label: 'Verificar quem ficará responsável pelo coffee', phase: 'antes' },
+/** Noites de hospedagem — mesma conta do formulário (form-formacao: calculateTotalCost). */
+const noitesDe = (item: LogisticaViagem): number => {
+    const ini = item.checkin?.toDate?.();
+    const fim = item.checkout?.toDate?.();
+    if (!ini || !fim) return 0;
+    return Math.max(0, differenceInCalendarDays(fim, ini));
+};
 
-    // 2. Divulgação (Com data, local e programação prontos, já pode divulgar)
-    { id: 'antes_divulgarEvento', label: 'Entrar em contato com o pessoal do marketing', phase: 'antes' },
-
-    // 3. Equipe e Logística de Viagem
-    { id: 'antes_pedirPassagens', label: 'Pedir passagens', phase: 'antes' },
-    { id: 'antes_pedirHospedagens', label: 'Pedir hospedagens', phase: 'antes' },
-    { id: 'antes_confirmarPagamentoDiarias', label: 'Confirmar se o pagamento das diárias foi efetuado', phase: 'antes' },
-
-    // 4. Infraestrutura Detalhada do Local
-    { id: 'antes_verificarEquipamentos', label: 'Verificar os equipamentos necessários (computador, som, projetor)', phase: 'antes' },
-    { id: 'antes_verificarInternet', label: 'Verificar se há internet no local', phase: 'antes' },
-
-    // 5. Materiais de Apoio e Alinhamento Final
-    { id: 'antes_atualizarApresentacaoAvaliacao', label: 'Atualizar a apresentação com o QRCode da avaliação', phase: 'antes' },
-    { id: 'antes_municipioSlideAtualizado', label: 'Slide atualizado', phase: 'antes' },
-    { id: 'antes_reuniaoFormadores', label: 'Fazer reunião com formadores para passar a apresentação e orientações do marketing', phase: 'antes' },
-    { id: 'antes_selecionarBanners', label: 'Selecionar os banners para o evento', phase: 'antes' },
-
-    { id: 'dia_testarSistema', label: 'Testar sistema de luz e som com a equipe técnica', phase: 'dia' },
-    { id: 'dia_disponibilizarWifi', label: 'Disponibilizar acessos ao wi-fi', phase: 'dia' },
-    { id: 'dia_repassarDetalhes', label: 'Repassar últimos detalhes com equipe de recepção do município', phase: 'dia' },
-    { id: 'dia_registrarPresenca', label: 'Registrar presença do participante por meio do QRCode e entregar o brinde', phase: 'dia' },
-    { id: 'dia_disponibilizarAgua', label: 'Disponibilizar água e copo aos formadores', phase: 'dia' },
-    { id: 'dia_desenvolverMarketing', label: 'Desenvolver ações de marketing', phase: 'dia' },
-    { id: 'dia_gerenciarDemandas', label: 'Acompanhar e gerenciar qualquer demanda que possa surgir', phase: 'dia' },
-    { id: 'dia_organizarHorarios', label: 'Organizar e passar os horários de início, pausa do café e finalização do evento', phase: 'dia' },
-
-    { id: 'apos_leituraAvaliacoes', label: 'Ler as avaliações do encontro', phase: 'apos' },
-    { id: 'apos_solicitarRelatorio', label: 'Solicitar relatório de curso aos formadores', phase: 'apos' },
-    { id: 'apos_solicitarImagens', label: 'Solicitar imagens para os formadores', phase: 'apos' },
-    { id: 'apos_enviarInstrucoesNF', label: 'Enviar instruções para a nota fiscal dos formadores', phase: 'apos' },
-    { id: 'apos_emailAgradecimento', label: 'Enviar e-mail de agradecimento para palestrantes, formadores e autoridades', phase: 'apos' },
-    { id: 'apos_enviarFormularioMunicipio', label: 'Enviar formulário para o município avaliar a formação', phase: 'apos' },
-    { id: 'apos_arquivarMateriais', label: 'Arquivar fotos, vídeos e relatórios', phase: 'apos' },
-    { id: 'apos_enviarAvaliacaoIndividual', label: 'Enviar avaliação individual', phase: 'apos' },
-];
-
+// Os itens do checklist ficam em '@/lib/checklist-formacao' (o card do quadro também usa).
 
 const fileToDataURL = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -112,7 +87,6 @@ const fileToDataURL = (file: File): Promise<string> => {
     });
 };
 
-const statusOptions: FormadorStatus[] = ['preparacao', 'em-formacao', 'pos-formacao', 'concluido'];
 const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
 
 const typeIcons: Record<TipoDespesa, React.ElementType> = {
@@ -185,8 +159,12 @@ const StarRating = ({ rating }: { rating: number | string | undefined }) => {
     );
 };
 
-export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: DetalhesFormacaoProps) {
+export function DetalhesFormacao({ formacaoId, onClose, isArchived = false, onEditar }: DetalhesFormacaoProps) {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(true);
+    // Aba controlada: recarregar dados não pode devolver a pessoa para a primeira aba.
+    const [aba, setAba] = useState('checklist');
+    const [mudandoStatus, setMudandoStatus] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [formacao, setFormacao] = useState<Formacao | null>(null);
     const [formadores, setFormadores] = useState<Formador[]>([]);
@@ -216,9 +194,14 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         return <FileIcon className="h-6 w-6 text-gray-500 shrink-0" />;
     };
 
-    const fetchData = useCallback(async () => {
+    /**
+     * `silencioso`: recarga depois de anexar/excluir. Não liga o `loading`, que troca
+     * o modal inteiro por um spinner — antes isso desmontava as abas e jogava a
+     * pessoa de volta para a primeira.
+     */
+    const fetchData = useCallback(async (silencioso = false) => {
         if (!formacaoId) return;
-        setLoading(true);
+        if (!silencioso) setLoading(true);
         try {
             const formacaoRef = doc(db, 'formacoes', formacaoId);
             const formacaoSnap = await getDoc(formacaoRef);
@@ -416,7 +399,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
             await addDoc(collection(db, 'anexos'), novoAnexo);
 
             toast({ title: "Sucesso", description: "Anexo enviado." });
-            await fetchData();
+            await fetchData(true);
         } catch (error) {
             console.error("Erro no upload do arquivo:", error);
             toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
@@ -444,34 +427,50 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                 });
             }
             toast({ title: "Sucesso", description: "Anexo excluído." });
-            await fetchData();
+            await fetchData(true);
         } catch (error) {
             console.error("Erro ao excluir anexo:", error);
             toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir o anexo." });
         }
     };
 
-    const handleStatusChange = async (newStatus: FormadorStatus) => {
-        if (!formacao) return;
+    /**
+     * Grava o status sem avisar nada — quem chama dá UM aviso só. (Antes este
+     * método já mostrava "Status alterado para arquivado" e o chamador mostrava
+     * outro, e o usuário via dois.)
+     *
+     * Concluir e arquivar passam por `changeFormacaoStatus`, o mesmo do card do
+     * quadro: concluir cria a demanda de agradecimento no Diário de Bordo.
+     */
+    const gravarStatus = async (newStatus: FormadorStatus, comAcoes = true): Promise<boolean> => {
+        if (!formacao) return false;
+        setMudandoStatus(true);
         try {
-            const formacaoRef = doc(db, 'formacoes', formacao.id);
-            await updateDoc(formacaoRef, { status: newStatus });
+            if (comAcoes) await changeFormacaoStatus(formacao, newStatus, user);
+            else await updateDoc(doc(db, 'formacoes', formacao.id), { status: newStatus });
             setFormacao(prev => prev ? { ...prev, status: newStatus } : null);
-            toast({ title: "Sucesso", description: `Status alterado para ${newStatus}.` });
-            return true; // Indicate success
+            return true;
         } catch (error) {
             console.error("Erro ao alterar status:", error);
-            toast({ variant: "destructive", title: "Erro", description: "Não foi possível alterar o status." });
-            return false; // Indicate failure
+            return false;
+        } finally {
+            setMudandoStatus(false);
         }
-    }
+    };
+
+    const handleConcluir = async () => {
+        if (await gravarStatus('concluido')) {
+            toast({ title: "Formação concluída", description: "A demanda de agradecimento está no Diário de Bordo." });
+        } else {
+            toast({ variant: "destructive", title: "Erro", description: "Não foi possível concluir a formação." });
+        }
+    };
 
     const handleArchive = async () => {
         if (!formacao || !window.confirm('Tem certeza que deseja arquivar esta formação?')) return;
 
-        const success = await handleStatusChange('arquivado');
-        if (success) {
-            toast({ title: "Sucesso", description: "Formação arquivada." });
+        if (await gravarStatus('arquivado')) {
+            toast({ title: "Formação arquivada", description: "Ela continua em Arquivados." });
             onClose();
         } else {
             toast({ variant: "destructive", title: "Erro", description: "Não foi possível arquivar a formação." });
@@ -481,9 +480,10 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
     const handleUnarchive = async () => {
         if (!formacao || !window.confirm('Tem certeza que deseja desarquivar esta formação?')) return;
 
-        const success = await handleStatusChange('concluido');
-        if (success) {
-            toast({ title: "Sucesso", description: "Formação desarquivada com sucesso." });
+        // Volta como concluída (foi assim que entrou no arquivo), sem as ações
+        // automáticas: desarquivar não é concluir de novo.
+        if (await gravarStatus('concluido', false)) {
+            toast({ title: "Formação desarquivada", description: "Ela volta ao quadro, na coluna Concluída." });
             onClose();
         } else {
             toast({ variant: "destructive", title: "Erro", description: "Não foi possível desarquivar a formação." });
@@ -503,10 +503,15 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
         }
     }
 
-    const handleCopyLink = (path: string) => {
+    const handleCopyLink = async (path: string) => {
         const url = `${window.location.origin}/${path}/${formacaoId}`;
-        navigator.clipboard.writeText(url);
-        toast({ title: 'Link copiado!', description: 'O link foi copiado para a área de transferência.' });
+        try {
+            await navigator.clipboard.writeText(url);
+            toast({ title: 'Link copiado', description: 'O link está na área de transferência.' });
+        } catch {
+            // Sem permissão de área de transferência: mostra o link para copiar à mão.
+            toast({ variant: 'destructive', title: 'Não deu para copiar', description: url });
+        }
     }
 
     const handleChecklistChange = async (itemId: string, checked: boolean) => {
@@ -896,166 +901,172 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-8 min-h-[400px]">
+            <div className="flex min-h-[400px] items-center justify-center p-8">
+                {/* O Radix exige título e descrição no diálogo mesmo enquanto carrega. */}
+                <DialogTitle className="sr-only">Carregando formação</DialogTitle>
+                <DialogDescription className="sr-only">Aguarde: os dados da formação estão sendo carregados.</DialogDescription>
                 <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
     }
 
     if (!formacao) {
-        return <div className="p-8">Formação não encontrada.</div>;
+        return (
+            <div className="space-y-1 p-8">
+                <DialogTitle>Formação não encontrada</DialogTitle>
+                <DialogDescription>Ela pode ter sido excluída.</DialogDescription>
+            </div>
+        );
     }
 
     const totalDespesas = despesas.reduce((sum, item) => sum + item.valor, 0);
-    const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + (item.valorDiaria || 0), 0) || 0;
+    // Noites × diária, a mesma conta do formulário. Antes somava só uma diária por pessoa.
+    const totalHospedagem = formacao.logistica?.reduce((sum, item) => sum + noitesDe(item) * (item.valorDiaria || 0), 0) || 0;
 
-    const ChecklistPhase = ({ title, phase }: { title: string, phase: 'antes' | 'dia' | 'apos' }) => {
-        const items = checklistItems.filter(item => item.phase === phase);
-        const completedItems = items.filter(item => {
-            const checklistValue = formacao.checklist?.[item.id];
-            if (typeof checklistValue === 'object' && checklistValue !== null) {
-                return checklistValue.checked;
-            }
-            return !!checklistValue; // Legacy boolean support
-        }).length;
-        const progress = items.length > 0 ? (completedItems / items.length) * 100 : 0;
-
-        return (
-            <AccordionItem value={phase}>
-                <AccordionTrigger>
-                    <div className='flex flex-col items-start gap-2'>
-                        <span className='font-semibold text-base'>{title}</span>
-                        <div className='flex items-center gap-2'>
-                            <Progress value={progress} className="w-32 h-2" />
-                            <span className='text-xs text-muted-foreground'>{completedItems} de {items.length}</span>
-                        </div>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                    <div className="space-y-3 pl-2">
-                        {items.map(item => {
-                            const checklistValue = formacao.checklist?.[item.id];
-                            const isChecked = typeof checklistValue === 'object' && checklistValue !== null ? checklistValue.checked : !!checklistValue;
-                            const observation = (typeof checklistValue === 'object' && checklistValue !== null) && 'observation' in checklistValue ? checklistValue.observation : '';
-
-                            return (
-                                <div key={item.id} className="flex items-center space-x-3">
-                                    <Checkbox
-                                        id={item.id}
-                                        checked={isChecked}
-                                        onCheckedChange={(checked) => handleChecklistChange(item.id, !!checked)}
-                                        disabled={isArchived}
-                                    />
-                                    <label
-                                        htmlFor={item.id}
-                                        className="text-sm font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-grow"
-                                    >
-                                        {item.label}
-                                    </label>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7 text-muted-foreground"
-                                        onClick={() => handleOpenObservationModal(item.id)}
-                                        disabled={isArchived}
-                                    >
-                                        {observation ? <MessageSquareText className="h-4 w-4 text-primary" /> : <MessageSquare className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </AccordionContent>
-            </AccordionItem>
-        );
-    };
+    const fase = faseDaFormacao(formacao);
+    const arquivada = isArchived || fase === 'arquivada';
+    const checklist = progressoChecklist(formacao);
+    const pctChecklist = checklist.total ? (checklist.feitos / checklist.total) * 100 : 0;
+    const inicioTxt = formacao.dataInicio ? formatDate(formacao.dataInicio) : null;
+    const fimTxt = formacao.dataFim ? formatDate(formacao.dataFim) : null;
+    const periodo = !inicioTxt && !fimTxt
+        ? 'Sem data'
+        : inicioTxt && fimTxt && inicioTxt !== fimTxt ? `${inicioTxt} a ${fimTxt}` : (inicioTxt || fimTxt);
+    const nomesFormadores = formadores.length > 0
+        ? formadores.map(f => f.nomeCompleto).join(', ')
+        : (formacao.formadoresNomes || []).join(', ');
+    const local = [formacao.municipio, formacao.uf].filter(Boolean).join('/');
 
     return (
         <>
-            <ScrollArea className="max-h-[80vh]">
-                <div className='p-1'>
-                    <Tabs defaultValue="info" className="p-4">
-                        <TabsList className="h-auto flex flex-wrap justify-start">
-                            <TabsTrigger value="info">Geral</TabsTrigger>
-                            <TabsTrigger value="checklist">Checklist</TabsTrigger>
-                            <TabsTrigger value="logistica">Logística</TabsTrigger>
-                            <TabsTrigger value="despesas">
-                                Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
-                            </TabsTrigger>
-                            <TabsTrigger value="avaliacoes">
-                                Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length + avaliacoesSecretaria.length}</Badge>
-                            </TabsTrigger>
-                        </TabsList>
+            <DialogHeader className="shrink-0 space-y-3 border-b p-4 pr-12 text-left sm:p-6 sm:pr-12">
+                <div className="space-y-1.5">
+                    <DialogTitle className="text-xl leading-snug sm:text-2xl">{tituloDaFormacao(formacao)}</DialogTitle>
+                    <DialogDescription asChild>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                            <span className={cn('inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium', FASES[fase].selo)}>
+                                {FASES[fase].titulo}
+                            </span>
+                            <span className="font-mono text-xs">{formacao.codigo}</span>
+                            <span aria-hidden>·</span>
+                            <span>{periodo}</span>
+                            {local && (
+                                <>
+                                    <span aria-hidden>·</span>
+                                    <span>{local}</span>
+                                </>
+                            )}
+                        </div>
+                    </DialogDescription>
+                </div>
+
+                <p className="flex items-start gap-2 text-sm">
+                    <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    {nomesFormadores ? <span>{nomesFormadores}</span> : <span className="text-muted-foreground">Sem formador definido</span>}
+                </p>
+
+                <button
+                    type="button"
+                    onClick={() => setAba('checklist')}
+                    className="flex w-full items-center gap-2 rounded-sm text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    title="Abrir o checklist"
+                >
+                    <ListChecks className="h-4 w-4" />
+                    <span>Checklist</span>
+                    <Progress value={pctChecklist} className="h-1.5 flex-1" />
+                    <span className="tabular-nums">{checklist.feitos}/{checklist.total}</span>
+                </button>
+
+                <div className="flex flex-wrap gap-2">
+                    {!arquivada && podeConcluir(fase) && (
+                        <Button onClick={handleConcluir} disabled={mudandoStatus} className="h-10 sm:h-9">
+                            {mudandoStatus ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                            Marcar como concluída
+                        </Button>
+                    )}
+                    {!arquivada && onEditar && (
+                        <Button variant="outline" onClick={onEditar} className="h-10 sm:h-9">
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
+                        </Button>
+                    )}
+                    {!arquivada && (
+                        <Button variant="outline" asChild className="h-10 sm:h-9">
+                            <Link href={`/ficha/${formacao.id}`} target="_blank" rel="noopener">
+                                <Megaphone className="mr-2 h-4 w-4" />
+                                Ficha de divulgação
+                            </Link>
+                        </Button>
+                    )}
+                    {!arquivada && fase === 'concluida' && (
+                        <Button variant="outline" onClick={handleArchive} disabled={mudandoStatus} className="h-10 sm:h-9">
+                            <Archive className="mr-2 h-4 w-4" />
+                            Arquivar
+                        </Button>
+                    )}
+                    {arquivada && (
+                        <Button variant="outline" onClick={handleUnarchive} disabled={mudandoStatus} className="h-10 sm:h-9">
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Desarquivar
+                        </Button>
+                    )}
+                </div>
+            </DialogHeader>
+
+            {/* Cabeçalho e abas ficam parados; só o conteúdo da aba rola. */}
+            <Tabs value={aba} onValueChange={setAba} className="flex min-h-0 flex-1 flex-col">
+                <div className="shrink-0 border-b px-4 py-2 sm:px-6">
+                    <TabsList className="h-auto max-w-full justify-start overflow-x-auto">
+                        <TabsTrigger value="checklist">
+                            Checklist <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">{checklist.feitos}/{checklist.total}</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="info">Geral</TabsTrigger>
+                        <TabsTrigger value="logistica">Logística</TabsTrigger>
+                        <TabsTrigger value="despesas">
+                            Despesas <Badge variant="secondary" className="ml-2">{despesas.length}</Badge>
+                        </TabsTrigger>
+                        <TabsTrigger value="avaliacoes">
+                            Avaliações <Badge variant="secondary" className="ml-2">{avaliacoes.length + avaliacoesSecretaria.length}</Badge>
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6">
+                        <TabsContent value="checklist">
+                            <div className="space-y-4 pt-2">
+                                <Accordion type="multiple" defaultValue={['antes']} className="w-full">
+                                    {([['antes', 'Antes do evento'], ['dia', 'No dia do evento'], ['apos', 'Após o evento']] as const).map(([faseChecklist, titulo]) => (
+                                        <FaseDoChecklist
+                                            key={faseChecklist}
+                                            titulo={titulo}
+                                            fase={faseChecklist}
+                                            formacao={formacao}
+                                            desabilitado={arquivada}
+                                            onMarcar={handleChecklistChange}
+                                            onObservacao={handleOpenObservationModal}
+                                        />
+                                    ))}
+                                </Accordion>
+                            </div>
+                        </TabsContent>
                         <TabsContent value="info">
-                            <div className="space-y-6 pt-4">
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="font-semibold text-lg">Detalhes Gerais</h4>
-                                    </div>
-                                    <Separator />
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {formadores.length > 0 && (
-                                            <div className="flex items-start gap-3">
-                                                <User className="h-5 w-5 text-muted-foreground mt-1" />
-                                                <div>
-                                                    <p className="text-sm text-muted-foreground">Formador(es)</p>
-                                                    {formadores.map(f => <p key={f.id} className="font-medium">{f.nomeCompleto}</p>)}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {formacao.participantes && formacao.participantes > 0 && (
-                                            <div className="flex items-start gap-3">
-                                                <Users className="h-5 w-5 text-muted-foreground mt-1" />
-                                                <div>
-                                                    <p className="text-sm text-muted-foreground">Nº de Participantes</p>
-                                                    <p className="font-medium">{formacao.participantes}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="flex items-center gap-3">
-                                            <MapPin className="h-5 w-5 text-muted-foreground" />
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">Município</p>
-                                                <p className="font-medium">{formacao.municipio}</p>
-                                            </div>
+                            <div className="space-y-6 pt-2">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="flex items-start gap-3 md:col-span-2">
+                                        <Info className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Descrição</p>
+                                            <p className="whitespace-pre-wrap">{formacao.descricao?.trim() || <span className="text-muted-foreground">Sem descrição.</span>}</p>
                                         </div>
+                                    </div>
+                                    {!!formacao.participantes && formacao.participantes > 0 && (
                                         <div className="flex items-start gap-3">
-                                            <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
+                                            <Users className="mt-0.5 h-5 w-5 text-muted-foreground" />
                                             <div>
-                                                <p className="text-sm text-muted-foreground">Status</p>
-                                                {isArchived ? (
-                                                    <Badge variant="secondary">Arquivado</Badge>
-                                                ) : (
-                                                    <Select onValueChange={(value) => handleStatusChange(value as FormadorStatus)} value={formacao.status}>
-                                                        <SelectTrigger className="w-[180px]">
-                                                            <SelectValue placeholder="Alterar status" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {statusOptions.map(option => (
-                                                                <SelectItem key={option} value={option}>
-                                                                    {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
+                                                <p className="text-sm text-muted-foreground">Nº de participantes</p>
+                                                <p className="font-medium">{formacao.participantes}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <Calendar className="h-5 w-5 text-muted-foreground" />
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">Data Início</p>
-                                                <p className="font-medium">{formatDate(formacao.dataInicio)}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Calendar className="h-5 w-5 text-muted-foreground" />
-                                            <div>
-                                                <p className="text-sm text-muted-foreground">Data Fim</p>
-                                                <p className="font-medium">{formatDate(formacao.dataFim)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
                                 {materiais.length > 0 && (
@@ -1162,60 +1173,16 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                         </div>
                                     )}
                                 </div>
-                                <div className="space-y-4 pt-4 border-t">
-                                    <h4 className="font-semibold text-lg">Ações</h4>
-                                    <div className="flex flex-wrap items-center gap-4">
-                                        {isArchived ? (
-                                            <Button variant="outline" onClick={handleUnarchive}>
-                                                <RotateCcw className="mr-2 h-4 w-4" />
-                                                Desarquivar Formação
-                                            </Button>
-                                        ) : (
-                                            <>
-                                                {formacao.status === 'concluido' && (
-                                                    <Button variant="outline" onClick={handleArchive}>
-                                                        <Archive className="mr-2 h-4 w-4" />
-                                                        Arquivar Formação
-                                                    </Button>
-                                                )}
-                                                <div className="flex items-center space-x-2">
-                                                    <Switch
-                                                        id="avaliacoes-switch"
-                                                        checked={formacao.avaliacoesAbertas}
-                                                        onCheckedChange={handleToggleAvaliacoes}
-                                                    />
-                                                    <Label htmlFor="avaliacoes-switch" className='flex items-center gap-2'>
-                                                        {formacao.avaliacoesAbertas
-                                                            ? <><ToggleRight className="text-green-600" /> Avaliações Abertas</>
-                                                            : <><ToggleLeft /> Avaliações Fechadas</>}
-                                                    </Label>
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="checklist">
-                            <div className="space-y-6 pt-4">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="font-semibold text-lg flex items-center gap-2"><ListChecks /> Checklist da Formação</h4>
-                                </div>
-                                <Separator />
-                                <Accordion type="multiple" defaultValue={['antes']} className="w-full">
-                                    <ChecklistPhase title="Antes do Evento" phase="antes" />
-                                    <ChecklistPhase title="No Dia do Evento" phase="dia" />
-                                    <ChecklistPhase title="Após o Evento" phase="apos" />
-                                </Accordion>
                             </div>
                         </TabsContent>
                         <TabsContent value="logistica">
-                            <div className="space-y-6 pt-4">
+                            <div className="space-y-6 pt-2">
                                 <div className="flex flex-wrap justify-between items-start gap-4">
                                     <h4 className="font-semibold text-lg truncate">Passagens e Hospedagem</h4>
                                     <div className="text-right flex-shrink-0">
-                                        <p className="text-sm text-muted-foreground">Custo Total de Hospedagem</p>
+                                        <p className="text-sm text-muted-foreground">Custo total de hospedagem</p>
                                         <p className="text-xl font-bold text-primary">{formatCurrency(totalHospedagem)}</p>
+                                        <p className="text-xs text-muted-foreground">diária × noites (check-in a check-out)</p>
                                     </div>
                                 </div>
                                 <Separator />
@@ -1237,7 +1204,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                         <TableHead>Ida/Volta</TableHead>
                                                         <TableHead>Hotel</TableHead>
                                                         <TableHead>Check-in/Check-out</TableHead>
-                                                        <TableHead className="text-right">Valor Diária</TableHead>
+                                                        <TableHead className="text-right">Hospedagem</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
@@ -1263,7 +1230,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell className="text-right font-medium">
-                                                                {item.valorDiaria ? formatCurrency(item.valorDiaria) : 'N/A'}
+                                                                <ValorHospedagem item={item} />
                                                             </TableCell>
                                                         </TableRow>
                                                     ))}
@@ -1276,7 +1243,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                     <CardHeader className="pb-4">
                                                         <CardTitle className="text-base flex items-center justify-between">
                                                             <span>{item.formadorNome}</span>
-                                                            <span className="font-bold text-primary">{item.valorDiaria ? formatCurrency(item.valorDiaria) : 'N/A'}</span>
+                                                            <span className="text-right font-bold text-primary"><ValorHospedagem item={item} /></span>
                                                         </CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="space-y-3 text-sm">
@@ -1313,7 +1280,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         </TabsContent>
                         <TabsContent value="despesas">
-                            <div className="space-y-6 pt-4">
+                            <div className="space-y-6 pt-2">
                                 <div className="flex justify-between items-center">
                                     <h4 className="font-semibold text-lg">Relatório de Despesas</h4>
                                     <div className="text-right">
@@ -1326,7 +1293,7 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                     <div className="text-sm text-muted-foreground flex items-center justify-center text-center p-8 border-2 border-dashed rounded-md">
                                         <div>
                                             <DollarSign className="h-6 w-6 mx-auto mb-2" />
-                                            Nenhuma de despesa encontrada para esta formação.
+                                            Nenhuma despesa lançada para esta formação.
                                         </div>
                                     </div>
                                 ) : (
@@ -1341,49 +1308,36 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                                                     <span className="text-lg font-semibold text-primary">{formatCurrency(data.total)}</span>
                                                 </AccordionTrigger>
                                                 <AccordionContent>
-                                                    <Accordion type="multiple" defaultValue={despesaTypes} className="w-full">
-                                                        {despesaTypes.map(type => {
-                                                            const despesasDoTipo = data.despesasPorTipo[type] || [];
-                                                            if (despesasDoTipo.length === 0) return null;
-                                                            const Icon = typeIcons[type];
-                                                            const total = despesasDoTipo.reduce((sum, item) => sum + item.valor, 0);
-
-                                                            return (
-                                                                <AccordionItem value={type} key={type}>
-                                                                    <AccordionTrigger>
-                                                                        <div className="flex items-center gap-3">
-                                                                            <Icon className="h-5 w-5 text-primary" />
-                                                                            <span className='font-semibold'>{type}</span>
-                                                                            <Badge variant="outline">{despesasDoTipo.length} {despesasDoTipo.length === 1 ? 'registro' : 'registros'}</Badge>
-                                                                        </div>
-                                                                        <span className="font-semibold text-primary">{formatCurrency(total)}</span>
-                                                                    </AccordionTrigger>
-                                                                    <AccordionContent>
-                                                                        <div className="border rounded-lg overflow-hidden">
-                                                                            <Table>
-                                                                                <TableHeader>
-                                                                                    <TableRow>
-                                                                                        <TableHead>Data</TableHead>
-                                                                                        <TableHead>Descrição</TableHead>
-                                                                                        <TableHead className="text-right">Valor</TableHead>
-                                                                                    </TableRow>
-                                                                                </TableHeader>
-                                                                                <TableBody>
-                                                                                    {despesasDoTipo.map(despesa => (
-                                                                                        <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
-                                                                                            <TableCell>{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
-                                                                                            <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
-                                                                                            <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
-                                                                                        </TableRow>
-                                                                                    ))}
-                                                                                </TableBody>
-                                                                            </Table>
-                                                                        </div>
-                                                                    </AccordionContent>
-                                                                </AccordionItem>
-                                                            )
-                                                        })}
-                                                    </Accordion>
+                                                    {/* Uma tabela só, com o tipo numa coluna: antes era uma sanfona por tipo dentro da sanfona do formador. */}
+                                                    <div className="overflow-x-auto rounded-lg border">
+                                                        <Table>
+                                                            <TableHeader>
+                                                                <TableRow>
+                                                                    <TableHead>Data</TableHead>
+                                                                    <TableHead>Tipo</TableHead>
+                                                                    <TableHead>Descrição</TableHead>
+                                                                    <TableHead className="text-right">Valor</TableHead>
+                                                                </TableRow>
+                                                            </TableHeader>
+                                                            <TableBody>
+                                                                {despesaTypes.flatMap(type => data.despesasPorTipo[type] || [])
+                                                                    .sort((a, b) => a.data.toMillis() - b.data.toMillis())
+                                                                    .map(despesa => {
+                                                                        const Icon = typeIcons[despesa.tipo] ?? Grip;
+                                                                        return (
+                                                                            <TableRow key={despesa.id} onClick={() => openDespesaDetails(despesa)} className="cursor-pointer">
+                                                                                <TableCell className="whitespace-nowrap">{despesa.data.toDate().toLocaleDateString('pt-BR')}</TableCell>
+                                                                                <TableCell className="whitespace-nowrap">
+                                                                                    <span className="inline-flex items-center gap-1.5"><Icon className="h-4 w-4 text-muted-foreground" />{despesa.tipo}</span>
+                                                                                </TableCell>
+                                                                                <TableCell className="text-muted-foreground">{despesa.descricao}</TableCell>
+                                                                                <TableCell className="text-right font-medium">{formatCurrency(despesa.valor)}</TableCell>
+                                                                            </TableRow>
+                                                                        );
+                                                                    })}
+                                                            </TableBody>
+                                                        </Table>
+                                                    </div>
                                                 </AccordionContent>
                                             </AccordionItem>
                                         ))}
@@ -1392,10 +1346,39 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         </TabsContent>
                         <TabsContent value="avaliacoes">
-                            <div className="space-y-6 pt-4">
-                                <div className='flex justify-between items-center'>
+                            <div className="space-y-6 pt-2">
+                                {!arquivada && (
+                                    <div className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <Switch
+                                                id="avaliacoes-switch"
+                                                checked={!!formacao.avaliacoesAbertas}
+                                                onCheckedChange={handleToggleAvaliacoes}
+                                            />
+                                            <Label htmlFor="avaliacoes-switch" className="flex flex-col gap-0.5">
+                                                <span className="flex items-center gap-2 font-medium">
+                                                    {formacao.avaliacoesAbertas
+                                                        ? <><ToggleRight className="h-4 w-4 text-green-600" /> Avaliações abertas</>
+                                                        : <><ToggleLeft className="h-4 w-4" /> Avaliações fechadas</>}
+                                                </span>
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    {formacao.avaliacoesAbertas
+                                                        ? 'O formulário está recebendo respostas.'
+                                                        : 'Quem abrir o link verá o formulário fechado.'}
+                                                </span>
+                                            </Label>
+                                        </div>
+                                        {formacao.avaliacoesAbertas && (
+                                            <Button variant="outline" size="sm" className="h-10 sm:h-9" onClick={() => handleCopyLink('avaliacao')}>
+                                                <Copy className="mr-2 h-4 w-4" />
+                                                Copiar link do formulário
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                                <div className='flex flex-wrap justify-between items-center gap-2'>
                                     <h4 className="font-semibold text-lg">Resultados das Avaliações</h4>
-                                    <div className='flex items-center gap-2'>
+                                    <div className='flex flex-wrap items-center gap-2'>
                                         <Button
                                             variant="outline"
                                             size="sm"
@@ -1460,7 +1443,8 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
 
                             </div>
                         </TabsContent>
-                    </Tabs>
+                </div>
+            </Tabs>
                     <Dialog open={isDespesaDialogOpen} onOpenChange={(open) => {
                         setIsDespesaDialogOpen(open);
                         if (!open) {
@@ -1497,8 +1481,110 @@ export function DetalhesFormacao({ formacaoId, onClose, isArchived = false }: De
                             </div>
                         </DialogContent>
                     </Dialog>
-                </div>
-            </ScrollArea>
         </>
+    );
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Hospedagem de uma linha da logística: "R$ 200 × 3 = R$ 600".
+ * Sem check-in/out não dá para contar noites — mostra só a diária e avisa.
+ */
+function ValorHospedagem({ item }: { item: LogisticaViagem }) {
+    if (!item.valorDiaria) return <span className="text-muted-foreground">N/A</span>;
+    const noites = noitesDe(item);
+    if (noites === 0) {
+        return (
+            <span className="inline-flex flex-col items-end">
+                <span>{formatCurrency(item.valorDiaria)}/diária</span>
+                <span className="text-xs font-normal text-muted-foreground">sem check-in/out: fora do total</span>
+            </span>
+        );
+    }
+    return (
+        <span className="inline-flex flex-col items-end">
+            <span>{formatCurrency(item.valorDiaria * noites)}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+                {formatCurrency(item.valorDiaria)} × {noites} {noites === 1 ? 'noite' : 'noites'}
+            </span>
+        </span>
+    );
+}
+
+/**
+ * Uma fase do checklist (antes / no dia / após).
+ *
+ * Fica FORA do DetalhesFormacao de propósito: declarado dentro do render, virava um
+ * componente novo a cada render, o React o desmontava e remontava a cada clique, e
+ * o checkbox perdia o foco.
+ */
+function FaseDoChecklist({
+    titulo,
+    fase,
+    formacao,
+    desabilitado,
+    onMarcar,
+    onObservacao,
+}: {
+    titulo: string;
+    fase: FaseChecklist;
+    formacao: Formacao;
+    desabilitado: boolean;
+    onMarcar: (itemId: string, checked: boolean) => void;
+    onObservacao: (itemId: string) => void;
+}) {
+    const items = CHECKLIST_ITENS.filter(item => item.phase === fase);
+    const { feitos, total } = progressoChecklist(formacao, fase);
+    const progress = total > 0 ? (feitos / total) * 100 : 0;
+
+    return (
+        <AccordionItem value={fase}>
+            <AccordionTrigger>
+                <div className='flex flex-col items-start gap-2'>
+                    <span className='font-semibold text-base'>{titulo}</span>
+                    <div className='flex items-center gap-2'>
+                        <Progress value={progress} className="w-32 h-2" />
+                        <span className='text-xs text-muted-foreground'>{feitos} de {total}</span>
+                    </div>
+                </div>
+            </AccordionTrigger>
+            <AccordionContent>
+                <div className="space-y-1 pl-1">
+                    {items.map(item => {
+                        const valor = formacao.checklist?.[item.id];
+                        const marcado = itemMarcado(valor);
+                        const observacao = typeof valor === 'object' && valor !== null ? valor.observation : '';
+
+                        return (
+                            <div key={item.id} className="flex min-h-10 items-center gap-3">
+                                <Checkbox
+                                    id={item.id}
+                                    checked={marcado}
+                                    onCheckedChange={(checked) => onMarcar(item.id, !!checked)}
+                                    disabled={desabilitado}
+                                />
+                                <label
+                                    htmlFor={item.id}
+                                    className="flex-grow text-sm font-normal leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    {item.label}
+                                </label>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-9 w-9 shrink-0 text-muted-foreground"
+                                    onClick={() => onObservacao(item.id)}
+                                    disabled={desabilitado}
+                                    aria-label={observacao ? 'Ver observação' : 'Adicionar observação'}
+                                >
+                                    {observacao ? <MessageSquareText className="h-4 w-4 text-primary" /> : <MessageSquare className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </AccordionContent>
+        </AccordionItem>
     );
 }

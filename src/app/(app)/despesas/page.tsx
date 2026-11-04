@@ -19,7 +19,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, MoreHorizontal, Pencil, Trash2, Loader2, DollarSign, Building, Utensils, Car, Book, Grip, Eye, Info } from 'lucide-react';
-import type { Despesa, TipoDespesa } from '@/lib/types';
+import type { Despesa, TipoDespesa, Formacao } from '@/lib/types';
+import { aceitaDespesa, faseDaFormacao } from '@/lib/fase-formacao';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { collection, getDocs, query, deleteDoc, doc, where, limit } from 'firebase/firestore';
@@ -66,14 +67,16 @@ export default function DespesasPage() {
     if (!user) return;
     setLoadingAtivo(true);
     try {
+      // A fase vem da data (faseDaFormacao), não do status gravado — o `em-formacao`
+      // só existia se um admin trocasse à mão. Filtra no cliente: fase não é consultável.
       const q = query(
         collection(db, 'formacoes'),
         where('formadoresIds', 'array-contains', user.uid),
-        where('status', '==', 'em-formacao'),
-        limit(1)
       );
       const querySnapshot = await getDocs(q);
-      setIsFormadorAtivo(!querySnapshot.empty);
+      setIsFormadorAtivo(
+        querySnapshot.docs.some((d) => aceitaDespesa(faseDaFormacao(d.data() as Formacao)))
+      );
     } catch (error) {
         console.error("Error checking active formations:", error);
         setIsFormadorAtivo(false); // Assume not active on error

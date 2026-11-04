@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FormDemanda } from '@/components/diario/form-diario';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { changeFormacaoStatus } from '@/lib/formacao-actions';
+import { faseDaFormacao } from '@/lib/fase-formacao';
 
 
 const lembreteSchema = z.object({
@@ -250,8 +251,13 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // A fase vem da data (faseDaFormacao): "encerrada" é a que terminou e falta concluir.
+  // Antes lia o status gravado `pos-formacao`, que só existia se alguém trocasse à mão.
   const followUpActions = useMemo(() => {
-    return activeFormations.filter(formacao => formacao.status === 'pos-formacao' || formacao.status === 'concluido');
+    return activeFormations.filter(formacao => {
+      const fase = faseDaFormacao(formacao);
+      return fase === 'encerrada' || fase === 'concluida';
+    });
   }, [activeFormations]);
 
   useEffect(() => {
@@ -389,7 +395,7 @@ export default function DashboardPage() {
     body += generateSection(
         "Ações de Acompanhamento",
         followUps,
-        (formacao: Formacao) => `- ${formacao.status === 'pos-formacao' ? 'Finalizada' : 'Concluída'}: ${formacao.titulo}`
+        (formacao: Formacao) => `- ${faseDaFormacao(formacao) === 'encerrada' ? 'Encerrada, falta concluir' : 'Concluída'}: ${formacao.titulo}`
     );
   
     body += "Atenciosamente,\nPortal de Gestão Pedagógica";
@@ -626,8 +632,8 @@ export default function DashboardPage() {
                                         {followUpActions.map((formacao) => (
                                             <TableRow key={formacao.id}>
                                                 <TableCell>
-                                                    {formacao.status === 'pos-formacao' ? (
-                                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Finalizada</Badge>
+                                                    {faseDaFormacao(formacao) === 'encerrada' ? (
+                                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Encerrada</Badge>
                                                     ) : (
                                                         <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
                                                     )}
@@ -643,7 +649,7 @@ export default function DashboardPage() {
                                                     </Button>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {formacao.status === 'pos-formacao' ? (
+                                                    {faseDaFormacao(formacao) === 'encerrada' ? (
                                                         <Button size="sm" onClick={() => handleUpdateStatus(formacao, 'concluido')} disabled={loadingAction === formacao.id}>
                                                             {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
                                                         </Button>
@@ -780,26 +786,13 @@ export default function DashboardPage() {
       </div>
        
       <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
-            <DialogContent className="sm:max-w-2xl">
+            {/* O DetalhesFormacao desenha o próprio cabeçalho e rola só o conteúdo da aba. */}
+            <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
                 {selectedFormacao && (
-                  <>
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl">
-                           {selectedFormacao.titulo.startsWith('Devolutiva') && !selectedFormacao.titulo.includes(':') && selectedFormacao.municipio
-                              ? `${selectedFormacao.titulo}: ${selectedFormacao.municipio}`
-                              : selectedFormacao.titulo}
-                        </DialogTitle>
-                        <DialogDescription asChild>
-                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-                                <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
-                            </div>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DetalhesFormacao 
-                        formacaoId={selectedFormacao.id} 
-                        onClose={() => handleDetailDialogChange(false)} 
+                    <DetalhesFormacao
+                        formacaoId={selectedFormacao.id}
+                        onClose={() => handleDetailDialogChange(false)}
                     />
-                  </>
                 )}
             </DialogContent>
         </Dialog>

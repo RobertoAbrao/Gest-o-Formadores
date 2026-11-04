@@ -7,14 +7,19 @@
  *
  * Definições acertadas com a coordenação:
  *  - atrasado: passou da data de fim e não foi concluída;
- *  - atrasado: passou da data de início e ainda está em preparação;
  *  - falta preencher: etapa do projeto sem data nenhuma;
  *  - falta preencher: formação com data e sem formadores;
  *  - próximo de atrasar: começa em até 7 dias (mesma janela da demanda automática).
+ *
+ * Saiu em 04/11/2026 o "atrasado: passou da data de início e ainda está em
+ * preparação". Desde então a data diz a fase (ver `fase-formacao.ts`): se o dia
+ * chegou, a formação está acontecendo — não existe mais "deveria ter começado".
+ * O alerta só disparava porque o status gravado nunca era atualizado.
  */
 
 import { differenceInCalendarDays, startOfToday } from 'date-fns';
 import type { Formacao, ProjetoImplatancao } from '@/lib/types';
+import { faseDaFormacao } from '@/lib/fase-formacao';
 
 /** Antecedência do aviso de "vai atrasar". Espelha o prazo da demanda automática. */
 export const DIAS_DE_ANTECEDENCIA = 7;
@@ -28,7 +33,6 @@ export interface Alerta {
   /** Chave estável, para agrupar e contar sem depender do texto. */
   motivo:
     | 'fim-vencido'
-    | 'inicio-vencido'
     | 'comeca-em-breve'
     | 'sem-formadores'
     | 'etapa-sem-data';
@@ -57,31 +61,20 @@ export function alertasDaFormacao(f: Formacao, hoje: Date = startOfToday()): Ale
   const alertas: Alerta[] = [];
 
   // Concluída ou arquivada não atrasa mais: o trabalho acabou.
-  const encerrada = f.status === 'concluido' || f.status === 'arquivado';
+  const fase = faseDaFormacao(f, hoje);
+  const encerrada = fase === 'concluida' || fase === 'arquivada';
 
   const inicio = paraData(f.dataInicio as any);
-  const fim = paraData(f.dataFim as any);
+  // Sem data de fim, o evento é de um dia: termina no próprio início.
+  const fim = paraData(f.dataFim as any) ?? inicio;
 
-  if (!encerrada && fim) {
+  if (fase === 'encerrada' && fim) {
     const dias = differenceInCalendarDays(hoje, fim);
-    if (dias > 0) {
-      alertas.push({
-        gravidade: 'atrasado',
-        motivo: 'fim-vencido',
-        texto: `Terminou há ${dias} ${plural(dias, 'dia', 'dias')} e não foi concluída`,
-      });
-    }
-  }
-
-  if (!encerrada && inicio && f.status === 'preparacao') {
-    const dias = differenceInCalendarDays(hoje, inicio);
-    if (dias > 0) {
-      alertas.push({
-        gravidade: 'atrasado',
-        motivo: 'inicio-vencido',
-        texto: `Deveria ter começado há ${dias} ${plural(dias, 'dia', 'dias')}`,
-      });
-    }
+    alertas.push({
+      gravidade: 'atrasado',
+      motivo: 'fim-vencido',
+      texto: `Terminou há ${dias} ${plural(dias, 'dia', 'dias')}, falta concluir`,
+    });
   }
 
   if (!encerrada && inicio) {

@@ -1,47 +1,9 @@
-
 'use client';
 
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  getDoc,
-  query,
-  where,
-  Timestamp,
-  updateDoc,
-} from 'firebase/firestore';
-import {
-  MoreHorizontal,
-  PlusCircle,
-  Loader2,
-  Trash2,
-  Paperclip,
-  Pencil,
-  Printer,
-  Eye,
-  Hash,
-  Users,
-  ClipboardCheck,
-  Flag,
-  Target,
-  ClipboardList,
-  Archive,
-  CheckCircle,
-  Megaphone,
-  QrCode,
-  FolderOpen,
-  Calendar,
-  Share,
-  Copy,
-} from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
-import { alertasDaFormacao, pendenciasDoProjeto, resumirAlertas, CORES_GRAVIDADE } from '@/lib/alertas';
-import Link from 'next/link';
-import { isAfter, isBefore, isWithinInterval, startOfToday } from 'date-fns';
+import { collection, deleteDoc, doc, getDoc, query, updateDoc, where } from 'firebase/firestore';
+import { Loader2, Plus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { startOfToday } from 'date-fns';
 
 import {
   AlertDialog,
@@ -54,297 +16,233 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { db } from '@/lib/firebase';
-import type { Formacao, FormadorStatus, ProjetoImplatancao } from '@/lib/types';
+import { ToastAction } from '@/components/ui/toast';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
 import { FormFormacao } from '@/components/formacoes/form-formacao';
 import { FormProjeto } from '@/components/projetos/form-projeto';
-import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
-import { Badge } from '@/components/ui/badge';
 import { GeradorQRCode } from '@/components/qrcode/GeradorQRCode';
-import { cn } from '@/lib/utils';
+import { BarraFilas } from '@/components/quadro/barra-filas';
+import { CardFormacao } from '@/components/quadro/card-formacao';
+import { ColunaQuadro } from '@/components/quadro/coluna-quadro';
+import {
+  FILAS,
+  combinaBusca,
+  ordenarColuna,
+  tituloDaFormacao,
+  type ContextoCard,
+  type FilaId,
+} from '@/components/quadro/quadro-modelo';
 import { useAuth } from '@/hooks/use-auth';
+import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
+import { useToast } from '@/hooks/use-toast';
+import { alertasDaFormacao, pendenciasDoProjeto } from '@/lib/alertas';
+import { FASES, FASES_DO_QUADRO, faseDaFormacao, type FaseFormacao } from '@/lib/fase-formacao';
+import { db } from '@/lib/firebase';
 import { changeFormacaoStatus } from '@/lib/formacao-actions';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { Formacao, ProjetoImplatancao } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-
-type Columns = {
-  [key in FormadorStatus]: {
-    title: string;
-    items: Formacao[];
-    colorClass: string;
-  };
-};
+type FaseDoQuadro = (typeof FASES_DO_QUADRO)[number];
 
 /**
- * Ordem dos cards dentro de uma coluna.
+ * Acompanhamento: as formações por fase (colunas) e o que precisa de ação (filas).
  *
- * Princípio único: **o mais próximo de hoje fica no topo**. Nas colunas de futuro
- * isso é ordem crescente de data; nas de passado é decrescente. Sem isso, o quadro
- * saía na ordem que o Firestore devolvia — e uma devolutiva de dezembro aparecia
- * antes de uma da semana que vem.
- *
- * Efeito colateral desejado em "Preparação": o que já deveria ter começado tem data
- * no passado, então sobe sozinho para o topo. Atrasado é o primeiro que se vê.
- *
- * Sem data vai para o fim — não há como ordenar, e é justamente o card incompleto.
+ * A coluna vem de `faseDaFormacao` — a data move o card. Os únicos botões que
+ * gravam status são Concluir e Arquivar: são decisões humanas, e o Concluir cria a
+ * demanda de agradecimento no Diário de Bordo (`changeFormacaoStatus`).
  */
-const ORDEM_POR_COLUNA: Record<FormadorStatus, 'proximas-primeiro' | 'recentes-primeiro'> = {
-  preparacao: 'proximas-primeiro',
-  'em-formacao': 'proximas-primeiro',
-  'pos-formacao': 'recentes-primeiro',
-  concluido: 'recentes-primeiro',
-  arquivado: 'recentes-primeiro',
-};
-
-const emMilissegundos = (t: Timestamp | null | undefined): number | null => {
-  if (!t) return null;
-  try {
-    return t.toDate().getTime();
-  } catch {
-    return null;
-  }
-};
-
-function ordenarColuna(items: Formacao[], status: FormadorStatus): Formacao[] {
-  const modo = ORDEM_POR_COLUNA[status];
-  // Coluna de futuro se guia pelo início; a de passado, pelo fim (com o início
-  // como reserva, para o card não cair no fim só por não ter data de término).
-  const dataDe = (f: Formacao) =>
-    modo === 'proximas-primeiro'
-      ? emMilissegundos(f.dataInicio) ?? emMilissegundos(f.dataFim)
-      : emMilissegundos(f.dataFim) ?? emMilissegundos(f.dataInicio);
-
-  return [...items].sort((a, b) => {
-    const da = dataDe(a);
-    const db_ = dataDe(b);
-
-    if (da === null && db_ === null) return a.titulo.localeCompare(b.titulo);
-    if (da === null) return 1;
-    if (db_ === null) return -1;
-
-    return modo === 'proximas-primeiro' ? da - db_ : db_ - da;
-  });
-}
-
-const columnConfig: { [key in FormadorStatus]: { title: string, colorClass: string } } = {
-  preparacao: { title: 'Preparação', colorClass: 'bg-green-500 border-green-500' },
-  'em-formacao': { title: 'Em Formação', colorClass: 'bg-blue-500 border-blue-500' },
-  'pos-formacao': { title: 'Pós Formação', colorClass: 'bg-yellow-500 border-yellow-500' },
-  concluido: { title: 'Concluído', colorClass: 'bg-purple-500 border-purple-500' },
-  arquivado: { title: 'Arquivado', colorClass: 'bg-gray-500 border-gray-500' },
-};
-
-
-const initialColumns: Columns = {
-  preparacao: { ...columnConfig.preparacao, items: [] },
-  'em-formacao': { ...columnConfig['em-formacao'], items: [] },
-  'pos-formacao': { ...columnConfig['pos-formacao'], items: [] },
-  concluido: { ...columnConfig.concluido, items: [] },
-  arquivado: { ...columnConfig.arquivado, items: [] },
-};
-
 export default function QuadroPage() {
-  const [columns, setColumns] = useState<Columns>(initialColumns);
-  const [loading, setLoading] = useState(true);
-  const [loadingStatusChange, setLoadingStatusChange] = useState<string | null>(null);
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [isQRCodeDialogOpen, setIsQRCodeDialogOpen] = useState(false);
-  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
-  const [selectedProjetoParaEditar, setSelectedProjetoParaEditar] = useState<ProjetoImplatancao | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Ao vivo: um usuario salva, os outros veem sem recarregar.
-  const { dados: formacoesData, carregando: carregandoFormacoes } = useColecaoTempoReal<Formacao>(
+  // Ao vivo: um usuário salva, os outros veem sem recarregar.
+  const { dados: formacoesData, carregando } = useColecaoTempoReal<Formacao>(
     () => query(collection(db, 'formacoes'), where('status', '!=', 'arquivado')),
     []
   );
+  // Projetos entram só para as etapas sem data: etapa sem data nunca vira formação.
+  const { dados: projetosData } = useColecaoTempoReal<ProjetoImplatancao>(() => collection(db, 'projetos'), []);
 
-  // Projetos entram so para as pendencias de planejamento: etapa sem data nunca
-  // vira formacao, entao seria invisivel no quadro se nao fosse listada a parte.
-  const { dados: projetosData } = useColecaoTempoReal<ProjetoImplatancao>(
-    () => collection(db, 'projetos'),
-    []
-  );
+  const [fila, setFila] = useState<FilaId | null>(null);
+  const [busca, setBusca] = useState('');
+  const [faseMovel, setFaseMovel] = useState<FaseDoQuadro | null>(null);
+  const [ocupadoId, setOcupadoId] = useState<string | null>(null);
 
-  const categorizar = useCallback((formacoes: Formacao[]) => {
-      const formacoesData = formacoes;
-      const newColumns: Columns = {
-        preparacao: { ...columnConfig.preparacao, items: [] },
-        'em-formacao': { ...columnConfig['em-formacao'], items: [] },
-        'pos-formacao': { ...columnConfig['pos-formacao'], items: [] },
-        concluido: { ...columnConfig.concluido, items: [] },
-        arquivado: { ...columnConfig.arquivado, items: [] },
-      };
+  // Um estado por diálogo: antes os quatro dividiam um "selecionado" e se atropelavam.
+  const [detalhe, setDetalhe] = useState<Formacao | null>(null);
+  const [formAberto, setFormAberto] = useState(false);
+  const [emEdicao, setEmEdicao] = useState<Formacao | null>(null);
+  const [projetoEmEdicao, setProjetoEmEdicao] = useState<ProjetoImplatancao | null>(null);
+  const [qrDe, setQrDe] = useState<Formacao | null>(null);
+  const [excluir, setExcluir] = useState<Formacao | null>(null);
+  const [formSujo, setFormSujo] = useState(false);
+  const [descartar, setDescartar] = useState<'formacao' | 'projeto' | null>(null);
 
-      const today = startOfToday();
+  // ------------------------------------------------------------------ dados
 
-      formacoesData.forEach((item) => {
-        let status: FormadorStatus = item.status;
-        
-        if (item.status !== 'concluido' && item.status !== 'arquivado') {
-             if (item.dataInicio && isAfter(item.dataInicio.toDate(), today)) {
-                 status = 'preparacao';
-             } else if (item.dataInicio && item.dataFim && isWithinInterval(today, { start: item.dataInicio.toDate(), end: item.dataFim.toDate() })) {
-                 status = 'em-formacao';
-             } else if (item.dataFim && isBefore(item.dataFim.toDate(), today)) {
-                 status = 'pos-formacao';
-             }
-        }
-
-        if (newColumns[status]) {
-          newColumns[status].items.push(item);
-        }
-      });
-
-      (Object.keys(newColumns) as FormadorStatus[]).forEach((status) => {
-        newColumns[status].items = ordenarColuna(newColumns[status].items, status);
-      });
-
-      setColumns(newColumns);
-  }, []);
-
-  useEffect(() => {
-    categorizar(formacoesData);
-    setLoading(carregandoFormacoes);
-  }, [formacoesData, carregandoFormacoes, categorizar]);
-
-  const resumo = useMemo(
-    () => resumirAlertas(formacoesData, projetosData),
-    [formacoesData, projetosData]
-  );
+  const contextos = useMemo<ContextoCard[]>(() => {
+    const hoje = startOfToday();
+    return formacoesData
+      .map((f) => ({ formacao: f, fase: faseDaFormacao(f, hoje), alertas: alertasDaFormacao(f, hoje) }))
+      .filter((c) => c.fase !== 'arquivada');
+  }, [formacoesData]);
 
   const pendencias = useMemo(() => projetosData.flatMap(pendenciasDoProjeto), [projetosData]);
 
-  // Com onSnapshot a lista se atualiza sozinha; sobrou so fechar os dialogos.
-  const handleSuccess = () => {
-    setIsFormDialogOpen(false);
-    setIsProjectFormOpen(false);
-    setSelectedFormacao(null);
-    setSelectedProjetoParaEditar(null);
-  };
-  
-  const openDeleteDialog = (formacao: Formacao) => {
-    setSelectedFormacao(formacao);
-    setIsDeleteDialogOpen(true);
-  };
+  const daBusca = useMemo(() => contextos.filter((c) => combinaBusca(c.formacao, busca)), [contextos, busca]);
 
-  const openEditDialog = async (formacao: Formacao) => {
-    if (formacao.projetoId) {
-      setLoading(true);
-      try {
-        const projetoRef = doc(db, 'projetos', formacao.projetoId);
-        const projetoSnap = await getDoc(projetoRef);
-        if (projetoSnap.exists()) {
-          setSelectedProjetoParaEditar({ id: projetoSnap.id, ...projetoSnap.data() } as ProjetoImplatancao);
-          setIsProjectFormOpen(true);
-        } else {
-          toast({ variant: 'destructive', title: 'Erro', description: 'Projeto vinculado não encontrado.' });
-          setSelectedFormacao(formacao);
-          setIsFormDialogOpen(true);
-        }
-      } catch (error) {
-        console.error("Error fetching project:", error);
-        toast({ variant: 'destructive', title: 'Erro', description: 'Falha ao carregar dados do projeto.' });
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setSelectedFormacao(formacao);
-      setIsFormDialogOpen(true);
+  // Contagem inclusiva sobre o que a busca deixa: o número da fila é o que aparece ao clicar.
+  const contagem = useMemo(() => {
+    const r = {} as Record<FilaId, number>;
+    for (const f of FILAS) r[f.id] = daBusca.filter(f.combina).length;
+    return r;
+  }, [daBusca]);
+
+  const filtrando = fila !== null || busca.trim() !== '';
+
+  const porFase = useMemo(() => {
+    const filaAtiva = FILAS.find((f) => f.id === fila);
+    const visiveis = filaAtiva ? daBusca.filter(filaAtiva.combina) : daBusca;
+    const r = {} as Record<FaseDoQuadro, ContextoCard[]>;
+    for (const fase of FASES_DO_QUADRO) {
+      const daFase = visiveis.filter((c) => c.fase === fase);
+      const porId = new Map(daFase.map((c) => [c.formacao.id, c]));
+      r[fase] = ordenarColuna(daFase.map((c) => c.formacao), fase).map((f) => porId.get(f.id)!);
     }
-  };
-  
-  const openDetailDialog = (formacao: Formacao) => {
-    setSelectedFormacao(formacao);
-    setIsDetailDialogOpen(true);
-  }
+    return r;
+  }, [daBusca, fila]);
 
-  const openQRCodeDialog = (formacao: Formacao) => {
-    setSelectedFormacao(formacao);
-    setIsQRCodeDialogOpen(true);
-  }
-  
-  const handleCopyLink = (formacaoId: string) => {
-    const url = `${window.location.origin}/avaliacao/${formacaoId}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: 'Link copiado!', description: 'O link do formulário de avaliação foi copiado para a área de transferência.' });
-  }
+  const totalPorFase = useMemo(() => {
+    const r = {} as Record<FaseDoQuadro, number>;
+    for (const fase of FASES_DO_QUADRO) r[fase] = contextos.filter((c) => c.fase === fase).length;
+    return r;
+  }, [contextos]);
 
-  const handleDeleteConfirm = async () => {
-    if (!selectedFormacao) return;
+  const totalVisivel = FASES_DO_QUADRO.reduce((s, f) => s + porFase[f].length, 0);
+  const nadaPendente = FILAS.every((f) => f.id === 'avaliacao-aberta' || contagem[f.id] === 0);
+
+  // Celular: uma coluna por vez. Abre na que pede ação (Encerrada) e, com filtro,
+  // pula para uma coluna que tenha resultado em vez de mostrar uma vazia.
+  const primeiraComItens = FASES_DO_QUADRO.find((f) => porFase[f].length > 0);
+  const padraoMovel: FaseDoQuadro =
+    porFase.encerrada.length > 0 ? 'encerrada' : porFase.acontecendo.length > 0 ? 'acontecendo' : 'a-realizar';
+  let abaMovel: FaseDoQuadro = faseMovel ?? padraoMovel;
+  if (filtrando && porFase[abaMovel].length === 0 && primeiraComItens) abaMovel = primeiraComItens;
+
+  // ------------------------------------------------------------------ ações
+
+  const concluir = async (f: Formacao) => {
+    setOcupadoId(f.id);
     try {
-      await deleteDoc(doc(db, 'formacoes', selectedFormacao.id));
-      toast({
-        title: 'Sucesso!',
-        description: 'Formação excluída com sucesso.',
-      });
-    } catch (error) {
-      console.error('Error deleting formacao: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao excluir',
-        description: 'Não foi possível excluir a formação.',
-      });
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setSelectedFormacao(null);
-    }
-  };
-
-  const handleStatusChange = async (formacao: Formacao, newStatus: FormadorStatus) => {
-    setLoadingStatusChange(formacao.id);
-    try {
-      await changeFormacaoStatus(formacao, newStatus, user);
-      toast({ title: "Sucesso", description: `Status alterado e ações automáticas criadas.` });
+      await changeFormacaoStatus(f, 'concluido', user);
+      toast({ title: 'Formação concluída', description: 'A demanda de agradecimento está no Diário de Bordo.' });
     } catch (error: any) {
-       console.error("Erro ao alterar status:", error);
-       toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível alterar o status." });
+      console.error('Erro ao concluir:', error);
+      toast({ variant: 'destructive', title: 'Erro', description: error?.message || 'Não foi possível concluir.' });
     } finally {
-      setLoadingStatusChange(null);
+      setOcupadoId(null);
     }
   };
 
-  const handleDetailDialogChange = (open: boolean) => {
-    setIsDetailDialogOpen(open);
-    if (!open) {
-      setSelectedFormacao(null);
+  const arquivar = async (f: Formacao) => {
+    setOcupadoId(f.id);
+    try {
+      await changeFormacaoStatus(f, 'arquivado', user);
+      toast({
+        title: 'Formação arquivada',
+        description: 'Ela continua em Arquivados.',
+        action: (
+          <ToastAction
+            altText="Desfazer arquivamento"
+            onClick={() =>
+              updateDoc(doc(db, 'formacoes', f.id), { status: 'concluido' }).catch((e) => {
+                console.error('Erro ao desfazer arquivamento:', e);
+                toast({ variant: 'destructive', title: 'Não deu para desfazer', description: 'Abra Arquivados e desarquive por lá.' });
+              })
+            }
+          >
+            Desfazer
+          </ToastAction>
+        ),
+      });
+    } catch (error: any) {
+      console.error('Erro ao arquivar:', error);
+      toast({ variant: 'destructive', title: 'Erro', description: error?.message || 'Não foi possível arquivar.' });
+    } finally {
+      setOcupadoId(null);
     }
   };
 
-  if (loading && !isProjectFormOpen && !isFormDialogOpen) {
+  const copiarLink = async (f: Formacao) => {
+    const url = `${window.location.origin}/avaliacao/${f.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Link copiado', description: 'O link do formulário de avaliação está na área de transferência.' });
+    } catch {
+      // Sem permissão de área de transferência (http, iframe): mostra o link para copiar à mão.
+      toast({ variant: 'destructive', title: 'Não deu para copiar', description: url });
+    }
+  };
+
+  const confirmarExclusao = async () => {
+    if (!excluir) return;
+    try {
+      await deleteDoc(doc(db, 'formacoes', excluir.id));
+      toast({ title: 'Formação excluída' });
+    } catch (error) {
+      console.error('Erro ao excluir formação:', error);
+      toast({ variant: 'destructive', title: 'Erro ao excluir', description: 'Não foi possível excluir a formação.' });
+    } finally {
+      setExcluir(null);
+    }
+  };
+
+  /** Com projeto vinculado, a formação é editada pelo projeto (é ele que gera as datas). */
+  const editar = async (f: Formacao) => {
+    if (!f.projetoId) {
+      setEmEdicao(f);
+      setFormAberto(true);
+      return;
+    }
+    setOcupadoId(f.id);
+    try {
+      const snap = await getDoc(doc(db, 'projetos', f.projetoId));
+      if (snap.exists()) {
+        setProjetoEmEdicao({ id: snap.id, ...snap.data() } as ProjetoImplatancao);
+      } else {
+        toast({ variant: 'destructive', title: 'Projeto vinculado não encontrado', description: 'Abrindo a formação.' });
+        setEmEdicao(f);
+        setFormAberto(true);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar projeto:', error);
+      toast({ variant: 'destructive', title: 'Erro', description: 'Falha ao carregar os dados do projeto.' });
+    } finally {
+      setOcupadoId(null);
+    }
+  };
+
+  const fecharFormacao = () => {
+    setFormAberto(false);
+    setEmEdicao(null);
+    setFormSujo(false);
+  };
+  const fecharProjeto = () => {
+    setProjetoEmEdicao(null);
+    setFormSujo(false);
+  };
+  // Com onSnapshot o quadro se atualiza sozinho; ao salvar só falta fechar.
+  const aoSalvar = () => {
+    fecharFormacao();
+    fecharProjeto();
+  };
+
+  // ------------------------------------------------------------------ tela
+
+  if (carregando) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -352,411 +250,230 @@ export default function QuadroPage() {
     );
   }
 
-  const getIconForItem = (item: Formacao) => {
-      if (item.titulo.toLowerCase().includes('devolutiva')) return <Flag className="h-4 w-4 text-green-600" />;
-      return <ClipboardCheck className="h-4 w-4" />;
-  }
-
+  const renderCard = (c: ContextoCard) => (
+    <CardFormacao
+      key={c.formacao.id}
+      contexto={c}
+      ocupado={ocupadoId === c.formacao.id}
+      onAbrir={() => setDetalhe(c.formacao)}
+      onEditar={() => editar(c.formacao)}
+      onConcluir={() => concluir(c.formacao)}
+      onArquivar={() => arquivar(c.formacao)}
+      onExcluir={() => setExcluir(c.formacao)}
+      onCopiarLink={() => copiarLink(c.formacao)}
+      onQRCode={() => setQrDe(c.formacao)}
+    />
+  );
 
   return (
-      <div className="flex flex-col gap-4 py-6 h-full">
-        <Dialog
-          open={isFormDialogOpen}
-          onOpenChange={(open) => {
-            setIsFormDialogOpen(open);
-            if (!open) setSelectedFormacao(null);
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight font-headline">
-                Acompanhamento de Atividades
-              </h1>
-              <p className="text-muted-foreground">
-                Crie e gerencie formações e devolutivas.
-              </p>
-              <FaixaDeAlertas resumo={resumo} pendencias={pendencias} />
-            </div>
-            <DialogTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Criar uma Formação
-              </Button>
-            </DialogTrigger>
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col gap-4 py-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-headline text-2xl font-bold tracking-tight sm:text-3xl">Acompanhamento</h1>
+            <p className="text-sm text-muted-foreground">
+              A data move o card entre as fases; concluir e arquivar ficam com você.
+            </p>
           </div>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{selectedFormacao ? 'Editar Formação' : 'Nova Formação'}</DialogTitle>
-              <DialogDescription>
-                {selectedFormacao ? 'Altere os dados da formação.' : 'Preencha os dados para criar uma nova formação.'}
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[80vh]">
-              <div className="p-4">
-                <FormFormacao formacao={selectedFormacao} onSuccess={handleSuccess} />
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
+          <Button
+            className="h-10 shrink-0"
+            onClick={() => {
+              setEmEdicao(null);
+              setFormAberto(true);
+            }}
+          >
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="sr-only sm:not-sr-only">Nova formação</span>
+          </Button>
+        </div>
 
-        <Dialog
-          open={isProjectFormOpen}
-          onOpenChange={(open) => {
-            setIsProjectFormOpen(open);
-            if (!open) setSelectedProjetoParaEditar(null);
-          }}
-        >
-          <DialogContent className="sm:max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Editar Projeto</DialogTitle>
-              <DialogDescription>
-                Altere os dados do projeto vinculado a esta formação.
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[80vh]">
-              <div className="p-4">
-                <FormProjeto projeto={selectedProjetoParaEditar} onSuccess={handleSuccess} />
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-        
-        <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
-            <DialogContent className="sm:max-w-2xl">
-                {selectedFormacao && (
-                  <>
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl">
-                          {selectedFormacao.titulo.startsWith('Devolutiva') && !selectedFormacao.titulo.includes(':') && selectedFormacao.municipio
-                              ? `${selectedFormacao.titulo}: ${selectedFormacao.municipio}`
-                              : selectedFormacao.titulo}
-                        </DialogTitle>
-                        <DialogDescription asChild>
-                            <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-                                <Hash className="h-4 w-4" /> {selectedFormacao.codigo}
-                            </div>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DetalhesFormacao 
-                        formacaoId={selectedFormacao.id} 
-                        onClose={() => handleDetailDialogChange(false)} 
-                    />
-                  </>
+        <BarraFilas
+          contagem={contagem}
+          filaAtiva={fila}
+          onFila={setFila}
+          busca={busca}
+          onBusca={setBusca}
+          pendencias={pendencias}
+        />
+
+        <div className="flex min-h-5 flex-wrap items-center gap-x-3 text-sm text-muted-foreground">
+          {filtrando ? (
+            <>
+              <span>
+                Mostrando {totalVisivel} de {contextos.length} formações
+              </span>
+              <button
+                type="button"
+                className="font-medium text-foreground underline underline-offset-2 hover:no-underline"
+                onClick={() => {
+                  setFila(null);
+                  setBusca('');
+                }}
+              >
+                Limpar filtros
+              </button>
+            </>
+          ) : nadaPendente ? (
+            <span className="text-emerald-700 dark:text-emerald-500">
+              Tudo em dia: nada por concluir, nada sem formador ou sem data.
+            </span>
+          ) : null}
+        </div>
+
+        {/* Celular e tablet: abas de fase, uma coluna por vez. */}
+        <div role="tablist" aria-label="Fases" className="-mx-4 flex gap-1 overflow-x-auto px-4 lg:hidden">
+          {FASES_DO_QUADRO.map((fase) => {
+            const ativa = abaMovel === fase;
+            return (
+              <button
+                key={fase}
+                type="button"
+                role="tab"
+                aria-selected={ativa}
+                onClick={() => setFaseMovel(fase)}
+                className={cn(
+                  'flex h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors',
+                  ativa ? 'border-primary bg-primary/10 text-foreground' : 'bg-card text-muted-foreground'
                 )}
-            </DialogContent>
-        </Dialog>
-        
-        <Dialog open={isQRCodeDialogOpen} onOpenChange={(open) => {
-          setIsQRCodeDialogOpen(open);
-          if (!open) setSelectedFormacao(null);
-        }}>
-          <DialogContent>
-             <DialogHeader>
-              <DialogTitle>QR Code para Avaliação</DialogTitle>
-              <DialogDescription>
-                Use este QR Code para que os participantes acessem o formulário de avaliação.
-              </DialogDescription>
-            </DialogHeader>
-            {selectedFormacao && (
-              <GeradorQRCode
-                url={`${window.location.origin}/avaliacao/${selectedFormacao.id}`}
-                title={selectedFormacao.titulo}
+              >
+                <span className={cn('h-2 w-2 rounded-full', FASES[fase].ponto)} />
+                {FASES[fase].titulo}
+                <span className="tabular-nums text-xs">{porFase[fase].length}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-4">
+          {FASES_DO_QUADRO.map((fase) => (
+            <ColunaQuadro
+              key={fase}
+              fase={fase}
+              itens={porFase[fase]}
+              total={totalPorFase[fase]}
+              filtrando={filtrando}
+              renderCard={renderCard}
+              className={cn(abaMovel !== fase && 'hidden lg:flex')}
+            />
+          ))}
+        </div>
+
+        {/* ------------------------------------------------ diálogos */}
+
+        <Dialog open={detalhe !== null} onOpenChange={(open) => !open && setDetalhe(null)}>
+          <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+            {detalhe && (
+              <DetalhesFormacao
+                formacaoId={detalhe.id}
+                onClose={() => setDetalhe(null)}
+                onEditar={() => {
+                  const f = detalhe;
+                  setDetalhe(null);
+                  editar(f);
+                }}
               />
             )}
           </DialogContent>
         </Dialog>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-          {Object.entries(columns).filter(([columnId]) => columnId !== 'arquivado').map(([columnId, column]) => (
-            <div key={columnId} className="bg-muted/40 rounded-lg h-full">
-              <div className="p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{column.title}</h2>
-                      <span className={cn('h-5 w-5 rounded-full text-xs text-white flex items-center justify-center font-bold', column.colorClass)}>
-                        {column.items.length}
-                      </span>
-                  </div>
-                <div className="space-y-4">
-                  {column.items.length > 0 ? (
-                    column.items.map((item) => (
-                      <Card
-                        key={item.id}
-                        className={cn('bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer flex flex-col', column.colorClass.replace('bg-', 'border-l-4 '))}
-                        onClick={() => openDetailDialog(item)}
-                      >
-                        <CardContent className="p-3 space-y-2 flex-grow">
-                            <SelosDeAlerta formacao={item} />
-                            <div className="flex items-start justify-between">
-                                <h3 className="font-semibold text-sm flex items-center gap-2">
-                                  {getIconForItem(item)}
-                                  {item.titulo.startsWith('Devolutiva') && !item.titulo.includes(':') && item.municipio ? `${item.titulo}: ${item.municipio}` : item.titulo}
-                                </h3>
-                                
-                                <div className="flex items-center -mr-2 -mt-1">
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 p-0"
-                                                    onClick={(e) => { e.stopPropagation(); openEditDialog(item); }}
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Editar</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-7 w-7 p-0" asChild onClick={(e) => { e.stopPropagation(); }}>
-                                                    <Link href={`/ficha/${item.id}`} target="_blank" rel="noopener" aria-label="Gerar ficha de divulgação">
-                                                        <Megaphone className="h-4 w-4" />
-                                                    </Link>
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Gerar ficha de divulgação</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                        <Button
-                                            variant="ghost"
-                                            className="h-7 w-7 p-0"
-                                        >
-                                            {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                                        </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem onClick={() => openDetailDialog(item)}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                Ver Detalhes
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuSub>
-                                                <DropdownMenuSubTrigger>
-                                                    <Share className="mr-2 h-4 w-4" />
-                                                    Compartilhar Avaliação
-                                                </DropdownMenuSubTrigger>
-                                                <DropdownMenuPortal>
-                                                    <DropdownMenuSubContent>
-                                                        <DropdownMenuItem onClick={() => handleCopyLink(item.id)}>
-                                                            <Copy className="mr-2 h-4 w-4" />
-                                                            Copiar Link do Formulário
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => openQRCodeDialog(item)}>
-                                                            <QrCode className="mr-2 h-4 w-4" />
-                                                            Gerar QR Code
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuSubContent>
-                                                </DropdownMenuPortal>
-                                            </DropdownMenuSub>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                                onClick={() => openDeleteDialog(item)}
-                                            >
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                Excluir
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {item.descricao}
-                          </p>
-                           <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 mt-2 border-t">
-                            <div className="flex items-center flex-wrap gap-x-3 gap-y-1">
-                                {(item.dataInicio || item.dataFim) && (
-                                <div className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    <span>
-                                    {item.dataInicio ? item.dataInicio.toDate().toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}) : 'N/A'}
-                                    {item.dataFim && item.dataInicio?.toDate().getTime() !== item.dataFim?.toDate().getTime() ? ` - ${item.dataFim.toDate().toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}` : ''}
-                                    </span>
-                                </div>
-                                )}
-                                {item.materiaisIds && item.materiaisIds.length > 0 && (
-                                    <div className="flex items-center gap-1">
-                                        <Paperclip className="h-3 w-3" />
-                                        <span>{item.materiaisIds.length}</span>
-                                    </div>
-                                )}
-                                {item.participantes && item.participantes > 0 && (
-                                    <div className="flex items-center gap-1">
-                                        <Users className="h-3 w-3" />
-                                        <span>{item.participantes}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 shrink-0">
-                                <Hash className="h-2.5 w-2.5 mr-0.5" />
-                                {item.codigo}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                        {(item.status === 'pos-formacao' || item.status === 'concluido') && (
-                          <CardFooter className="p-3 pt-0">
-                            {item.status === 'pos-formacao' && (
-                              <Button size="sm" className="w-full" onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'concluido'); }} disabled={loadingStatusChange === item.id}>
-                                {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />} Concluir
-                              </Button>
-                            )}
-                            {item.status === 'concluido' && (
-                              <Button size="sm" variant="secondary" className="w-full" onClick={(e) => { e.stopPropagation(); handleStatusChange(item, 'arquivado'); }} disabled={loadingStatusChange === item.id}>
-                                {loadingStatusChange === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
-                              </Button>
-                            )}
-                          </CardFooter>
-                        )}
-                      </Card>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-10">
-                      <FolderOpen className="h-10 w-10 mb-2" />
-                      <p className="text-sm">Nenhuma atividade aqui</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <AlertDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
+        <Dialog
+          open={formAberto}
+          onOpenChange={(open) => {
+            if (open) return;
+            if (formSujo) setDescartar('formacao');
+            else fecharFormacao();
+          }}
         >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{emEdicao ? 'Editar formação' : 'Nova formação'}</DialogTitle>
+              <DialogDescription>
+                {emEdicao ? tituloDaFormacao(emEdicao) : 'Preencha os dados para criar uma nova formação.'}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[80vh]">
+              <div className="p-4">
+                <FormFormacao formacao={emEdicao} onSuccess={aoSalvar} onDirtyChange={setFormSujo} />
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={projetoEmEdicao !== null}
+          onOpenChange={(open) => {
+            if (open) return;
+            if (formSujo) setDescartar('projeto');
+            else fecharProjeto();
+          }}
+        >
+          <DialogContent className="sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Editar projeto</DialogTitle>
+              <DialogDescription>
+                Esta formação nasce do projeto de {projetoEmEdicao?.municipio}: datas e formadores são editados aqui.
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[80vh]">
+              <div className="p-4">
+                <FormProjeto projeto={projetoEmEdicao} onSuccess={aoSalvar} onDirtyChange={setFormSujo} />
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={descartar !== null} onOpenChange={(open) => !open && setDescartar(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+              <AlertDialogTitle>Descartar as alterações?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação não pode ser desfeita. Isso excluirá
-                permanentemente a formação dos nossos servidores.
+                Você alterou campos que ainda não foram salvos. Se fechar agora, eles se perdem.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setSelectedFormacao(null)}>
-                Cancelar
-              </AlertDialogCancel>
+              <AlertDialogCancel>Continuar editando</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteConfirm}
                 className="bg-destructive hover:bg-destructive/90"
+                onClick={() => {
+                  if (descartar === 'formacao') fecharFormacao();
+                  else fecharProjeto();
+                  setDescartar(null);
+                }}
               >
+                Descartar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={qrDe !== null} onOpenChange={(open) => !open && setQrDe(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>QR Code da avaliação</DialogTitle>
+              <DialogDescription>Os participantes leem este código para abrir o formulário de avaliação.</DialogDescription>
+            </DialogHeader>
+            {qrDe && <GeradorQRCode url={`${window.location.origin}/avaliacao/${qrDe.id}`} title={qrDe.titulo} />}
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={excluir !== null} onOpenChange={(open) => !open && setExcluir(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir {excluir ? tituloDaFormacao(excluir) : 'formação'}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. Avaliações, despesas e anexos ligados a ela não são apagados
+                junto. Se a intenção é só tirar do quadro, arquive.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmarExclusao} className="bg-destructive hover:bg-destructive/90">
                 Sim, excluir
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </div>
-  );
-}
-
-
-// ---------------------------------------------------------------------------
-// Alertas
-// ---------------------------------------------------------------------------
-
-/**
- * Selos de atraso/atencao no card.
- *
- * Recalculado a cada render de proposito: "atrasado ha 3 dias" depende da data de
- * hoje, nao de nada gravado. Guardar isso no banco criaria um campo que envelhece
- * sozinho e precisa de rotina para atualizar.
- */
-function SelosDeAlerta({ formacao }: { formacao: Formacao }) {
-  const alertas = alertasDaFormacao(formacao);
-  if (alertas.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {alertas.map((a) => (
-        <span
-          key={a.motivo}
-          className={cn(
-            'inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium leading-tight',
-            CORES_GRAVIDADE[a.gravidade]
-          )}
-        >
-          {a.texto}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function FaixaDeAlertas({
-  resumo,
-  pendencias,
-}: {
-  resumo: ReturnType<typeof resumirAlertas>;
-  pendencias: ReturnType<typeof pendenciasDoProjeto>;
-}) {
-  const nada =
-    resumo.atrasadas === 0 &&
-    resumo.atencao === 0 &&
-    resumo.incompletas === 0 &&
-    pendencias.length === 0;
-
-  if (nada) {
-    return (
-      <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-500">
-        Tudo em dia — nenhuma formação atrasada e nenhuma etapa sem data.
-      </p>
-    );
-  }
-
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-      {resumo.atrasadas > 0 && (
-        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.atrasado)}>
-          {resumo.atrasadas} atrasada(s)
-        </span>
-      )}
-      {resumo.atencao > 0 && (
-        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.atencao)}>
-          {resumo.atencao} começa(m) em até 7 dias
-        </span>
-      )}
-      {resumo.incompletas > 0 && (
-        <span className={cn('rounded border px-2 py-1 font-medium', CORES_GRAVIDADE.incompleto)}>
-          {resumo.incompletas} sem formadores
-        </span>
-      )}
-      {pendencias.length > 0 && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                'rounded border px-2 py-1 font-medium underline-offset-2 hover:underline',
-                CORES_GRAVIDADE.incompleto
-              )}
-            >
-              {pendencias.length} etapa(s) sem data
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="max-h-80 w-80 overflow-y-auto">
-            <p className="mb-2 text-sm font-medium">Falta preencher</p>
-            <ul className="space-y-1 text-xs">
-              {pendencias.map((pd, i) => (
-                <li key={pd.projetoId + pd.etapa + i} className="flex justify-between gap-2">
-                  <span className="text-muted-foreground">{pd.projetoNome}</span>
-                  <span>
-                    {pd.etapa} <span className="text-muted-foreground">({pd.texto})</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+    </TooltipProvider>
   );
 }

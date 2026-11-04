@@ -164,23 +164,14 @@ export default function ArquivadosPage() {
       )}
       
       <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
-            <DialogContent className="sm:max-w-2xl">
+            {/* O DetalhesFormacao desenha o próprio cabeçalho (com a descrição na aba Geral). */}
+            <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
                 {selectedFormacao && (
-                  <>
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl">
-                           {selectedFormacao.titulo.startsWith('Devolutiva') && !selectedFormacao.titulo.includes(':') && selectedFormacao.municipio
-                              ? `${selectedFormacao.titulo}: ${selectedFormacao.municipio}`
-                              : selectedFormacao.titulo}
-                        </DialogTitle>
-                        <DialogDescription>{selectedFormacao.descricao}</DialogDescription>
-                    </DialogHeader>
-                    <DetalhesFormacao 
-                        formacaoId={selectedFormacao.id} 
-                        onClose={() => handleDetailDialogChange(false)} 
+                    <DetalhesFormacao
+                        formacaoId={selectedFormacao.id}
+                        onClose={() => handleDetailDialogChange(false)}
                         isArchived={true}
                     />
-                  </>
                 )}
             </DialogContent>
         </Dialog>

@@ -109,6 +109,8 @@ type FormValues = z.infer<typeof formSchema>;
 interface FormFormacaoProps {
   formacao?: Formacao | null;
   onSuccess: () => void;
+  /** Avisa quem abriu o formulário que há alteração não salva (para perguntar antes de fechar). */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const generateFormationCode = (municipio: string) => {
@@ -128,7 +130,7 @@ const toNullableDate = (timestamp: Timestamp | null | undefined): Date | null | 
     return timestamp.toDate();
 };
 
-export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
+export function FormFormacao({ formacao, onSuccess, onDirtyChange }: FormFormacaoProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [formadores, setFormadores] = useState<Formador[]>([]);
@@ -157,6 +159,11 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
     control: form.control,
     name: "logistica",
   });
+
+  const { isDirty } = form.formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     const fetchFormadores = async () => {
@@ -308,7 +315,7 @@ export function FormFormacao({ formacao, onSuccess }: FormFormacaoProps) {
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar',
-        description: 'Ocorreu um erro ao criar a formação.',
+        description: isEditMode ? 'Ocorreu um erro ao salvar a formação.' : 'Ocorreu um erro ao criar a formação.',
       });
     } finally {
       setLoading(false);

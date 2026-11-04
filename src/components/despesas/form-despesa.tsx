@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import type { Despesa, TipoDespesa, Formacao } from '@/lib/types';
+import { aceitaDespesa, faseDaFormacao } from '@/lib/fase-formacao';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Loader2, CalendarIcon, UploadCloud, File as FileIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -85,13 +86,15 @@ export function FormDespesa({ despesa, onSuccess }: FormDespesaProps) {
         if (!user) return;
         setLoading(true);
         try {
+            // Mesma regra da página de despesas: a fase vem da data (faseDaFormacao).
             const q = query(
                 collection(db, 'formacoes'),
                 where('formadoresIds', 'array-contains', user.uid),
-                where('status', '==', 'em-formacao'),
             );
             const querySnapshot = await getDocs(q);
-            const formationsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
+            const formationsData = querySnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Formacao))
+                .filter(f => aceitaDespesa(faseDaFormacao(f)));
             setActiveFormations(formationsData);
         } catch (error) {
             console.error("Error fetching active formations:", error);

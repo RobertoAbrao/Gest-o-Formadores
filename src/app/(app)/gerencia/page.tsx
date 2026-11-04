@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { ProjetoImplatancao, Demanda, Formacao, Formador } from '@/lib/types';
+import { faseDaFormacao } from '@/lib/fase-formacao';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -126,7 +127,8 @@ export default function GerenciaPage() {
 
     const stats = useMemo(() => ({
         demandasPendentes: demandas.length,
-        formacoesAtivas: formacoes.filter(f => f.status === 'em-formacao').length,
+        // Acontecendo pela data (faseDaFormacao); antes contava só quem tinha `em-formacao` gravado à mão.
+        formacoesAtivas: formacoes.filter(f => faseDaFormacao(f) === 'acontecendo').length,
         projetosAtivos: projetos.length,
     }), [demandas, formacoes, projetos]);
     
