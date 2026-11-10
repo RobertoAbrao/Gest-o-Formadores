@@ -16,6 +16,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { differenceInCalendarDays, startOfToday } from 'date-fns';
+import { podeValidar } from '@/lib/validadores';
 import { Loader2, Mail, PlusCircle, RefreshCw, Sparkles } from 'lucide-react';
 
 import {
@@ -68,7 +69,6 @@ import {
   type QueueId,
 } from '@/components/diario/diario-utils';
 
-const VALIDADORES = ['beto-a-p@hotmail.com', 'irene@editoralt.com.br'];
 
 const DESTINATARIOS_RELATORIO = [
   'alessandra@editoralt.com.br',
@@ -113,7 +113,7 @@ export default function DiarioPage() {
   const [gerandoResumo, setGerandoResumo] = useState(false);
 
   const canValidate = useMemo(
-    () => !!user?.email && VALIDADORES.includes(user.email),
+    () => podeValidar(user?.email),
     [user?.email],
   );
   const canDelete = user?.perfil === 'administrador';

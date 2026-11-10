@@ -22,7 +22,6 @@ import {
   CalendarDays,
   GanttChartSquare,
   GalleryHorizontal,
-  BookOpenCheck,
   AreaChart,
   Sparkles,
 } from 'lucide-react';
@@ -75,7 +74,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       ? [
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { href: '/gerencia', label: 'Visão Gerencial', icon: AreaChart },
-          { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
+          // Diário de Bordo saiu do menu em 10/11/2026: as demandas agora são tocadas no
+          // Slack (src/lib/slack). A rota /diario continua no ar e os dados no banco.
           { href: '/formadores', label: 'Formadores', icon: Users },
           { href: '/assessores', label: 'Assessores', icon: Briefcase },
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
@@ -93,7 +93,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
           { href: '/despesas', label: 'Relatório de Despesas', icon: DollarSign },
           { href: '/perfil', label: 'Meu Perfil', icon: UserIcon },
-          { href: '/diario', label: 'Diário de Bordo', icon: BookOpenCheck },
         ];
         
   // Telas em tela cheia, sem menu lateral (o login acima continua valendo para elas):

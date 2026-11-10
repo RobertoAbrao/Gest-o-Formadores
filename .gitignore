@@ -43,3 +43,7 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+# Cloud Functions (integração com o Slack)
+/functions/node_modules
+/functions/lib
+/functions/.teste

@@ -1,0 +1,45 @@
+{
+  "display_information": {
+    "name": "Gestão Formadores",
+    "description": "Demandas, avisos e resumo diário do Gestão Formadores",
+    "background_color": "#1e3a8a"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Gestão",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/demanda",
+        "url": "https://SEU-APP.vercel.app/api/slack/comandos",
+        "description": "Nova demanda — ou: conferir, importar, ajuda",
+        "usage_hint": "[descrição] | conferir | importar | ajuda",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "chat:write.public",
+        "commands",
+        "users:read",
+        "users:read.email",
+        "channels:history",
+        "groups:history",
+        "reactions:write"
+      ]
+    }
+  },
+  "settings": {
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://SEU-APP.vercel.app/api/slack/interacoes"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

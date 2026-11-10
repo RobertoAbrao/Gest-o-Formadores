@@ -17,6 +17,10 @@ export interface HistoricoItem {
   autorNome: string;
   tipo: 'comentario' | 'alteracao' | 'criacao';
   texto: string;
+  /** 'slack' quando veio de um botão, formulário ou resposta na thread do Slack. */
+  origem?: 'slack';
+  /** `ts` da mensagem do Slack que virou este comentário — evita gravar a mesma resposta duas vezes. */
+  slackTs?: string;
 }
 
 export interface Demanda {
@@ -41,6 +45,9 @@ export interface Demanda {
   origemGatilho?: FormadorStatus;
   etapaProjeto?: string;
   sincronizadoCalendario?: boolean;
+  /** Canal e `ts` do card desta demanda no Slack. Gravados pelo bot (functions/). */
+  slackChannel?: string;
+  slackTs?: string;
 }
 
 export interface ChecklistItem {
