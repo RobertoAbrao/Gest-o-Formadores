@@ -23,6 +23,7 @@ import {
 } from './agent-tools';
 import { ESTADOS_BR } from '@/lib/estados-br';
 import { MATERIAIS_CATALOGO, conferirMateriaisNovos, mensagemMaterialForaDaLista } from '@/lib/projetos/materiais';
+import { linhasCompra } from '@/lib/projetos/compra-material';
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 
@@ -245,7 +246,8 @@ const toolDefinitions = [
     execute: async ({ id }: { id: string }) => {
       const p = await getProjeto(id);
       if (!p) return 'Projeto não encontrado.';
-      return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}\nDiagnóstica: ${p.diagnostica?.ok ? '✅ Concluída' : '⏳ Pendente'}\nSimulados: S1:${p.simulados?.s1?.ok ? '✅' : '⏳'} S2:${p.simulados?.s2?.ok ? '✅' : '⏳'} S3:${p.simulados?.s3?.ok ? '✅' : '⏳'} S4:${p.simulados?.s4?.ok ? '✅' : '⏳'}`;
+      const comprou = linhasCompra(p.material, p.materiaisComprados);
+      return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nComprou: ${comprou.length ? comprou.join(' | ') : 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}\nDiagnóstica: ${p.diagnostica?.ok ? '✅ Concluída' : '⏳ Pendente'}\nSimulados: S1:${p.simulados?.s1?.ok ? '✅' : '⏳'} S2:${p.simulados?.s2?.ok ? '✅' : '⏳'} S3:${p.simulados?.s3?.ok ? '✅' : '⏳'} S4:${p.simulados?.s4?.ok ? '✅' : '⏳'}`;
     },
   },
   {

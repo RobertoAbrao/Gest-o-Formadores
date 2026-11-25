@@ -1,6 +1,7 @@
 'use client';
 
 import type { ProjetoImplatancao, Material, Formador, Formacao, Anexo, AlinhamentoTecnico, Demanda } from '@/lib/types';
+import { linhasCompra } from '@/lib/projetos/compra-material';
 import { Timestamp, doc, getDoc, collection, query, where, getDocs, updateDoc, deleteField, deleteDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
@@ -295,6 +296,9 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                         <div>
                             <p className="font-medium">Material</p>
                             <p className="text-muted-foreground">{projeto.material || 'N/A'}</p>
+                            {linhasCompra(projeto.material, projeto.materiaisComprados).map((linha) => (
+                                <p key={linha} className="text-xs text-muted-foreground">{linha}</p>
+                            ))}
                         </div>
                     </div>
                      <div className="flex items-center gap-3">

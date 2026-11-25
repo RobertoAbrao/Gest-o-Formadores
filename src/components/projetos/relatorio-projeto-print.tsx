@@ -7,6 +7,7 @@ import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star, Shield, DownloadCloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { linhasCompra } from '@/lib/projetos/compra-material';
 
 
 const ICONE_DO_MARCO: Record<TipoMarco, React.ElementType> = {
@@ -146,6 +147,9 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mt-4">
               <p><strong>Versão:</strong> {projeto.versao || 'N/A'}</p>
               <p><strong>Material:</strong> {projeto.material || 'N/A'}</p>
+              {linhasCompra(projeto.material, projeto.materiaisComprados).length > 0 && (
+                <p className="col-span-2"><strong>Comprou:</strong> {linhasCompra(projeto.material, projeto.materiaisComprados).join(' | ')}</p>
+              )}
               <p><strong>Alunos:</strong> {projeto.qtdAlunos || 'N/A'}</p>
               <p><strong>Formações Pendentes:</strong> {projeto.formacoesPendentes || '0'}</p>
           </div>

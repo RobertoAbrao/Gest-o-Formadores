@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { SeletorMateriais } from './seletor-materiais';
+import { CompraPorMaterial } from './compra-por-material';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
@@ -236,6 +237,7 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
 
   const selectedUf = form.watch('uf');
   const brasaoId = form.watch('brasaoId');
+  const materialMarcado = form.watch('material');
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -1093,6 +1095,13 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
                     )}/>
                     <FormField control={form.control} name="material" render={({ field }) => (
                         <FormItem><FormLabel>Material</FormLabel><FormControl><SeletorMateriais ref={field.ref} value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="materiaisComprados" render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                            <FormLabel>O que o município comprou</FormLabel>
+                            <CompraPorMaterial material={materialMarcado} value={field.value} onChange={field.onChange} />
+                            <FormMessage />
+                        </FormItem>
                     )}/>
                     <FormField control={form.control} name="responsavelId" render={({ field }) => (
                         <FormItem className="sm:col-span-2">

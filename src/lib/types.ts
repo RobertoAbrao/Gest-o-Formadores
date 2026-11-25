@@ -289,12 +289,28 @@ export interface ImplantacaoEntry {
   anexosIds?: string[];
 }
 
+/**
+ * O que o município comprou de UM material (ex.: Sabe). Códigos e resumo em
+ * `@/lib/projetos/compra-material`.
+ */
+export interface CompraMaterial {
+  /** Nome oficial do catálogo (`@/lib/projetos/materiais`). */
+  material: string;
+  /** 'EI' (Educação Infantil) e '1'..'9' (ano do Fundamental). */
+  anos: string[];
+  /** 'LP', 'MAT', 'CN', 'CH'. */
+  componentes: string[];
+  livroCoordenador?: boolean;
+}
+
 export interface ProjetoImplatancao {
   id: string;
   municipio: string;
   uf: string;
   versao?: string;
   material?: string;
+  /** Anos/componentes comprados de cada material marcado em `material` (campo novo em 25/11/2026). */
+  materiaisComprados?: CompraMaterial[];
   brasaoId?: string;
   dossieUrl?: string;
   dataMigracao: Timestamp | null;

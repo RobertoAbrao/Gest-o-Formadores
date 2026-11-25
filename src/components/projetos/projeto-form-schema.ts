@@ -11,6 +11,7 @@
 import * as z from 'zod';
 import { Timestamp } from 'firebase/firestore';
 import type { ProjetoImplatancao } from '@/lib/types';
+import { limparCompras } from '@/lib/projetos/compra-material';
 
 // ---------------------------------------------------------------------------
 // Helpers de conversão Firestore <-> formulário
@@ -94,6 +95,13 @@ const eventoAdicionalSchema = z.object({
   anexosIds: z.array(z.string()).optional(),
 });
 
+const compraMaterialSchema = z.object({
+  material: z.string(),
+  anos: z.array(z.string()),
+  componentes: z.array(z.string()),
+  livroCoordenador: z.boolean().optional(),
+});
+
 const implantacaoEntrySchema = z.object({
   titulo: z.string().optional(),
   dataInicio: z.date().nullable().optional(),
@@ -109,6 +117,7 @@ export const formSchema = z.object({
   uf: z.string().min(2, { message: 'O estado é obrigatório.' }),
   versao: z.string().optional(),
   material: z.string().optional(),
+  materiaisComprados: z.array(compraMaterialSchema).optional(),
   brasaoId: z.string().optional(),
   dossieUrl: z.string().url('Por favor, insira uma URL válida.').optional().or(z.literal('')),
   dataMigracao: z.date().nullable(),
@@ -177,6 +186,7 @@ export function buildDefaultValues(projeto?: ProjetoImplatancao | null): FormVal
     uf: projeto?.uf || '',
     versao: projeto?.versao || '',
     material: projeto?.material || '',
+    materiaisComprados: projeto?.materiaisComprados || [],
     brasaoId: projeto?.brasaoId || '',
     dossieUrl: projeto?.dossieUrl || '',
     dataMigracao: toDate(projeto?.dataMigracao),
@@ -257,6 +267,8 @@ export function buildProjetoPayload(values: FormValues, responsavelNome: string)
   const dataToSave = {
     ...values,
     responsavelNome,
+    // Só materiais ainda marcados, sem compra vazia (ver `limparCompras`).
+    materiaisComprados: limparCompras(values.materiaisComprados, values.material),
     dataMigracao: timestampOrNull(values.dataMigracao),
     // Novo formato: array de implantações
     implantacoes: (values.implantacoes || []).map((imp) => ({
@@ -321,7 +333,7 @@ export function buildProjetoPayload(values: FormValues, responsavelNome: string)
  * lista inclui todos eles. Ao mexer em `buildProjetoPayload`, revise este mapa.
  */
 export const CHAVES_POR_ETAPA = {
-  dadosGerais: ['municipio', 'uf', 'versao', 'material', 'brasaoId', 'dossieUrl', 'dataMigracao', 'qtdAlunos', 'qtdProfessores', 'formacoesPendentes', 'responsavelId', 'responsavelNome'],
+  dadosGerais: ['municipio', 'uf', 'versao', 'material', 'materiaisComprados', 'brasaoId', 'dossieUrl', 'dataMigracao', 'qtdAlunos', 'qtdProfessores', 'formacoesPendentes', 'responsavelId', 'responsavelNome'],
   formadores: ['formadoresIds'],
   diagnostica: ['diagnostica'],
   simulados: ['simulados'],
@@ -342,7 +354,7 @@ export type EtapaProjeto = keyof typeof CHAVES_POR_ETAPA;
  * preservando o `isDirty` de edições manuais em outras seções.
  */
 export const CAMPOS_FORM_POR_ETAPA = {
-  dadosGerais: ['municipio', 'uf', 'versao', 'material', 'brasaoId', 'dossieUrl', 'dataMigracao', 'qtdAlunos', 'qtdProfessores', 'formacoesPendentes', 'responsavelId'],
+  dadosGerais: ['municipio', 'uf', 'versao', 'material', 'materiaisComprados', 'brasaoId', 'dossieUrl', 'dataMigracao', 'qtdAlunos', 'qtdProfessores', 'formacoesPendentes', 'responsavelId'],
   formadores: ['formadoresIds'],
   diagnostica: ['diagnostica'],
   simulados: ['simulados'],
