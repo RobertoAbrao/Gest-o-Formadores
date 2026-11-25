@@ -31,6 +31,7 @@ import {
   conferirMateriaisNovos,
   mensagemMaterialForaDaLista,
 } from '../../../lib/projetos/materiais';
+import { linhasCompra } from '../../../lib/projetos/compra-material';
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 
@@ -494,7 +495,8 @@ async function execListarProjetos() {
 async function execBuscarProjeto(args: Record<string, unknown>) {
   const p = await getProjeto(args.id as string);
   if (!p) return 'Projeto não encontrado.';
-  return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}`;
+  const comprou = linhasCompra(p.material, p.materiaisComprados);
+  return `Projeto: ${p.municipio}/${p.uf}\nVersão: ${p.versao || 'N/A'}\nMaterial: ${p.material || 'N/A'}\nComprou: ${comprou.length ? comprou.join(' | ') : 'N/A'}\nAlunos: ${p.qtdAlunos || 'N/A'}\nProfessores: ${p.qtdProfessores || 'N/A'}\nResponsável: ${p.responsavelNome || 'N/A'}`;
 }
 
 async function execCriarProjeto(args: Record<string, unknown>) {

@@ -38,6 +38,7 @@ import { DetalhesProjeto } from '@/components/projetos/detalhes-projeto';
 import Link from 'next/link';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { linhasCompra } from '@/lib/projetos/compra-material';
 
 
 const formatDate = (timestamp: Timestamp | null | undefined) => {
@@ -163,7 +164,8 @@ export default function ProjetosPage() {
         ? projetos.filter(p => 
             p.municipio.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.uf.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.material && p.material.toLowerCase().includes(searchTerm.toLowerCase()))
+            (p.material && p.material.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            linhasCompra(p.material, p.materiaisComprados).some(l => l.toLowerCase().includes(searchTerm.toLowerCase()))
           )
         : projetos;
   }, [projetos, searchTerm]);
@@ -274,7 +276,10 @@ export default function ProjetosPage() {
                                         <TableCell 
                                             className="hidden lg:table-cell text-muted-foreground"
                                         >
-                                            {projeto.material || 'N/A'}
+                                            <div>{projeto.material || 'N/A'}</div>
+                                            {linhasCompra(projeto.material, projeto.materiaisComprados).map((linha) => (
+                                                <div key={linha} className="text-xs">{linha}</div>
+                                            ))}
                                         </TableCell>
                                         <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(implantacoesDoProjeto(projeto)[0]?.dataInicio ?? null)}</TableCell>
                                         <TableCell className="hidden sm:table-cell text-center">

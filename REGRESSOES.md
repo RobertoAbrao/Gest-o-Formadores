@@ -91,3 +91,25 @@ Passo a passo (em `/projetos` → editar):
    campo mostra "Sabe, Peripécias" (ordem do catálogo, não do clique).
 5. Busca: digite "lum" no campo de busca do seletor: aparece **Lúmina**.
 6. Na lista de `/projetos`, buscar "Sabe" ainda encontra o projeto.
+
+## "O que o município comprou" — anos por material (25/11/2026)
+
+**Área:** `src/components/projetos/compra-por-material.tsx` e o campo `materiaisComprados`.
+
+**Por que é manual:** a tela precisa de login e Firestore. O resumo e o que vai ao banco
+são testados em `src/lib/projetos/compra-material.test.ts`; a gravação pelo robô, em
+`src/components/projetos/projeto-form-schema.test.ts`; o clique, não.
+
+Passo a passo (em `/projetos` → editar um projeto de teste):
+
+1. Sem material marcado, o bloco diz "Marque um material acima…".
+2. Marque **Sabe** e **Peripécias** no Material: aparece um bloco para cada.
+3. No Sabe, clique **"Marcar 1º ao 9º"**, marque **LP** e **MAT** e o **Livro do
+   Coordenador**. Resumo: "Todos os anos (1º ao 9º) - LP e MAT + Livro do Coordenador".
+4. No Peripécias, marque **Educação Infantil**. Salve.
+5. Na lista de `/projetos`, embaixo do material, aparecem as duas linhas. Buscar
+   "Coordenador" encontra o projeto. Em "Ver detalhes" e no relatório impresso, idem.
+6. Desmarque **Peripécias** no Material e salve: a linha dele some dos detalhes.
+7. **Projeto antigo** (sem nada disso): abre, salva e continua igual.
+8. **Robô `/agente`**: preencha os anos de um material nos dados gerais, deixe o robô
+   salvar a etapa e recarregue a página: os anos continuam lá.
