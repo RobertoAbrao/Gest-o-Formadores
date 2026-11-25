@@ -31,6 +31,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { SeletorMateriais } from './seletor-materiais';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { useState, useEffect, useMemo, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
@@ -1091,7 +1092,7 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
                         <FormItem><FormLabel>Versão</FormLabel><FormControl><Input placeholder="Ex: 1.0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="material" render={({ field }) => (
-                        <FormItem><FormLabel>Material</FormLabel><FormControl><Input placeholder="Descreva os materiais do projeto" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Material</FormLabel><FormControl><SeletorMateriais ref={field.ref} value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <FormField control={form.control} name="responsavelId" render={({ field }) => (
                         <FormItem className="sm:col-span-2">

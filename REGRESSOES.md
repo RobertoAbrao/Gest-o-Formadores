@@ -69,3 +69,25 @@ Passo a passo (logado como administrador, em `/dashboard`):
    coleção mostram "—" em vez de 0. Atenção: **sem internet não é erro** — o Firestore
    espera a conexão e pode mostrar o que tem em cache; não use o modo Offline para testar
    este passo.
+
+## Campo "Material" do projeto — lista fixa (25/11/2026)
+
+**Área:** `src/components/projetos/seletor-materiais.tsx` e o campo `material` em
+`src/components/projetos/form-projeto.tsx`.
+
+**Por que é manual:** a tela precisa de login e Firestore. A regra (ler, marcar, desmarcar,
+preservar texto antigo) é testada em `src/lib/projetos/materiais.test.ts`; o clique, não.
+
+**O que pode quebrar:** projeto antigo com texto livre perder o que estava escrito.
+
+Passo a passo (em `/projetos` → editar):
+
+1. **Projeto antigo com texto livre** (ex.: "Apostila própria"): abra, **não mexa** no
+   Material, mude outro campo e salve. Em "Ver detalhes", o Material continua idêntico.
+2. No mesmo projeto, marque **Sabe**: o campo mostra "Sabe, Apostila própria", e o texto
+   antigo aparece marcado no grupo "Texto antigo (fora da lista)". Salve e confira.
+3. Desmarque o texto antigo: some do campo. Salve: em "Ver detalhes" fica só "Sabe".
+4. **Projeto novo**: marque dois produtos de selos diferentes (ex.: Peripécias e Sabe). O
+   campo mostra "Sabe, Peripécias" (ordem do catálogo, não do clique).
+5. Busca: digite "lum" no campo de busca do seletor: aparece **Lúmina**.
+6. Na lista de `/projetos`, buscar "Sabe" ainda encontra o projeto.

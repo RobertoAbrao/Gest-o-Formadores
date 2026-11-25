@@ -22,6 +22,7 @@ import {
   getStats,
 } from './agent-tools';
 import { ESTADOS_BR } from '@/lib/estados-br';
+import { MATERIAIS_CATALOGO, conferirMateriaisNovos, mensagemMaterialForaDaLista } from '@/lib/projetos/materiais';
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 
@@ -254,7 +255,7 @@ const toolDefinitions = [
       municipio: z.string().min(1),
       uf: z.string().length(2),
       versao: z.string().optional(),
-      material: z.string().optional(),
+      material: z.string().optional().describe(`Um ou mais, separados por vírgula: ${MATERIAIS_CATALOGO.join(', ')}`),
       qtdAlunos: z.number().optional(),
       qtdProfessores: z.number().optional(),
       formadoresIds: z.array(z.string()).optional(),
@@ -262,7 +263,9 @@ const toolDefinitions = [
       responsavelNome: z.string().optional(),
     }),
     execute: async (data: any) => {
-      const id = await createProjeto(data);
+      const material = conferirMateriaisNovos(data.material);
+      if (material.foraDaLista.length) return mensagemMaterialForaDaLista(material.foraDaLista);
+      const id = await createProjeto({ ...data, material: material.valor });
       return `Projeto criado com sucesso!\nMunicípio: ${data.municipio}/${data.uf}\nID: ${id}\nAlunos: ${data.qtdAlunos || 'N/A'}\nProfessores: ${data.qtdProfessores || 'N/A'}`;
     },
   },
