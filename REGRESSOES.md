@@ -113,3 +113,23 @@ Passo a passo (em `/projetos` → editar um projeto de teste):
 7. **Projeto antigo** (sem nada disso): abre, salva e continua igual.
 8. **Robô `/agente`**: preencha os anos de um material nos dados gerais, deixe o robô
    salvar a etapa e recarregue a página: os anos continuam lá.
+
+## Rolagem do mouse em listas dentro de janelas (25/11/2026)
+
+**Área:** `src/components/ui/popover.tsx` (todo Popover passou a ser `modal` por padrão).
+
+**Por que é manual:** a rolagem é do navegador. O teste (`src/components/ui/popover.test.ts`)
+trava o padrão `modal`; que a roda do mouse role de fato, só na tela.
+
+**História:** em Projetos → Editar, a lista do Material não rolava com a roda do mouse.
+O Dialog bloqueava a rolagem de tudo fora dele, e a lista é desenhada fora.
+
+Passo a passo — em cada item, abra a lista e role **com a roda do mouse**:
+
+1. `/projetos` → Editar → **Material**: rola até Peripécias.
+2. `/projetos` → Editar → **Formadores** do projeto: rola.
+3. `/formadores` → editar um formador → **Municípios**: rola.
+4. `/formacoes` (ou o quadro) → editar uma formação → listas de **formadores/materiais**: rolam.
+5. Com qualquer lista aberta, **clique fora**: a lista fecha (o primeiro clique só fecha —
+   é esperado). A página atrás **não** rola enquanto a lista está aberta.
+6. Um **calendário** (data de qualquer etapa do projeto): abre, escolhe a data, fecha.

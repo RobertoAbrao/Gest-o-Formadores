@@ -5,7 +5,17 @@ import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 
-const Popover = PopoverPrimitive.Root
+/**
+ * `modal` ligado por padrão (25/11/2026). Sem isso, a lista de um Popover aberta dentro
+ * de um Dialog não rola com o mouse: o Dialog bloqueia a rolagem fora dele, e o conteúdo
+ * do Popover é desenhado fora (Portal). Modal, o Popover empilha o próprio bloqueio, que
+ * libera a rolagem dentro dele — o mesmo comportamento do Select e do DropdownMenu.
+ * Efeito colateral: com o Popover aberto, o primeiro clique fora só o fecha.
+ * História e teste em `popover.test.ts`.
+ */
+function Popover({ modal = true, ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  return <PopoverPrimitive.Root modal={modal} {...props} />
+}
 
 const PopoverTrigger = PopoverPrimitive.Trigger
 
