@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Formacao, ProjetoImplatancao, Lembrete } from '@/lib/types';
+import { implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
 import { Loader2, Printer, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RelatorioAgendaPrint } from '@/components/dashboard/relatorio-agenda-print';
@@ -87,7 +88,8 @@ export default function AgendaRelatorioPage() {
         projetosSnap.forEach(doc => {
             const projeto = { id: doc.id, ...doc.data() } as ProjetoImplatancao;
             if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao, type: 'projeto-marco', title: `Migração: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
-            if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao, type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` });
+            // Uma data por implantação, nos 3 formatos do banco (até 25/11/2026 lia `dataImplantacao`, que não é mais gravado).
+            implantacoesDoProjeto(projeto).forEach(imp => { if (imp.dataInicio) allEvents.push({ date: imp.dataInicio, type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}` }); });
             
             if (projeto.simulados) {
               Object.keys(projeto.simulados).forEach(key => {

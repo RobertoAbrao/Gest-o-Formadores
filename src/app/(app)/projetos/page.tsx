@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare, FolderOpen } from 'lucide-react';
 import type { ProjetoImplatancao, Material } from '@/lib/types';
+import { implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -274,7 +275,7 @@ export default function ProjetosPage() {
                                         >
                                             {projeto.material || 'N/A'}
                                         </TableCell>
-                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(projeto.dataInicioImplantacao || projeto.dataImplantacao)}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-muted-foreground">{formatDate(implantacoesDoProjeto(projeto)[0]?.dataInicio ?? null)}</TableCell>
                                         <TableCell className="hidden sm:table-cell text-center">
                                             {projeto.diagnostica?.ok ? <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" /> : <XCircle className="h-5 w-5 text-destructive mx-auto" />}
                                         </TableCell>

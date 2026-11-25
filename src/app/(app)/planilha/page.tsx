@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, Sheet, GanttChartSquare, Search, CheckCircle2, XCircle, User, PlusCircle, BookOpenCheck, MessageSquare, UserCog } from 'lucide-react';
 import type { ProjetoImplatancao, Formador, Demanda } from '@/lib/types';
+import { implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -126,9 +127,13 @@ export default function PlanilhaPage() {
 
         const atividades: Activity[] = [];
         
-        if (p.dataImplantacao) {
+        // 1ª implantação, nos 3 formatos do banco (até 25/11/2026 lia `dataImplantacao`, que não é mais
+        // gravado). Uma atividade só: as demandas marcam a etapa como 'implantacao', sem número.
+        const primeiraImplantacao = implantacoesDoProjeto(p).find(imp => imp.dataInicio);
+        if (primeiraImplantacao?.dataInicio) {
             const etapaKey = 'implantacao';
-            atividades.push({ nome: "Implantação", etapaKey, startDate: p.dataImplantacao.toDate(), endDate: p.dataImplantacao.toDate(), ok: true, demandas: getDemandasForEtapa(etapaKey) });
+            const inicio = primeiraImplantacao.dataInicio.toDate();
+            atividades.push({ nome: "Implantação", etapaKey, startDate: inicio, endDate: primeiraImplantacao.dataFim?.toDate() ?? inicio, ok: true, demandas: getDemandasForEtapa(etapaKey) });
         }
         if (p.diagnostica?.data) {
             const etapaKey = 'diagnostica';

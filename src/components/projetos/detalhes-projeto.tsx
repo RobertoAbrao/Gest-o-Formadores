@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { anexosDaImplantacao, implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
 
 
 interface DetalhesProjetoProps {
@@ -414,15 +415,18 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             <p className="text-muted-foreground">{formatDate(projeto.dataMigracao)}</p>
                         </div>
                     </div>
-                    <div>
+                    {/* Uma por implantação, nos três formatos do banco (src/lib/projetos/implantacoes.ts).
+                        Até 25/11/2026 só lia a 1ª data e os anexos da etapa antiga 'implantacao'. */}
+                    {(implantacoesDoProjeto(projeto).length > 0 ? implantacoesDoProjeto(projeto) : [null]).map((imp, i, lista) => (
+                    <div key={imp?.indice ?? 'vazio'}>
                         <div className="flex items-center gap-3">
                             <Calendar className="h-5 w-5 text-muted-foreground" />
                             <div>
-                                <p className="font-medium">Implantação</p>
-                                <p className="text-muted-foreground">{formatDate(projeto.dataInicioImplantacao)}</p>
+                                <p className="font-medium">{imp?.titulo || (lista.length > 1 ? `Implantação ${i + 1}` : 'Implantação')}</p>
+                                <p className="text-muted-foreground">{formatDate(imp?.dataInicio ?? null)}</p>
                             </div>
                         </div>
-                         {getAnexosForEtapa('implantacao').map(anexo => (
+                         {(imp ? anexosDaImplantacao(anexos, imp) : []).map(anexo => (
                              <div key={anexo.id} className="text-xs text-primary flex items-start justify-between gap-2 p-1 rounded-md hover:bg-muted/50 mt-1">
                                 <a href={anexo.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 min-w-0">
                                     <ImageIcon className="h-3 w-3 shrink-0 mt-0.5" />
@@ -434,6 +438,7 @@ export function DetalhesProjeto({ projeto: initialProjeto }: DetalhesProjetoProp
                             </div>
                         ))}
                     </div>
+                    ))}
                  </CardContent>
                  {projeto.anexo && (
                      <CardContent>

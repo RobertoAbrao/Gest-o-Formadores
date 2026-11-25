@@ -2,26 +2,27 @@
 'use client';
 
 import type { ProjetoImplatancao, Anexo } from '@/lib/types';
-import { Timestamp } from 'firebase/firestore';
+import { montarLinhaDoTempo, type TipoMarco } from '@/lib/projetos/linha-do-tempo';
 import AppLogo from '../AppLogo';
 import { Badge } from '../ui/badge';
 import { Calendar, CheckCircle, Flag, Milestone, Target, UploadCloud, Image as ImageIcon, Star, Shield, DownloadCloud } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
+const ICONE_DO_MARCO: Record<TipoMarco, React.ElementType> = {
+  migracao: UploadCloud,
+  implantacao: Milestone,
+  diagnostica: Target,
+  simulado: Target,
+  devolutiva: Flag,
+  evento: Star,
+  dossie: DownloadCloud,
+  concluido: CheckCircle,
+};
+
 interface RelatorioProps {
   projeto: ProjetoImplatancao;
   anexos: Anexo[];
-}
-
-const formatDate = (timestamp: Timestamp | null | undefined, options?: Intl.DateTimeFormatOptions) => {
-    if (!timestamp) return 'N/A';
-    const defaultOptions: Intl.DateTimeFormatOptions = {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    };
-    return timestamp.toDate().toLocaleDateString('pt-BR', options || defaultOptions);
 }
 
 const MilestoneCard = ({
@@ -104,107 +105,19 @@ const MilestoneCard = ({
 export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
   const dataEmissao = new Date().toLocaleDateString('pt-BR');
 
-  const getAnexosForEtapa = (etapa: string): Anexo[] => {
-    return anexos.filter(anexo => anexo.etapa === etapa);
-  }
-  
-  const getDevolutivaDescription = (devolutivaKey: 'd1' | 'd2' | 'd3' | 'd4') => {
-    const devolutiva = projeto.devolutivas?.[devolutivaKey];
-    if (!devolutiva) return { formadores: '', detalhes: '' };
-
-    const formadores = devolutiva.formadores && devolutiva.formadores.length > 0
-      ? `Formadores: ${devolutiva.formadores.join(', ')}`
-      : '';
-    
-    return { formadores, detalhes: devolutiva.detalhes || '' };
-  }
-
   const brasaoAnexo = anexos.find(a => a.id === projeto.brasaoId);
 
-  const allMilestones = [
-    {
-        icon: UploadCloud,
-        title: 'Migração de Dados',
-        date: formatDate(projeto.dataMigracao),
-        description: { formadores: '', detalhes: '' },
-        anexos: getAnexosForEtapa('migracao'),
-        isComplete: !!projeto.dataMigracao,
-        sortDate: projeto.dataMigracao?.toDate()
-    },
-    {
-        icon: Milestone,
-        title: 'Implantação do Sistema',
-        date: formatDate(projeto.dataImplantacao),
-        isComplete: !!projeto.dataImplantacao,
-        description: { formadores: '', detalhes: projeto.implantacaoDetalhes || '' },
-        anexos: getAnexosForEtapa('implantacao'),
-        sortDate: projeto.dataImplantacao?.toDate()
-    },
-    {
-        icon: Target,
-        title: 'Avaliação Diagnóstica',
-        date: formatDate(projeto.diagnostica?.data),
-        description: { formadores: '', detalhes: projeto.diagnostica?.detalhes || '' },
-        anexos: getAnexosForEtapa('diagnostica'),
-        isComplete: !!projeto.diagnostica?.ok,
-        sortDate: projeto.diagnostica?.data?.toDate()
-    },
-    ...([1,2,3,4] as const).map(i => ({
-        icon: Target,
-        title: `Simulado ${i}`,
-        date: `De ${formatDate(projeto.simulados?.[`s${i}`]?.dataInicio)} a ${formatDate(projeto.simulados?.[`s${i}`]?.dataFim)}`,
-        description: { formadores: '', detalhes: projeto.simulados?.[`s${i}`]?.detalhes || '' },
-        anexos: getAnexosForEtapa(`simulados.s${i}`),
-        isComplete: !!projeto.simulados?.[`s${i}`]?.ok,
-        sortDate: projeto.simulados?.[`s${i}`]?.dataInicio?.toDate()
-    })),
-    ...([1,2,3,4] as const).map(i => ({
-        icon: Flag,
-        title: `Devolutiva ${i}`,
-        date: `De ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataInicio)} a ${formatDate(projeto.devolutivas?.[`d${i}`]?.dataFim)}`,
-        description: getDevolutivaDescription(`d${i}`),
-        anexos: getAnexosForEtapa(`devolutivas.d${i}`),
-        isComplete: !!projeto.devolutivas?.[`d${i}`]?.ok,
-        sortDate: projeto.devolutivas?.[`d${i}`]?.dataInicio?.toDate()
-    })),
-     ...(projeto.eventosAdicionais || []).map(evento => ({
-        icon: Star,
-        title: evento.titulo,
-        date: formatDate(evento.data),
-        description: { formadores: '', detalhes: evento.detalhes || ''},
-        anexos: anexos.filter(a => evento.anexosIds?.includes(a.id || '')),
-        isComplete: true, // Custom events are always "complete" in this context
-        sortDate: evento.data?.toDate()
-    }))
-  ];
-
-    const scheduledMilestones = allMilestones.filter(m => m.sortDate);
-    const sortedMilestones = scheduledMilestones.sort((a, b) => a.sortDate!.getTime() - b.sortDate!.getTime());
-    
-    if (sortedMilestones.length > 0) {
-        let finalItem;
-        if (projeto.dossieUrl) {
-            finalItem = {
-                icon: DownloadCloud,
-                title: 'Dossiê Completo',
-                description: { formadores: '', detalhes: '' },
-                anexos: [],
-                isComplete: true,
-                dossieUrl: projeto.dossieUrl, // Adiciona a URL aqui
-                sortDate: new Date(8640000000000000)
-            };
-        } else {
-            finalItem = {
-                icon: CheckCircle,
-                title: 'Projeto Concluído',
-                description: { formadores: '', detalhes: 'Todas as etapas foram finalizadas com sucesso.'},
-                anexos: [],
-                isComplete: true,
-                sortDate: new Date(8640000000000000)
-            };
-        }
-        sortedMilestones.push(finalItem as any);
-    }
+  // A regra de quais marcos entram e em que ordem mora em src/lib/projetos/linha-do-tempo.ts
+  // (testada); aqui só se desenha.
+  const sortedMilestones = montarLinhaDoTempo(projeto, anexos).map((m) => ({
+    icon: ICONE_DO_MARCO[m.tipo],
+    title: m.titulo,
+    date: m.data,
+    description: m.descricao,
+    anexos: m.anexos,
+    isComplete: m.concluido,
+    dossieUrl: m.dossieUrl,
+  }));
 
   return (
     <div className="bg-white text-black font-sans p-8 rounded-lg shadow-lg border">
@@ -243,7 +156,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
              <div className='space-y-4'>
                 {sortedMilestones.length > 0 ? (
                     sortedMilestones.map((milestone, index) => {
-                        if ((milestone as any).dossieUrl) {
+                        if (milestone.dossieUrl) {
                             return (
                                 <div key={index} className="flex justify-center relative">
                                     <div className="flex w-full items-start">
@@ -255,7 +168,7 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
                                         </div>
                                         <div className="w-1/2 pl-8">
                                             <div className='mt-3'>
-                                                <a href={(milestone as any).dossieUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">
+                                                <a href={milestone.dossieUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">
                                                     Clique aqui para baixar o dossiê completo
                                                 </a>
                                             </div>
@@ -267,7 +180,12 @@ export function RelatorioProjetoPrint({ projeto, anexos }: RelatorioProps) {
                         return (
                              <MilestoneCard 
                                 key={index}
-                                {...milestone}
+                                icon={milestone.icon}
+                                title={milestone.title}
+                                date={milestone.date}
+                                description={milestone.description}
+                                anexos={milestone.anexos}
+                                isComplete={milestone.isComplete}
                                 isFirst={index === 0}
                                 isLast={index === sortedMilestones.length - 1}
                             />

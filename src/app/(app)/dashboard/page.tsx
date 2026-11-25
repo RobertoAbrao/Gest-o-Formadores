@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { Calendar } from '@/components/ui/calendar';
 import type { Formacao, ProjetoImplatancao, Lembrete, FormadorStatus, Demanda } from '@/lib/types';
+import { implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -140,7 +141,8 @@ export default function DashboardPage() {
       const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
       projetosData.forEach(projeto => {
         if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao.toDate(), type: 'projeto-marco', title: `Migração de Dados: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-        if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
+        // Uma data por implantação, nos 3 formatos do banco (até 25/11/2026 lia `dataImplantacao`, que não é mais gravado).
+        implantacoesDoProjeto(projeto).forEach(imp => { if (imp.dataInicio) allEvents.push({ date: imp.dataInicio.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id }); });
         
         if (projeto.simulados) {
             Object.keys(projeto.simulados).forEach(key => {
