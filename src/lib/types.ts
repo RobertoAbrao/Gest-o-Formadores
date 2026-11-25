@@ -175,6 +175,9 @@ export interface Lembrete {
     data: Timestamp;
     concluido: boolean;
     dataCriacao: Timestamp;
+    /** Quem criou (desde 25/11/2026). Todo administrador vê todos os lembretes; isto diz de quem é. */
+    criadoPorId?: string | null;
+    criadoPorNome?: string | null;
 }
 
 export interface Avaliacao {
