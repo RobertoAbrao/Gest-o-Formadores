@@ -321,7 +321,7 @@ export default function CardsPage() {
                            <div className="space-y-3 mt-3 pt-3 border-t">
                                 <div className="flex justify-between items-center">
                                     <h5 className="font-medium text-sm">Atividades do Dia</h5>
-                                    <Button variant="outline" size="xs" onClick={() => addActivity(locIndex, evtIndex)}>
+                                    <Button variant="outline" size="sm" onClick={() => addActivity(locIndex, evtIndex)}>
                                         <PlusCircle className="mr-1 h-3 w-3" /> Adicionar
                                     </Button>
                                 </div>

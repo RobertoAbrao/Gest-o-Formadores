@@ -1,9 +1,8 @@
 /**
  * Quem pode validar uma demanda concluída.
  *
- * Fica aqui, e não dentro da tela do Diário, porque duas portas leem esta lista:
- * a tela (`/diario`) e o bot do Slack (`functions/src/demandas`). Se cada uma
- * tivesse a sua cópia, um dia alguém validaria por um lado e não pelo outro.
+ * Lida pela tela do Diário (`/diario`). Fica num arquivo próprio para que
+ * qualquer outra porta que valide demandas use a mesma lista, e não uma cópia.
  *
  * A comparação é por e-mail, em minúsculas.
  */

@@ -98,7 +98,7 @@ const NumberRow = ({ control, name, label }: { control: Control<AlinhamentoFormV
         <FormItem>
             <FormLabel>{label}</FormLabel>
             <FormControl>
-                <Input type="number" {...field} value={field.value === undefined ? '' : field.value} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
+                <Input type="number" {...field} value={(field.value as number | undefined) ?? ''} onChange={event => field.onChange(event.target.value === '' ? undefined : +event.target.value)} />
             </FormControl>
             <FormMessage />
         </FormItem>

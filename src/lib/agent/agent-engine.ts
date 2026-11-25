@@ -94,7 +94,7 @@ const toolDefinitions = [
     name: 'listar_formadores',
     description: 'Lista todos os formadores, opcionalmente filtrados por UF',
     parameters: z.object({
-      uf: z.string().length(2).optional().description('Sigla do estado (ex: PR, SP, RJ)'),
+      uf: z.string().length(2).optional().describe('Sigla do estado (ex: PR, SP, RJ)'),
     }),
     execute: async ({ uf }: { uf?: string }) => {
       const formadores = await listFormadores(uf);
@@ -106,7 +106,7 @@ const toolDefinitions = [
     name: 'buscar_formador',
     description: 'Busca um formador pelo ID',
     parameters: z.object({
-      id: z.string().description('ID do formador'),
+      id: z.string().describe('ID do formador'),
     }),
     execute: async ({ id }: { id: string }) => {
       const f = await getFormador(id);
@@ -199,8 +199,8 @@ const toolDefinitions = [
       formadoresIds: z.array(z.string()).min(1),
       formadoresNomes: z.array(z.string()).min(1),
       participantes: z.number().optional(),
-      dataInicio: z.string().optional().description('Data no formato YYYY-MM-DD'),
-      dataFim: z.string().optional().description('Data no formato YYYY-MM-DD'),
+      dataInicio: z.string().optional().describe('Data no formato YYYY-MM-DD'),
+      dataFim: z.string().optional().describe('Data no formato YYYY-MM-DD'),
     }),
     execute: async (data: any) => {
       const id = await createFormacao({
@@ -290,7 +290,7 @@ const toolDefinitions = [
       responsavelId: z.string(),
       responsavelNome: z.string(),
       prioridade: z.enum(['Normal', 'Urgente']).optional(),
-      prazo: z.string().optional().description('Data no formato YYYY-MM-DD'),
+      prazo: z.string().optional().describe('Data no formato YYYY-MM-DD'),
     }),
     execute: async (data: any) => {
       const id = await createDemanda({

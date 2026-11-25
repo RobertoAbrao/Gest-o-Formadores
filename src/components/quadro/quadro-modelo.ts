@@ -159,6 +159,15 @@ export const FILAS: Fila[] = [
   },
 ];
 
+/**
+ * A fila pedida no endereço (`/quadro?fila=atrasadas`): o Dashboard abre o
+ * Acompanhamento já filtrado. Valor desconhecido é ignorado (abre sem filtro).
+ */
+export function filaDoEndereco(search: string): FilaId | null {
+  const pedida = new URLSearchParams(search).get('fila');
+  return FILAS.some((f) => f.id === pedida) ? (pedida as FilaId) : null;
+}
+
 // ---------------------------------------------------------------------------
 // Busca
 // ---------------------------------------------------------------------------

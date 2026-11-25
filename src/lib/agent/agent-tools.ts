@@ -13,6 +13,7 @@ import {
   orderBy,
   limit as fbLimit,
 } from 'firebase/firestore';
+import type { DocumentData } from 'firebase/firestore';
 import { db } from '../firebase';
 import type {
   Formador,
@@ -52,7 +53,7 @@ export async function createFormador(data: Omit<Formador, 'id'>): Promise<string
 }
 
 export async function updateFormador(id: string, data: Partial<Formador>): Promise<void> {
-  const clean: Record<string, unknown> = {};
+  const clean: DocumentData = {};
   for (const [key, val] of Object.entries(data)) {
     if (val !== undefined) {
       if (key === 'cpf') clean[key] = String(val).replace(/\D/g, '');

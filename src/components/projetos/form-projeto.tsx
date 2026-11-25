@@ -53,6 +53,9 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useAuth } from '@/hooks/use-auth';
 import { ESTADOS_BR } from '@/lib/estados-br';
+import { enviarAnexo, mensagemDeFalhaNoAnexo } from '@/lib/anexos/enviar-anexo';
+import { prepararArquivoParaFirestore } from '@/lib/anexos/preparar-arquivo';
+import { lerArquivoComoDataUrl, reduzirImagemNoNavegador } from '@/lib/anexos/reduzir-imagem-navegador';
 import {
   buildProjetoPayload,
   cleanObject,
@@ -128,15 +131,6 @@ interface AdminUser {
     id: string;
     nome: string;
 }
-
-const fileToDataURL = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
 
 /**
  * Campo de data que também sabe ficar VAZIO.
@@ -347,40 +341,41 @@ export const FormProjeto = forwardRef<FormProjetoHandle, FormProjetoProps>(funct
         : etapa.startsWith('implantacoes.') ? `${etapa}.anexosIds`
         : `${etapa}.anexosIds`;
       
-      const dataUrl = await fileToDataURL(file);
-      const novoAnexo: Omit<Anexo, 'id'> = { 
-        nome: file.name, 
-        url: dataUrl,
-        dataUpload: Timestamp.now(),
-        projetoId: projetoId,
-        etapa: etapa,
-        autorId: user!.uid,
-      };
-      
-      const anexoDocRef = doc(collection(db, 'anexos'));
-      setDoc(anexoDocRef, novoAnexo)
-        .catch(async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: anexoDocRef.path,
-            operation: 'create',
-            requestResourceData: novoAnexo,
+      // Espera o Firestore confirmar antes de dizer "enviado" — ver src/lib/anexos/enviar-anexo.ts
+      // (caso Sumaré, 25/11/2026: foto grande recusada e o aviso de sucesso aparecia mesmo assim).
+      let reduzida = false;
+      const { id: anexoId, anexo: novoAnexo } = await enviarAnexo({
+        arquivo: file,
+        vinculo: { projetoId, etapa, autorId: user!.uid },
+        preparar: async (arquivo) => {
+          const r = await prepararArquivoParaFirestore(arquivo, {
+            lerDataUrl: lerArquivoComoDataUrl,
+            reduzirImagem: reduzirImagemNoNavegador,
           });
-          errorEmitter.emit('permission-error', permissionError);
-        });
-  
+          reduzida = r.reduzida;
+          return r.url;
+        },
+        novoId: () => doc(collection(db, 'anexos')).id,
+        gravar: (id, dados) => setDoc(doc(db, 'anexos', id), dados),
+        agora: () => Timestamp.now(),
+      });
+
       if (etapa === 'brasao') {
-        form.setValue('brasaoId', anexoDocRef.id);
+        form.setValue('brasaoId', anexoId);
       } else {
         const currentAnexosIds = form.getValues(anexoPath as any) || [];
-        form.setValue(anexoPath as any, [...currentAnexosIds, anexoDocRef.id]);
+        form.setValue(anexoPath as any, [...currentAnexosIds, anexoId]);
       }
-      
-      setAllAnexos(prev => [...prev, { ...novoAnexo, id: anexoDocRef.id }]);
-      
-      toast({ title: "Sucesso", description: "Anexo enviado." });
+
+      setAllAnexos(prev => [...prev, { ...novoAnexo, id: anexoId }]);
+
+      toast({
+        title: "Sucesso",
+        description: reduzida ? "Anexo enviado. A imagem foi reduzida para caber no limite de 1 MB." : "Anexo enviado.",
+      });
     } catch (error) {
       console.error("Erro no upload do arquivo:", error);
-      toast({ variant: "destructive", title: "Erro de Upload", description: "Não foi possível enviar o arquivo." });
+      toast({ variant: "destructive", title: "Anexo não enviado", description: mensagemDeFalhaNoAnexo(error) });
     } finally {
       setUploading(null);
       if(fileInputRef.current) {

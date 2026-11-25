@@ -15,15 +15,10 @@ import {
   Mail,
   Archive,
   DollarSign,
-  Briefcase,
   ClipboardList,
-  BarChart2,
   Sheet as SheetIcon,
   CalendarDays,
   GanttChartSquare,
-  GalleryHorizontal,
-  AreaChart,
-  Sparkles,
 } from 'lucide-react';
 
 import AppLogo from '@/components/AppLogo';
@@ -73,21 +68,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     user.perfil === 'administrador'
       ? [
           { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { href: '/gerencia', label: 'Visão Gerencial', icon: AreaChart },
-          // Diário de Bordo saiu do menu em 10/11/2026: as demandas agora são tocadas no
-          // Slack (src/lib/slack). A rota /diario continua no ar e os dados no banco.
+          // Saíram do menu (só do menu: as rotas continuam no ar pelo endereço direto e os
+          // dados ficam no banco — para trazer de volta, é só readicionar aqui):
+          //  - Diário de Bordo (/diario): saiu em 10/11/2026, quando as demandas iam para o
+          //    Slack. O Slack saiu do projeto em 25/11/2026 e o Diário segue fora por decisão
+          //    do usuário; as demandas vencidas e sem prazo aparecem no Dashboard.
+          //  - Visão Gerencial (/gerencia), Assessores (/assessores), Cards de Divulgação
+          //    (/cards), PowerBI (/powerbi) e Assistente (/agente).
           { href: '/formadores', label: 'Formadores', icon: Users },
-          { href: '/assessores', label: 'Assessores', icon: Briefcase },
           { href: '/materiais', label: 'Materiais', icon: BookCopy },
           { href: '/quadro', label: 'Acompanhamento', icon: KanbanSquare },
           { href: '/projetos', label: 'Projetos', icon: ClipboardList },
           { href: '/planilha', label: 'Planilha Projetos', icon: SheetIcon },
-          { href: '/cards', label: 'Cards de Divulgação', icon: GalleryHorizontal },
           { href: '/arquivados', label: 'Arquivados', icon: Archive },
-          { href: '/powerbi', label: 'PowerBI', icon: BarChart2 },
           { href: '/calendario', label: 'Calendário', icon: CalendarDays },
           { href: '/avaliacoes', label: 'E-mails das Avaliações', icon: Mail },
-          { href: '/agente', label: 'Assistente', icon: Sparkles },
         ]
       : [
           { href: '/materiais', label: 'Materiais', icon: BookCopy },

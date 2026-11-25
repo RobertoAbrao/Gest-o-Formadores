@@ -2,7 +2,7 @@
 
 import { collection, deleteDoc, doc, getDoc, query, updateDoc, where } from 'firebase/firestore';
 import { Loader2, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { startOfToday } from 'date-fns';
 
 import {
@@ -30,6 +30,7 @@ import { ColunaQuadro } from '@/components/quadro/coluna-quadro';
 import {
   FILAS,
   combinaBusca,
+  filaDoEndereco,
   ordenarColuna,
   tituloDaFormacao,
   type ContextoCard,
@@ -68,6 +69,13 @@ export default function QuadroPage() {
 
   const [fila, setFila] = useState<FilaId | null>(null);
   const [busca, setBusca] = useState('');
+
+  // O Dashboard abre o quadro já filtrado (/quadro?fila=atrasadas). Lido no navegador,
+  // e não com useSearchParams, para a página continuar sendo pré-renderizada no build.
+  useEffect(() => {
+    const pedida = filaDoEndereco(window.location.search);
+    if (pedida) setFila(pedida);
+  }, []);
   const [faseMovel, setFaseMovel] = useState<FaseDoQuadro | null>(null);
   const [ocupadoId, setOcupadoId] = useState<string | null>(null);
 

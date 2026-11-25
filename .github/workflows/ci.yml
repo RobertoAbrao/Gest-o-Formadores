@@ -1,0 +1,72 @@
+# CI — roda sozinho em todo push e em todo PR para o main, e para na primeira falha.
+#
+# Por que existe (25/11/2026): o projeto não tinha teste nem CI, e o build da Vercel
+# ignorava erro de tipo. Assim passaram dois bugs que o `tsc` já apontava (a linha do
+# tempo lendo `dataImplantacao`, campo que não existe mais) e um aviso de "Anexo enviado"
+# que aparecia mesmo quando o Firestore recusava a imagem.
+#
+# Mesma versão de Node da produção: a Vercel usa 22.x, fixado em .nvmrc e em `engines`.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Lint, tipos, testes, build e fumaça
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar com o lockfile travado
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npm run typecheck
+
+      - name: Testes (unidade e regressão)
+        run: npm test
+
+      - name: Build de produção
+        run: npm run build
+
+      # Sobe o que foi construído do jeito que a produção sobe (`next start`) e chama
+      # as rotas. Pega o que só quebra em runtime: módulo que não resolve, página que
+      # explode ao renderizar no servidor. Só rotas que não dependem de rede externa.
+      - name: Teste de fumaça
+        run: |
+          npx next start -p 3000 > next-start.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:3000/ && break
+            sleep 1
+          done
+          falhou=0
+          for rota in / /dashboard /projetos /quadro; do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000$rota")
+            echo "$rota -> $codigo"
+            [ "$codigo" = "200" ] || falhou=1
+          done
+          curl -s http://localhost:3000/ | grep -q '<title>Gestão Pedagógica</title>' \
+            || { echo 'a página inicial não trouxe o título esperado'; falhou=1; }
+          if [ "$falhou" = 1 ]; then cat next-start.log; exit 1; fi

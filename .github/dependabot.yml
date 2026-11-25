@@ -1,0 +1,25 @@
+# Auditoria de dependências de rotina: o Dependabot abre PR quando sai correção de
+# segurança ou versão nova. Cada PR passa pelo CI antes de entrar.
+#
+# Por que não `npm audit` bloqueando o CI: em 25/11/2026 havia 54 vulnerabilidades
+# conhecidas nas dependências de produção (5 críticas, incluindo o próprio Next 15.3.8).
+# Um passo de audit bloqueante deixaria o CI vermelho até essa atualização acontecer —
+# e CI sempre vermelho vira CI ignorado.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:00'
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      menores:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

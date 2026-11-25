@@ -1,818 +1,561 @@
-
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { BookOpenCheck, BookCopy, Loader2, Calendar as CalendarIcon, Hash, KanbanSquare, Milestone, Flag, Bell, PlusCircle, CheckCircle2, BellRing, Printer, AlertTriangle, Archive, Check, Eye, History, Mail, ClipboardList, CalendarPlus } from 'lucide-react';
-import { collection, getCountFromServer, getDocs, query, where, Timestamp, addDoc, doc, updateDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+/**
+ * Dashboard do Administrador — "Precisa de você" (redesenho de 25/11/2026).
+ *
+ * A primeira tela do administrador: o que está atrasado, o que é hoje e o que vem nos
+ * próximos 7 dias, com filas clicáveis no topo. A REGRA (o que entra em cada coluna,
+ * com que texto) mora em src/lib/dashboard/agenda.ts, com teste. Esta página só lê o
+ * banco, desenha e grava as ações.
+ *
+ * O QUE NÃO PODE VOLTAR (passo a passo em REGRESSOES.md, seção Dashboard):
+ *  - Atualização ao vivo NUNCA tira a página da tela. A versão antiga relia tudo a cada
+ *    mudança no banco e, enquanto relia, trocava a página inteira por um spinner: o
+ *    detalhe da formação aberto fechava e o texto digitado se perdia — bastava marcar
+ *    um item do checklist. Aqui os dados chegam pelas assinaturas e a tela é derivada
+ *    com useMemo; o esqueleto só aparece antes da primeira entrega.
+ *  - Os diálogos ficam montados fora de qualquer condição de carregamento.
+ */
+
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { addDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { format, isSameDay, addDays, isToday, isTomorrow, isWithinInterval, startOfDay, isYesterday, startOfToday } from 'date-fns';
-import Link from 'next/link';
+import { collection, doc, query, updateDoc, where } from 'firebase/firestore';
+import { AlertTriangle, Check, ChevronRight, Plus, X } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { Calendar } from '@/components/ui/calendar';
-import type { Formacao, ProjetoImplatancao, Lembrete, FormadorStatus, Demanda } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useToast } from '@/hooks/use-toast';
-import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FormDemanda } from '@/components/diario/form-diario';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ToastAction } from '@/components/ui/toast';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { AgendaDoMes } from '@/components/dashboard/agenda-do-mes';
+import { ColunasAgenda } from '@/components/dashboard/colunas-agenda';
+import { FaixaFilas, type FilaDaFaixa } from '@/components/dashboard/faixa-filas';
+import { FormLembrete } from '@/components/dashboard/form-lembrete';
+import { ItemDaAgenda, type AcoesDoItem } from '@/components/dashboard/item-agenda';
+import { FormDemanda } from '@/components/diario/form-diario';
+import { DetalhesFormacao } from '@/components/formacoes/detalhes-formacao';
+import { tituloDaFormacao } from '@/components/quadro/quadro-modelo';
+import { useAuth } from '@/hooks/use-auth';
+import { useColecaoTempoReal } from '@/hooks/use-colecao-tempo-real';
+import useDynamicFavicon from '@/hooks/use-dynamic-favicon';
+import { useHoje } from '@/hooks/use-hoje';
+import { useToast } from '@/hooks/use-toast';
+import { criarLembrete, marcarLembrete, mudarStatusDemanda } from '@/lib/dashboard/acoes';
+import { agruparAgenda, diaDaSemana, itensDeOntem, montarAgenda, type ItemAgenda } from '@/lib/dashboard/agenda';
+import {
+  contarFilasDeDemanda,
+  contarFilasDeFormacao,
+  FILAS_DE_DEMANDA,
+  FILAS_DE_FORMACAO,
+  type FilaDeDemandaId,
+} from '@/lib/dashboard/filas';
+import { db } from '@/lib/firebase';
 import { changeFormacaoStatus } from '@/lib/formacao-actions';
-import { faseDaFormacao } from '@/lib/fase-formacao';
-
-
-const lembreteSchema = z.object({
-  titulo: z.string().min(3, 'O título é obrigatório.'),
-  data: z.date({ required_error: 'A data é obrigatória.'}),
-});
-type LembreteFormValues = z.infer<typeof lembreteSchema>;
-
-type CalendarEvent = {
-    date: Date;
-    type: 'formacao' | 'projeto-marco' | 'projeto-acompanhamento' | 'lembrete' | 'demanda';
-    title: string;
-    details: string;
-    relatedId: string;
-    concluido?: boolean;
-    prioridade?: 'Normal' | 'Urgente';
-}
+import type { Demanda, Formacao, Lembrete, ProjetoImplatancao } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  // As consultas exigem perfil de administrador nas regras do Firestore: o painel (e as
+  // assinaturas) só monta depois que o perfil é conhecido.
+  if (!user || user.perfil !== 'administrador') return <EsqueletoDaPagina />;
+  return <PainelDoAdministrador />;
+}
+
+function PainelDoAdministrador() {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [stats, setStats] = useState([
-    { title: 'Demandas Pendentes', value: '0', icon: BookOpenCheck, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
-    { title: 'Materiais Disponíveis', value: '0', icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
-    { title: 'Formações Ativas', value: '0', icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
-  ]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
-  const [yesterdayEvents, setYesterdayEvents] = useState<CalendarEvent[]>([]);
-  const [activeFormations, setActiveFormations] = useState<Formacao[]>([]);
-  const [demandas, setDemandas] = useState<Demanda[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [isLembreteDialogOpen, setIsLembreteDialogOpen] = useState(false);
+  const router = useRouter();
+  const hoje = useHoje();
   const { setNotificationFavicon, clearNotificationFavicon } = useDynamicFavicon();
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [selectedFormacao, setSelectedFormacao] = useState<Formacao | null>(null);
-  const [isDemandaDialogOpen, setIsDemandaDialogOpen] = useState(false);
-  const [selectedDemanda, setSelectedDemanda] = useState<Demanda | null>(null);
+  const [tentativa, setTentativa] = useState(0);
 
+  // ------------------------------------------------------------------ dados
 
-  const form = useForm<LembreteFormValues>({
-    resolver: zodResolver(lembreteSchema),
-    defaultValues: {
-      titulo: '',
-      data: undefined,
-    }
-  });
+  // Quatro assinaturas ao vivo, já filtradas no servidor. Uma mudança no banco chega
+  // como documento novo e a tela recalcula (useMemo) — sem reler tudo, sem spinner,
+  // sem uma leitura velha sobrescrever a nova. `tentativa` refaz as assinaturas.
+  const formacoes = useColecaoTempoReal<Formacao>(
+    () => query(collection(db, 'formacoes'), where('status', '!=', 'arquivado')),
+    [tentativa]
+  );
+  const demandas = useColecaoTempoReal<Demanda>(
+    () => query(collection(db, 'demandas'), where('status', '!=', 'Concluída')),
+    [tentativa]
+  );
+  const projetos = useColecaoTempoReal<ProjetoImplatancao>(() => collection(db, 'projetos'), [tentativa]);
+  const lembretes = useColecaoTempoReal<Lembrete>(
+    () => query(collection(db, 'lembretes'), where('concluido', '==', false)),
+    [tentativa]
+  );
 
-  const fetchData = async () => {
-    if (user?.perfil !== 'administrador') return;
-    setLoading(true);
+  const carregando = formacoes.carregando || demandas.carregando || projetos.carregando || lembretes.carregando;
+  const falhas = [
+    formacoes.erro && 'as formações',
+    demandas.erro && 'as demandas',
+    projetos.erro && 'os projetos',
+    lembretes.erro && 'os lembretes',
+  ].filter(Boolean) as string[];
+
+  // Formações concluídas nesta visita: ficam à vista com "Arquivar" em vez de sumir no clique.
+  const [recemConcluidas, setRecemConcluidas] = useState<Set<string>>(() => new Set());
+
+  const itens = useMemo(
+    () =>
+      montarAgenda(
+        { formacoes: formacoes.dados, demandas: demandas.dados, projetos: projetos.dados, lembretes: lembretes.dados },
+        hoje,
+        { recemConcluidas }
+      ),
+    [formacoes.dados, demandas.dados, projetos.dados, lembretes.dados, hoje, recemConcluidas]
+  );
+
+  const [filaAtiva, setFilaAtiva] = useState<FilaDeDemandaId | null>(null);
+  const filtro = FILAS_DE_DEMANDA.find((f) => f.id === filaAtiva) ?? null;
+
+  const todos = useMemo(() => agruparAgenda(itens), [itens]);
+  const grupos = useMemo(() => (filtro ? agruparAgenda(itens.filter(filtro.combina)) : todos), [itens, filtro, todos]);
+  const ontem = useMemo(() => itensDeOntem(itens, hoje), [itens, hoje]);
+  const contagemFormacao = useMemo(() => contarFilasDeFormacao(formacoes.dados, hoje), [formacoes.dados, hoje]);
+  const contagemDemanda = useMemo(() => contarFilasDeDemanda(itens), [itens]);
+
+  const filas: FilaDaFaixa[] = [
+    ...FILAS_DE_FORMACAO.map((f) => ({
+      id: f.id,
+      rotulo: f.rotulo,
+      dica: f.dica,
+      tom: f.tom,
+      n: formacoes.erro ? null : contagemFormacao[f.id],
+      href: `/quadro?fila=${f.id}`,
+    })),
+    ...FILAS_DE_DEMANDA.map((f, i) => ({
+      id: f.id,
+      rotulo: f.rotulo,
+      dica: f.dica,
+      tom: f.tom,
+      n: demandas.erro ? null : contagemDemanda[f.id],
+      grupo: i === 0 ? 'Demandas' : undefined,
+    })),
+  ];
+
+  const pendentesHoje = todos.atrasado.length + todos.hoje.length;
+  useEffect(() => {
+    if (carregando) return;
+    if (pendentesHoje > 0) setNotificationFavicon();
+    else clearNotificationFavicon();
+  }, [carregando, pendentesHoje, setNotificationFavicon, clearNotificationFavicon]);
+
+  // ------------------------------------------------------------------ diálogos
+
+  const [detalheId, setDetalheId] = useState<string | null>(null);
+  // Cópia congelada ao abrir: um documento chegando ao vivo no meio da digitação apagaria o formulário.
+  const [demandaAberta, setDemandaAberta] = useState<Demanda | null>(null);
+  const [aConcluir, setAConcluir] = useState<Formacao | null>(null);
+  const [lembreteAberto, setLembreteAberto] = useState(false);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [semPrazoAberto, setSemPrazoAberto] = useState(false);
+  const [ontemAberto, setOntemAberto] = useState(false);
+
+  const formacaoPorId = useMemo(() => new Map(formacoes.dados.map((f) => [f.id, f])), [formacoes.dados]);
+  const demandaPorId = useMemo(() => new Map(demandas.dados.map((d) => [d.id, d])), [demandas.dados]);
+
+  // ------------------------------------------------------------------ ações
+
+  const falhou = (titulo: string, error: unknown) => {
+    console.error(titulo, error);
+    toast({ variant: 'destructive', title: titulo, description: (error as Error)?.message || 'Tente de novo.' });
+  };
+
+  /** Concluir pede confirmação (não "Desfazer"): ele cria a demanda de agradecimento, e desfazer só o status a deixaria solta. */
+  const concluirFormacao = async () => {
+    const f = aConcluir;
+    if (!f) return;
+    setAConcluir(null);
+    setOcupado(`formacao:${f.id}`);
     try {
-      const materiaisCol = collection(db, 'materiais');
-      const formacoesCol = collection(db, 'formacoes');
-      const projetosCol = collection(db, 'projetos');
-      const lembretesCol = collection(db, 'lembretes');
-      const demandasCol = collection(db, 'demandas');
+      await changeFormacaoStatus(f, 'concluido', user);
+      setRecemConcluidas((atual) => new Set(atual).add(f.id));
+      toast({
+        title: 'Formação concluída',
+        description: `A demanda de agradecimento aparece aqui, com prazo para ${diaDaSemana(addDays(hoje, 2))}.`,
+      });
+    } catch (error) {
+      falhou('Não foi possível concluir', error);
+    } finally {
+      setOcupado(null);
+    }
+  };
 
-      const activeFormacoesQuery = query(formacoesCol, where('status', '!=', 'arquivado'));
-      
-      const [materiaisSnapshot, activeFormacoesSnapshot, projetosSnapshot, lembretesSnapshot, demandasSnapshot] = await Promise.all([
-        getCountFromServer(materiaisCol),
-        getDocs(activeFormacoesQuery),
-        getDocs(projetosCol),
-        getDocs(query(lembretesCol, where('concluido', '==', false))),
-        getDocs(query(demandasCol, where('status', '!=', 'Concluída'))),
-      ]);
-      
-      setStats([
-        { title: 'Demandas Pendentes', value: demandasSnapshot.size.toString(), icon: BookOpenCheck, color: 'text-yellow-500', borderColor: 'border-yellow-500' },
-        { title: 'Materiais Disponíveis', value: materiaisSnapshot.data().count.toString(), icon: BookCopy, color: 'text-green-500', borderColor: 'border-green-500' },
-        { title: 'Formações Ativas', value: activeFormacoesSnapshot.size.toString(), icon: KanbanSquare, color: 'text-orange-500', borderColor: 'border-orange-500' },
-      ]);
-        
-      const allEvents: CalendarEvent[] = [];
-      const formacoesData = activeFormacoesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Formacao));
-      setActiveFormations(formacoesData);
-
-      formacoesData.forEach(formacao => {
-        if (formacao.titulo.toLowerCase().includes('devolutiva')) {
-            return;
-        }
-
-        if (formacao.dataInicio) allEvents.push({ date: formacao.dataInicio.toDate(), type: 'formacao', title: formacao.titulo, details: `Início - ${formacao.municipio}`, relatedId: formacao.id });
-        if (formacao.dataFim) allEvents.push({ date: formacao.dataFim.toDate(), type: 'formacao', title: formacao.titulo, details: `Fim - ${formacao.municipio}`, relatedId: formacao.id });
-      
-        if(formacao.logistica) {
-          formacao.logistica.forEach(item => {
-            if(item.alertaLembrete && item.diasLembrete && item.checkin) {
-               const alertDate = addDays(item.checkin.toDate(), -item.diasLembrete);
-               allEvents.push({
-                 date: alertDate,
-                 type: 'lembrete',
-                 title: item.alertaLembrete,
-                 details: `Lembrete para ${item.formadorNome} na formação ${formacao.titulo}`,
-                 relatedId: formacao.id
-               })
+  const arquivarFormacao = async (f: Formacao, chave: string) => {
+    setOcupado(chave);
+    try {
+      await changeFormacaoStatus(f, 'arquivado', user);
+      toast({
+        title: 'Formação arquivada',
+        description: 'Ela continua em Arquivados.',
+        action: (
+          <ToastAction
+            altText="Desfazer arquivamento"
+            onClick={() =>
+              updateDoc(doc(db, 'formacoes', f.id), { status: 'concluido' }).catch((e) => falhou('Não deu para desfazer', e))
             }
-          })
-        }
+          >
+            Desfazer
+          </ToastAction>
+        ),
       });
-
-      const projetosData = projetosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjetoImplatancao));
-      projetosData.forEach(projeto => {
-        if (projeto.dataMigracao) allEvents.push({ date: projeto.dataMigracao.toDate(), type: 'projeto-marco', title: `Migração de Dados: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-        if (projeto.dataImplantacao) allEvents.push({ date: projeto.dataImplantacao.toDate(), type: 'projeto-marco', title: `Implantação: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-        
-        if (projeto.simulados) {
-            Object.keys(projeto.simulados).forEach(key => {
-                const simuladoKey = key as keyof typeof projeto.simulados;
-                const simulado = projeto.simulados![simuladoKey];
-                const numero = simuladoKey.replace('s', '');
-                if (simulado && simulado.dataInicio) allEvents.push({ date: simulado.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-                if (simulado && simulado.dataFim) allEvents.push({ date: simulado.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Simulado ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-            });
-        }
-        if (projeto.devolutivas) {
-            Object.keys(projeto.devolutivas).forEach(key => {
-                const devolutivaKey = key as keyof typeof projeto.devolutivas;
-                const devolutiva = projeto.devolutivas![devolutivaKey];
-                const numero = devolutivaKey.replace('d', '');
-
-                if (devolutiva && (devolutiva as any).data) { // For d4
-                    allEvents.push({ date: (devolutiva as any).data.toDate(), type: 'projeto-acompanhamento', title: `Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-                } else if (devolutiva) { // For d1, d2, d3
-                    if (devolutiva.dataInicio) allEvents.push({ date: devolutiva.dataInicio.toDate(), type: 'projeto-acompanhamento', title: `Início Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-                    if (devolutiva.dataFim) allEvents.push({ date: devolutiva.dataFim.toDate(), type: 'projeto-acompanhamento', title: `Fim Devolutiva ${numero}: ${projeto.municipio}`, details: `Projeto ${projeto.versao}`, relatedId: projeto.id });
-                }
-            });
-        }
-      });
-      
-      const lembretesData = lembretesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as Lembrete));
-      lembretesData.forEach(lembrete => {
-          allEvents.push({
-            date: lembrete.data.toDate(),
-            type: 'lembrete',
-            title: lembrete.titulo,
-            details: 'Lembrete pessoal',
-            relatedId: lembrete.id,
-            concluido: lembrete.concluido
-          });
-      })
-
-      const demandasData = demandasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Demanda));
-      setDemandas(demandasData);
-      demandasData.forEach(demanda => {
-        if (demanda.prazo) {
-          allEvents.push({
-            date: demanda.prazo.toDate(),
-            type: 'demanda',
-            title: `Prazo: ${demanda.demanda}`,
-            details: `Diário de Bordo - ${demanda.municipio} • Resp: ${demanda.responsavelNome}`,
-            relatedId: demanda.id,
-            concluido: false,
-            prioridade: demanda.prioridade,
-          });
-        }
-      });
-
-
-      setEvents(allEvents);
-      
-      const today = startOfDay(new Date());
-      const sevenDaysFromNow = addDays(today, 7);
-      
-      const upcoming = allEvents
-        .filter(event => isWithinInterval(event.date, { start: today, end: sevenDaysFromNow }))
-        .sort((a, b) => a.date.getTime() - b.date.getTime());
-      
-      setUpcomingEvents(upcoming);
-      
-      const yesterday = allEvents
-        .filter(event => isYesterday(event.date))
-        .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-      setYesterdayEvents(yesterday);
-
-
     } catch (error) {
-      console.error("Error fetching data:", error);
+      falhou('Não foi possível arquivar', error);
     } finally {
-      setLoading(false);
+      setOcupado(null);
     }
   };
 
-  useEffect(() => {
-    if (user?.perfil !== 'administrador') return;
-
-    fetchData();
-
-    // Assinaturas como GATILHO: quando qualquer uma destas colecoes muda, a
-    // derivacao completa (stats, eventos, logistica) roda de novo.
-    // Custo assumido: o listener ja entregou os documentos e o fetchData le
-    // outra vez, entao paga-se leitura em dobro por mudanca. A alternativa era
-    // reescrever 137 linhas de derivacao — mais risco do que a economia vale.
-    const colecoes = ['formacoes', 'demandas', 'projetos', 'lembretes'];
-    let primeiraEntrega = colecoes.length;
-
-    const cancelamentos = colecoes.map((nome) =>
-      onSnapshot(
-        collection(db, nome),
-        () => {
-          // O onSnapshot dispara uma vez logo ao assinar; esse disparo inicial
-          // duplicaria o fetchData que acabou de rodar acima.
-          if (primeiraEntrega > 0) { primeiraEntrega--; return; }
-          fetchData();
-        },
-        (e) => console.error('Assinatura do dashboard falhou:', nome, e)
-      )
-    );
-
-    return () => cancelamentos.forEach((cancelar) => cancelar());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  // A fase vem da data (faseDaFormacao): "encerrada" é a que terminou e falta concluir.
-  // Antes lia o status gravado `pos-formacao`, que só existia se alguém trocasse à mão.
-  const followUpActions = useMemo(() => {
-    return activeFormations.filter(formacao => {
-      const fase = faseDaFormacao(formacao);
-      return fase === 'encerrada' || fase === 'concluida';
-    });
-  }, [activeFormations]);
-
-  useEffect(() => {
-    const hasPendingActions = upcomingEvents.length > 0 || followUpActions.length > 0 || yesterdayEvents.length > 0;
-    if (hasPendingActions) {
-      setNotificationFavicon();
-    } else {
-      clearNotificationFavicon();
-    }
-  }, [upcomingEvents, followUpActions, yesterdayEvents, setNotificationFavicon, clearNotificationFavicon]);
-
-
-  const onLembreteSubmit = async (values: LembreteFormValues) => {
+  const concluirDemanda = async (item: ItemAgenda) => {
+    const d = item.demandaId ? demandaPorId.get(item.demandaId) : undefined;
+    if (!d) return;
+    setOcupado(item.chave);
     try {
-      await addDoc(collection(db, 'lembretes'), {
-        titulo: values.titulo,
-        data: Timestamp.fromDate(values.data),
-        concluido: false,
-        dataCriacao: serverTimestamp()
+      await mudarStatusDemanda(d, 'Concluída', user);
+      toast({
+        title: 'Demanda concluída',
+        description: d.demanda,
+        action: (
+          <ToastAction
+            altText="Desfazer conclusão"
+            onClick={() =>
+              mudarStatusDemanda({ ...d, status: 'Concluída' }, d.status, user).catch((e) => falhou('Não deu para desfazer', e))
+            }
+          >
+            Desfazer
+          </ToastAction>
+        ),
       });
-      toast({ title: 'Sucesso', description: 'Lembrete criado com sucesso!' });
-      setIsLembreteDialogOpen(false);
-      form.reset();
-      fetchData(); // Refresh data
     } catch (error) {
-        console.error("Error creating lembrete:", error);
-        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível criar o lembrete.' });
-    }
-  }
-  
-  const handleToggleLembrete = async (eventId: string, currentStatus: boolean) => {
-      try {
-        const lembreteRef = doc(db, 'lembretes', eventId);
-        await updateDoc(lembreteRef, { concluido: !currentStatus });
-        toast({ title: "Sucesso", description: `Lembrete marcado como ${!currentStatus ? 'concluído' : 'ativo'}.` });
-        fetchData();
-      } catch (error) {
-        console.error("Error updating lembrete: ", error);
-        toast({ variant: "destructive", title: "Erro", description: "Não foi possível atualizar o lembrete." });
-      }
-  }
-
-  const handleUpdateStatus = async (formacao: Formacao, newStatus: FormadorStatus) => {
-    setLoadingAction(formacao.id);
-    try {
-      await changeFormacaoStatus(formacao, newStatus, user);
-      toast({ title: "Sucesso", description: `Status alterado e ações automáticas criadas no Diário.` });
-      fetchData();
-    } catch (error: any) {
-      console.error("Erro ao alterar status:", error);
-      toast({ variant: "destructive", title: "Erro", description: error.message || "Não foi possível alterar o status." });
+      falhou('Não foi possível concluir a demanda', error);
     } finally {
-      setLoadingAction(null);
+      setOcupado(null);
     }
   };
 
-
-  const eventDaysByType = useMemo(() => {
-    return events.reduce((acc, event) => {
-        const eventType = event.type;
-        if (!acc[eventType]) {
-            acc[eventType] = [];
-        }
-        acc[eventType].push(startOfDay(event.date));
-        return acc;
-    }, {} as Record<CalendarEvent['type'], Date[]>);
-  }, [events]);
-
-  const selectedDayEvents = useMemo(() => {
-    if (!date) return [];
-    return events
-        .filter(event => isSameDay(event.date, date))
-        .sort((a,b) => a.date.getTime() - b.date.getTime());
-  }, [date, events]);
-  
-  const handleOpenDetails = (formacao: Formacao) => {
-    setSelectedFormacao(formacao);
-    setIsDetailDialogOpen(true);
-  };
-
-  const handleDetailDialogChange = (open: boolean) => {
-    setIsDetailDialogOpen(open);
-    if (!open) {
-      setSelectedFormacao(null);
-      fetchData(); // Re-fetch on close to ensure data is fresh
+  const concluirLembrete = async (item: ItemAgenda) => {
+    const id = item.lembreteId;
+    if (!id) return;
+    setOcupado(item.chave);
+    try {
+      await marcarLembrete(id, true);
+      toast({
+        title: 'Lembrete concluído',
+        description: item.titulo,
+        action: (
+          <ToastAction
+            altText="Desfazer"
+            onClick={() => marcarLembrete(id, false).catch((e) => falhou('Não deu para desfazer', e))}
+          >
+            Desfazer
+          </ToastAction>
+        ),
+      });
+    } catch (error) {
+      falhou('Não foi possível concluir o lembrete', error);
+    } finally {
+      setOcupado(null);
     }
-  }
-
-  const handleDemandaSuccess = () => {
-    fetchData();
-    setIsDemandaDialogOpen(false);
-    setSelectedDemanda(null);
   };
 
-  const handleEventClick = (event: CalendarEvent) => {
-    if (event.type === 'demanda') {
-      const demanda = demandas.find(d => d.id === event.relatedId);
-      if (demanda) {
-        setSelectedDemanda(demanda);
-        setIsDemandaDialogOpen(true);
+  const salvarLembrete = async (titulo: string, data: Date) => {
+    try {
+      await criarLembrete(titulo, data, user);
+      toast({ title: 'Lembrete criado' });
+      return true;
+    } catch (error) {
+      falhou('Não foi possível criar o lembrete', error);
+      return false;
+    }
+  };
+
+  const acoes: AcoesDoItem = {
+    ocupado,
+    onAbrir: (item) => {
+      if (item.tipo === 'demanda') {
+        const d = item.demandaId ? demandaPorId.get(item.demandaId) : undefined;
+        if (d) setDemandaAberta(d);
+      } else if (item.formacaoId) {
+        setDetalheId(item.formacaoId);
+      } else if (item.projetoId) {
+        router.push(`/projeto-relatorio/${item.projetoId}`);
       }
-    } else if (event.type === 'formacao') {
-      const formacao = activeFormations.find(f => f.id === event.relatedId);
-      if (formacao) {
-        handleOpenDetails(formacao);
-      }
-    }
+    },
+    onConcluirFormacao: (item) => {
+      const f = item.formacaoId ? formacaoPorId.get(item.formacaoId) : undefined;
+      if (f) setAConcluir(f);
+    },
+    onArquivarFormacao: (item) => {
+      const f = item.formacaoId ? formacaoPorId.get(item.formacaoId) : undefined;
+      if (f) arquivarFormacao(f, item.chave);
+    },
+    onMarcarFeito: (item) => (item.tipo === 'demanda' ? concluirDemanda(item) : concluirLembrete(item)),
   };
 
+  // ------------------------------------------------------------------ tela
 
-  const generateEmailBody = (upcoming: CalendarEvent[], yesterday: CalendarEvent[], followUps: Formacao[]): string => {
-    let body = "Olá equipe,\n\nSegue o resumo de eventos e acompanhamentos do portal:\n\n";
-  
-    const generateSection = (title: string, data: any[], formatter: (item: any) => string) => {
-        if (data.length === 0) return "";
-        let section = `--- ${title.toUpperCase()} ---\n`;
-        data.forEach(item => {
-            section += `${formatter(item)}\n`;
-        });
-        return section + "\n";
-    };
-  
-    body += generateSection(
-        "Próximos Eventos (7 dias)",
-        upcoming,
-        (event: CalendarEvent) => `- ${format(event.date, 'dd/MM/yyyy')}: ${event.title} (${event.details})`
-    );
-  
-    body += generateSection(
-        "Resumo de Ontem",
-        yesterday,
-        (event: CalendarEvent) => `- ${event.title} (${event.details})`
-    );
-  
-    body += generateSection(
-        "Ações de Acompanhamento",
-        followUps,
-        (formacao: Formacao) => `- ${faseDaFormacao(formacao) === 'encerrada' ? 'Encerrada, falta concluir' : 'Concluída'}: ${formacao.titulo}`
-    );
-  
-    body += "Atenciosamente,\nPortal de Gestão Pedagógica";
-    return body;
-  };
-  
-  const emailHref = useMemo(() => {
-    const subject = "Resumo de Eventos e Acompanhamento";
-    const body = generateEmailBody(upcomingEvents, yesterdayEvents, followUpActions);
-    const recipients = [
-        "alessandra@editoralt.com.br",
-        "amaranta@editoralt.com.br",
-        "assessoria@editoralt.com.br",
-        "irene@editoralt.com.br",
-        "kellem@editoralt.com.br"
-    ];
-    
-    const params = new URLSearchParams({
-        to: recipients.join(','),
-        su: subject,
-        body: body,
-    });
-
-    return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
-  }, [upcomingEvents, yesterdayEvents, followUpActions]);
-
-
-  const modifiers = {
-    formacao: eventDaysByType['formacao'] || [],
-    'projeto-marco': eventDaysByType['projeto-marco'] || [],
-    'projeto-acompanhamento': eventDaysByType['projeto-acompanhamento'] || [],
-    lembrete: eventDaysByType['lembrete'] || [],
-    demanda: eventDaysByType['demanda'] || [],
-  };
-
-  const modifiersStyles = {
-    formacao: { backgroundColor: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' },
-    'projeto-marco': { backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))', opacity: 0.8 },
-    'projeto-acompanhamento': { backgroundColor: 'hsl(var(--chart-4) / 0.2)', color: 'hsl(var(--chart-4))' },
-    lembrete: { backgroundColor: 'hsl(var(--chart-3) / 0.2)', color: 'hsl(var(--chart-3))' },
-    demanda: { backgroundColor: 'hsl(var(--warning) / 0.2)', color: 'hsl(var(--warning))' },
-  };
-  
-  const formatEventDate = (eventDate: Date) => {
-    if (isToday(eventDate)) return 'Hoje';
-    if (isTomorrow(eventDate)) return 'Amanhã';
-    if (isYesterday(eventDate)) return 'Ontem';
-    return format(eventDate, 'dd/MM');
-  }
-
-  const generateGoogleCalendarLink = (event: CalendarEvent) => {
-    const startDate = event.date;
-    // For all-day events, Google Calendar API expects the end date to be the next day.
-    const endDate = addDays(startDate, 1);
-
-    // Format for all-day events is YYYYMMDD
-    const formatAllDayDate = (date: Date) => {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const day = date.getDate().toString().padStart(2, '0');
-        return `${year}${month}${day}`;
-    };
-
-    const guests = [
-        "alessandra@editoralt.com.br",
-        "amaranta@editoralt.com.br",
-        "assessoria@editoralt.com.br",
-        "irene@editoralt.com.br"
-    ].join(',');
-
-    const params = new URLSearchParams({
-        action: 'TEMPLATE',
-        text: event.title,
-        dates: `${formatAllDayDate(startDate)}/${formatAllDayDate(endDate)}`,
-        details: event.details,
-        add: guests
-    });
-
-    return `https://www.google.com/calendar/render?${params.toString()}`;
-  }
-
-  if (!user || user.perfil !== 'administrador' || loading) {
-    return (
-      <div className="flex h-[80vh] w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const reportYear = date ? date.getFullYear() : new Date().getFullYear();
-  const reportMonth = date ? date.getMonth() + 1 : new Date().getMonth() + 1;
-
-  const EventList = ({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (event: CalendarEvent) => void }) => {
-    const today = startOfToday();
-    
-    const getSourceConfig = (type: string) => {
-        switch (type) {
-            case 'demanda': return { icon: BookOpenCheck, label: 'Diário de Bordo', color: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' };
-            case 'formacao': return { icon: KanbanSquare, label: 'Formação', color: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' };
-            case 'projeto-marco': return { icon: Milestone, label: 'Projeto (Marco)', color: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800' };
-            case 'projeto-acompanhamento': return { icon: Milestone, label: 'Projeto (Acomp.)', color: 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' };
-            case 'lembrete': return { icon: Bell, label: 'Lembrete Pessoal', color: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700' };
-            default: return { icon: CalendarIcon, label: 'Evento', color: 'bg-muted text-muted-foreground' };
-        }
-    }
-
-    return (
-        <div className="space-y-4">
-        {events.map((event) => {
-            const isUrgent = event.type === 'demanda' && event.prioridade === 'Urgente';
-            const isOverdue = event.date < today;
-            const source = getSourceConfig(event.type);
-
-            return (
-            <div
-                key={event.relatedId + event.title + event.details}
-                className={cn(
-                    "flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer border border-transparent transition-colors",
-                    isUrgent && "bg-orange-50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900/30",
-                    isUrgent && isOverdue && "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30"
-                )}
-                onClick={() => onEventClick(event)}
-            >
-                <div className={cn(
-                "flex-shrink-0 text-center text-sm font-semibold p-2 bg-muted rounded-md w-16",
-                isToday(event.date) && "bg-yellow-100 dark:bg-yellow-900/30",
-                isUrgent && isOverdue && "bg-red-200 text-red-900 dark:bg-red-900/50 dark:text-red-200",
-                isUrgent && !isOverdue && "bg-orange-200 text-orange-900 dark:bg-orange-900/50 dark:text-orange-200"
-                )}>
-                <div className={cn(
-                    "font-bold",
-                    isToday(event.date) && "text-yellow-800 dark:text-yellow-300"
-                )}>
-                    {formatEventDate(event.date)}
-                </div>
-                <div className="text-xs text-muted-foreground">{format(event.date, 'EEEE', {locale: ptBR})}</div>
-                </div>
-                <div className="flex-grow">
-                    <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-bold flex items-center gap-1.5", source.color)}>
-                            <source.icon className="h-3 w-3" />
-                            {source.label}
-                        </Badge>
-                        {isUrgent && (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 uppercase tracking-wider font-bold">
-                                Urgente
-                            </Badge>
-                        )}
-                    </div>
-                    <p className="font-semibold flex items-center gap-2">
-                        {event.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{event.details}</p>
-                </div>
-                 <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className='h-8 w-8 self-center shrink-0'
-                    title="Adicionar ao Google Agenda"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(generateGoogleCalendarLink(event), '_blank');
-                    }}
-                >
-                    <CalendarPlus className='h-4 w-4 text-blue-500 hover:text-blue-600' />
-                </Button>
-            </div>
-            )
-        })}
-        </div>
-    );
-  };
-
+  const dataPorExtenso = format(hoje, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
+  const semPrazo = grupos['sem-prazo'];
+  const nadaNasColunas = grupos.atrasado.length + grupos.hoje.length + grupos.proximos.length === 0;
+  const tudoEmDia = !filtro && nadaNasColunas;
+  const filtroSoSemPrazo = !!filtro && nadaNasColunas && grupos.adiante.length === 0;
+  const listaDeItens = (lista: ItemAgenda[]) => (
+    <ul>
+      {lista.map((i) => (
+        <ItemDaAgenda key={i.chave} item={i} acoes={acoes} />
+      ))}
+    </ul>
+  );
 
   return (
-    <div className="flex flex-col gap-8 py-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard do Administrador</h1>
-        <p className="text-muted-foreground">Resumo geral do Portal de Apoio Pedagógico.</p>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {stats.map((stat) => (
-          <Card key={stat.title} className={cn("shadow-sm border-l-4", stat.borderColor)}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-              <stat.icon className={cn("h-6 w-6", stat.color)} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">Total registrado no sistema</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <BellRing className="h-5 w-5" />
-                        Central de Ações
-                    </CardTitle>
-                    <CardDescription>
-                        Eventos importantes e pendências que requerem sua atenção.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                     <Tabs defaultValue="proximos" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="proximos">Próximos 7 dias</TabsTrigger>
-                            <TabsTrigger value="ontem">Resumo de Ontem</TabsTrigger>
-                            <TabsTrigger value="acompanhamento">Acompanhamento</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="proximos" className="pt-4">
-                            {upcomingEvents.length > 0 ? <EventList events={upcomingEvents} onEventClick={handleEventClick} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento para os próximos 7 dias.</p>}
-                        </TabsContent>
-                        <TabsContent value="ontem" className="pt-4">
-                           {yesterdayEvents.length > 0 ? <EventList events={yesterdayEvents} onEventClick={handleEventClick} /> : <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento registrado ontem.</p>}
-                        </TabsContent>
-                        <TabsContent value="acompanhamento" className="pt-4">
-                             {followUpActions.length > 0 ? (
-                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Formação</TableHead>
-                                            <TableHead>Relatório</TableHead>
-                                            <TableHead className="text-right">Próxima Ação</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {followUpActions.map((formacao) => (
-                                            <TableRow key={formacao.id}>
-                                                <TableCell>
-                                                    {faseDaFormacao(formacao) === 'encerrada' ? (
-                                                        <Badge variant="outline" className='text-xs bg-green-200 text-green-900 border-green-300'>Encerrada</Badge>
-                                                    ) : (
-                                                        <Badge variant="outline" className='text-xs bg-purple-200 text-purple-900 border-purple-300'>Concluída</Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="font-medium truncate">
-                                                    <span className="cursor-pointer hover:underline" onClick={() => handleOpenDetails(formacao)}>
-                                                        {formacao.titulo}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button variant="link" size="sm" asChild className="h-auto p-0">
-                                                        <Link href={`/relatorio/${formacao.id}`} target="_blank">Ver Relatório</Link>
-                                                    </Button>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {faseDaFormacao(formacao) === 'encerrada' ? (
-                                                        <Button size="sm" onClick={() => handleUpdateStatus(formacao, 'concluido')} disabled={loadingAction === formacao.id}>
-                                                            {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />} Concluir
-                                                        </Button>
-                                                    ) : (
-                                                        <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(formacao, 'arquivado')} disabled={loadingAction === formacao.id}>
-                                                            {loadingAction === formacao.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />} Arquivar
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                             ) : (
-                                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma ação de acompanhamento pendente.</p>
-                             )}
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
-            </Card>
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col gap-5 py-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-headline text-2xl font-bold tracking-tight sm:text-3xl">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              {dataPorExtenso.charAt(0).toUpperCase() + dataPorExtenso.slice(1)}
+              {!carregando && (
+                <>
+                  {' · '}
+                  <span className="font-semibold text-foreground">
+                    {pendentesHoje === 0
+                      ? 'nada pendente para hoje'
+                      : `${pendentesHoje} ${pendentesHoje === 1 ? 'item precisa' : 'itens precisam'} de você hoje`}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="outline" className="h-10" onClick={() => setLembreteAberto(true)} aria-label="Novo lembrete">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Lembrete</span>
+            </Button>
+            <AgendaDoMes itens={itens} hoje={hoje} />
+          </div>
         </div>
 
-        <div className="lg:col-span-1 space-y-8">
-            <Card>
-                <CardHeader>
-                    <div className='flex justify-between items-center gap-2 flex-wrap'>
-                        <CardTitle className="flex items-center gap-2">
-                            <CalendarIcon className="h-5 w-5" />
-                            Agenda de Eventos
-                        </CardTitle>
-                        <Dialog open={isLembreteDialogOpen} onOpenChange={setIsLembreteDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm">
-                                    <PlusCircle className='mr-2 h-4 w-4' /> Novo Lembrete
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className='sm:max-w-md'>
-                                <DialogHeader>
-                                    <DialogTitle>Criar Novo Lembrete</DialogTitle>
-                                    <DialogDescription>Adicione um lembrete pessoal à sua agenda.</DialogDescription>
-                                </DialogHeader>
-                                <Form {...form}>
-                                    <form onSubmit={form.handleSubmit(onLembreteSubmit)} className="space-y-4">
-                                        <FormField control={form.control} name="titulo" render={({ field }) => (
-                                            <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Ex: Ligar para..." {...field} /></FormControl><FormMessage /></FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="data" render={({ field }) => (
-                                            <FormItem className="flex flex-col"><FormLabel>Data</FormLabel>
-                                                <Popover><PopoverTrigger asChild><FormControl>
-                                                <Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                                    {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione a data</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                                </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus locale={ptBR}/>
-                                                </PopoverContent></Popover><FormMessage />
-                                            </FormItem>
-                                        )}/>
-                                        <Button type='submit' disabled={form.formState.isSubmitting}>
-                                            {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                            Salvar Lembrete
-                                        </Button>
-                                    </form>
-                                </Form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={setDate}
-                        className="rounded-md border"
-                        locale={ptBR}
-                        modifiers={modifiers}
-                        modifiersStyles={modifiersStyles}
-                    />
-                    <div className="w-full space-y-2 text-sm p-2 mt-4">
-                        <h4 className="font-semibold mb-2">Eventos do dia: {date ? format(date, "PPP", { locale: ptBR }) : 'N/A'}</h4>
-                         {selectedDayEvents.length > 0 ? (
-                            <div className="space-y-4">
-                                {selectedDayEvents.map((event, index) => (
-                                    <div key={index} className="space-y-2">
-                                        <div>
-                                            <div className="flex justify-between items-start gap-2">
-                                                <h4 className="font-semibold">{event.title}</h4>
-                                                <Badge variant="outline" className={cn(
-                                                    event.type === 'formacao' && 'border-primary text-primary',
-                                                    event.type === 'projeto-marco' && 'border-accent text-accent-foreground bg-accent/20',
-                                                    event.type === 'projeto-acompanhamento' && 'border-chart-4 text-chart-4',
-                                                    event.type === 'lembrete' && 'border-chart-3 text-chart-3',
-                                                    event.type === 'demanda' && 'border-warning text-warning'
-                                                )}>
-                                                    {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                                                </Badge>
-                                            </div>
-                                            <div className="text-sm text-muted-foreground flex items-center justify-between gap-1">
-                                            <span className='flex items-center gap-1'>
-                                                    {event.type === 'formacao' ? <KanbanSquare className="h-3 w-3" /> : event.type === 'lembrete' ? <Bell className='h-3 w-3' /> : event.type === 'demanda' ? <ClipboardList className="h-3 w-3" /> : <Milestone className='h-3 w-3'/>}
-                                                    {event.details}
-                                            </span>
-                                            <span className="flex items-center">
-                                                {event.type === 'lembrete' && event.details === 'Lembrete pessoal' && (
-                                                    <Button variant="ghost" size="icon" className='h-6 w-6' onClick={() => handleToggleLembrete(event.relatedId, event.concluido ?? false)}>
-                                                        <CheckCircle2 className='h-4 w-4 text-green-500 hover:text-green-600' />
-                                                    </Button>
-                                                )}
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className='h-6 w-6'
-                                                    title="Adicionar ao Google Agenda"
-                                                    onClick={() => window.open(generateGoogleCalendarLink(event), '_blank')}
-                                                >
-                                                    <CalendarPlus className='h-4 w-4 text-blue-500 hover:text-blue-600' />
-                                                </Button>
-                                            </span>
-                                            </div>
-                                        </div>
-                                        {index < selectedDayEvents.length - 1 && <Separator />}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-8">
-                                Nenhum evento para the dia selecionado.
-                            </p>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-      </div>
-       
-      <Dialog open={isDetailDialogOpen} onOpenChange={handleDetailDialogChange}>
-            {/* O DetalhesFormacao desenha o próprio cabeçalho e rola só o conteúdo da aba. */}
-            <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
-                {selectedFormacao && (
-                    <DetalhesFormacao
-                        formacaoId={selectedFormacao.id}
-                        onClose={() => handleDetailDialogChange(false)}
-                    />
-                )}
-            </DialogContent>
+        {falhas.length > 0 && (
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Não deu para carregar {juntar(falhas)} agora. O resto da tela está em dia.</span>
+            <Button size="sm" variant="outline" className="ml-auto" onClick={() => setTentativa((t) => t + 1)}>
+              Tentar de novo
+            </Button>
+          </div>
+        )}
+
+        <FaixaFilas filas={filas} ativa={filaAtiva} carregando={carregando} onFiltrar={(id) => setFilaAtiva(id as FilaDeDemandaId | null)} />
+
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-center gap-3 space-y-0 pb-2">
+            <CardTitle className="text-lg">Precisa de você</CardTitle>
+            {filtro && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 py-0.5 pl-3 pr-1 text-sm font-semibold text-primary">
+                Filtrando: {filtro.rotulo}
+                <button type="button" aria-label="Limpar filtro" onClick={() => setFilaAtiva(null)} className="rounded-full p-0.5 hover:bg-primary/15">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
+          </CardHeader>
+          <CardContent className="pb-3">
+            {carregando ? (
+              <EsqueletoDasColunas />
+            ) : tudoEmDia ? (
+              <TudoEmDia proximo={todos.adiante[0]} />
+            ) : filtroSoSemPrazo ? (
+              semPrazo.length === 0 && <p className="py-4 text-sm text-muted-foreground">Nada nesta fila.</p>
+            ) : (
+              <ColunasAgenda grupos={grupos} filtrando={!!filtro} acoes={acoes} />
+            )}
+          </CardContent>
+
+          {!carregando && semPrazo.length > 0 && (
+            <Faixa
+              titulo={`Sem prazo · ${semPrazo.length} ${semPrazo.length === 1 ? 'demanda' : 'demandas'}`}
+              sub="(precisam de uma data)"
+              aberta={semPrazoAberto || filtro?.id === 'dem-sem-prazo'}
+              onAlternar={() => setSemPrazoAberto((v) => !v)}
+            >
+              {listaDeItens(semPrazo)}
+            </Faixa>
+          )}
+          {!carregando && !filtro && ontem.length > 0 && (
+            <Faixa
+              titulo={`Ontem · ${ontem.length} ${ontem.length === 1 ? 'evento' : 'eventos'}`}
+              sub="(só para informação)"
+              aberta={ontemAberto}
+              onAlternar={() => setOntemAberto((v) => !v)}
+            >
+              {listaDeItens(ontem)}
+            </Faixa>
+          )}
+        </Card>
+
+        {/* ------------------------------------------------ diálogos: sempre montados, fora do carregamento */}
+
+        <Dialog open={detalheId !== null} onOpenChange={(open) => !open && setDetalheId(null)}>
+          {/* O DetalhesFormacao desenha o próprio cabeçalho e rola só o conteúdo da aba. */}
+          <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+            {detalheId && <DetalhesFormacao formacaoId={detalheId} onClose={() => setDetalheId(null)} />}
+          </DialogContent>
         </Dialog>
 
-        <Dialog open={isDemandaDialogOpen} onOpenChange={setIsDemandaDialogOpen}>
+        <Dialog open={demandaAberta !== null} onOpenChange={(open) => !open && setDemandaAberta(null)}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>{selectedDemanda ? 'Editar Demanda' : 'Nova Demanda'}</DialogTitle>
+              <DialogTitle>Demanda</DialogTitle>
               <DialogDescription>
-                  {selectedDemanda ? 'Altere os dados da demanda.' : 'Preencha os dados para registrar uma nova demanda.'}
+                {demandaAberta ? [demandaAberta.municipio, demandaAberta.uf].filter(Boolean).join('/') : ''}
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className='max-h-[80vh]'>
-              <div className='p-4'>
-                  <FormDemanda demanda={selectedDemanda} onSuccess={handleDemandaSuccess} />
+            <ScrollArea className="max-h-[80vh]">
+              <div className="p-4">
+                {demandaAberta && <FormDemanda demanda={demandaAberta} onSuccess={() => setDemandaAberta(null)} />}
               </div>
             </ScrollArea>
           </DialogContent>
         </Dialog>
 
+        <AlertDialog open={aConcluir !== null} onOpenChange={(open) => !open && setAConcluir(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Concluir esta formação?</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2">
+                  <p>
+                    <strong className="text-foreground">{aConcluir ? tituloDaFormacao(aConcluir) : ''}</strong> sai de “Falta concluir”.
+                  </p>
+                  <p>
+                    Concluir também cria a demanda <strong className="text-foreground">“Enviar e-mail de agradecimento e feedback”</strong>,
+                    com prazo para {diaDaSemana(addDays(hoje, 2))} (se ela ainda não existir).
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={concluirFormacao}>Concluir formação</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <FormLembrete aberto={lembreteAberto} onAbertoChange={setLembreteAberto} onSalvar={salvarLembrete} />
+      </div>
+    </TooltipProvider>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Peças pequenas da página
+// ---------------------------------------------------------------------------
+
+const juntar = (partes: string[]) =>
+  partes.length <= 1 ? partes.join('') : `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`;
+
+/** Faixa recolhível abaixo das colunas ("Sem prazo", "Ontem"). */
+function Faixa({
+  titulo,
+  sub,
+  aberta,
+  onAlternar,
+  children,
+}: {
+  titulo: string;
+  sub: string;
+  aberta: boolean;
+  onAlternar: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        aria-expanded={aberta}
+        onClick={onAlternar}
+        className="flex w-full items-center gap-1.5 px-4 py-3 text-left text-sm font-semibold text-muted-foreground hover:text-foreground sm:px-6"
+      >
+        <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', aberta && 'rotate-90')} />
+        {titulo} <span className="font-normal">{sub}</span>
+      </button>
+      {aberta && <div className="px-4 pb-3 sm:px-6">{children}</div>}
+    </div>
+  );
+}
+
+function TudoEmDia({ proximo }: { proximo?: ItemAgenda }) {
+  return (
+    <div className="py-8 text-center text-sm text-muted-foreground">
+      <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+        <Check className="h-5 w-5" />
+      </div>
+      <p className="text-base font-semibold text-foreground">Tudo em dia.</p>
+      <p>Nenhum atraso e nada nos próximos 7 dias.</p>
+      {proximo?.data && (
+        <p className="mt-1">
+          Próximo na agenda: {diaDaSemana(proximo.data)} — {proximo.titulo}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function EsqueletoDasColunas() {
+  return (
+    <div className="grid gap-x-8 gap-y-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Carregando">
+      {[0, 1, 2].map((c) => (
+        <div key={c} className={cn('space-y-3', c > 0 && 'hidden md:block')}>
+          <Skeleton className="h-4 w-28" />
+          {[0, 1, 2].map((l) => (
+            <div key={l} className="flex items-center gap-3">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EsqueletoDaPagina() {
+  return (
+    <div className="flex flex-col gap-5 py-6" aria-busy="true">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-16" />
+        ))}
+      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <EsqueletoDasColunas />
+        </CardContent>
+      </Card>
     </div>
   );
 }
