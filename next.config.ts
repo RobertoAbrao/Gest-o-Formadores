@@ -2,9 +2,9 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // Erro de tipo derruba o build (desde 25/11/2026). Antes era ignorado, e foi assim que
+  // a linha do tempo passou meses lendo um campo que não existe mais (`dataImplantacao`).
+  // O lint roda no CI (npm run lint), não aqui.
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { buttonVariants } from '@/components/ui/button';
 import { PlusCircle, Search, MoreHorizontal, Pencil, Trash2, Loader2, ClipboardList, CheckCircle2, XCircle, Eye, BookOpen, Link as LinkIcon, GanttChartSquare, FolderOpen } from 'lucide-react';
 import type { ProjetoImplatancao, Material } from '@/lib/types';
 import { implantacoesDoProjeto } from '@/lib/projetos/implantacoes';
@@ -369,7 +370,7 @@ export default function ProjetosPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmClose} variant="destructive">
+                    <AlertDialogAction onClick={handleConfirmClose} className={buttonVariants({ variant: 'destructive' })}>
                         Sair sem Salvar
                     </AlertDialogAction>
                 </AlertDialogFooter>

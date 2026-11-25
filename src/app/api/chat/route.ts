@@ -542,7 +542,7 @@ async function execListarMateriais() {
 async function execCriarMaterial(args: Record<string, unknown>) {
   const id = await createMaterial({
     titulo: args.titulo as string,
-    descricao: args.descricao as string | undefined,
+    descricao: (args.descricao as string | undefined) ?? '', // Firestore recusa campo undefined
     tipoMaterial: args.tipoMaterial as any,
     url: args.url as string,
   });

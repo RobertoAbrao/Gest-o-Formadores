@@ -111,6 +111,9 @@ export interface LogisticaViagem {
   dataNascimento?: Timestamp | null;
   pix?: string;
 
+  /** @deprecated Legado: saiu na reformulação da logística (11/2025). Só registros antigos têm; a tela ainda mostra. */
+  localPartida?: string;
+
   // Transporte
   valorPassagem?: number | null;
   trecho?: string;

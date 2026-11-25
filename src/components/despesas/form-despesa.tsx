@@ -32,7 +32,7 @@ import { Calendar } from '../ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn } from '@/lib/utils';
 
-const despesaTypes: TipoDespesa[] = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'];
+const despesaTypes = ['Alimentação', 'Transporte', 'Hospedagem', 'Material Didático', 'Outros'] as const satisfies readonly TipoDespesa[];
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB, to be safe with Firestore document limits
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];

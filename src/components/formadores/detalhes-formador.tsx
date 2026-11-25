@@ -4,7 +4,7 @@
 import type { Formador } from '@/lib/types';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
-import { User, Mail, Building, BookText, BookMark, Phone, CreditCard, Banknote } from 'lucide-react';
+import { User, Mail, Building, BookText, Phone, CreditCard, Banknote } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 
