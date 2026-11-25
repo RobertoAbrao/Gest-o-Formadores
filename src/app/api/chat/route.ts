@@ -26,6 +26,11 @@ import {
   getStats,
 } from '../../../lib/agent/agent-tools';
 import { ESTADOS_BR } from '../../../lib/estados-br';
+import {
+  MATERIAIS_CATALOGO,
+  conferirMateriaisNovos,
+  mensagemMaterialForaDaLista,
+} from '../../../lib/projetos/materiais';
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 
@@ -233,7 +238,7 @@ const tools = [
           municipio: { type: 'string' },
           uf: { type: 'string', minLength: 2, maxLength: 2 },
           versao: { type: 'string' },
-          material: { type: 'string' },
+          material: { type: 'string', description: `Um ou mais, separados por vírgula: ${MATERIAIS_CATALOGO.join(', ')}` },
           qtdAlunos: { type: 'number' },
           qtdProfessores: { type: 'number' },
           formadoresIds: { type: 'array', items: { type: 'string' } },
@@ -493,11 +498,13 @@ async function execBuscarProjeto(args: Record<string, unknown>) {
 }
 
 async function execCriarProjeto(args: Record<string, unknown>) {
+  const material = conferirMateriaisNovos(args.material as string | undefined);
+  if (material.foraDaLista.length) return mensagemMaterialForaDaLista(material.foraDaLista);
   const id = await createProjeto({
     municipio: args.municipio as string,
     uf: args.uf as string,
     versao: args.versao as string | undefined,
-    material: args.material as string | undefined,
+    material: material.valor,
     qtdAlunos: args.qtdAlunos as number | undefined,
     qtdProfessores: args.qtdProfessores as number | undefined,
     formadoresIds: args.formadoresIds as string[] | undefined,
